@@ -380,14 +380,14 @@ def main(opts, *args, **kwargs):
             for tries in range(3):
                 try:
                     ipshell = InteractiveShellEmbed(config=ipy_config,
-                        banner1 = """           ____  ____  _____   __     __     ____________
-          / __ \/ __ \/  _/ | / /__  / /_   / ____/ ____/
-         / / / / / / // //  |/ / _ \/ __/  / /   / /
-        / /_/ / /_/ // // /|  /  __/ /_   / /___/ /___
-        \____/\____/___/_/ |_/\___/\__/   \____/\____/""",
-                        exit_msg = 'Leaving OOINet CC shell, shutting down container.')
+                        banner1 = """           _____      _ ____  _   __   ____________
+          / ___/_____(_) __ \/ | / /  / ____/ ____/
+          \__ \/ ___/ / / / /  |/ /  / /   / /     
+         ___/ / /__/ / /_/ / /|  /  / /___/ /___   
+        /____/\___/_/\____/_/ |_/   \____/\____/""",   
+                        exit_msg = 'Leaving SciON CC shell, shutting down container.')
 
-                    ipshell('Pyon (PID: %s) - OOINet CC interactive IPython shell. Type ionhelp() for help' % os.getpid())
+                    ipshell('Pyon (PID: %s) - SciON CC interactive IPython shell. Type ionhelp() for help' % os.getpid())
                     break
                 except Exception as ex:
                     log.debug("Failed IPython initialize attempt (try #%s): %s", tries, str(ex))
