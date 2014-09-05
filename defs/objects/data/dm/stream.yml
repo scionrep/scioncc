@@ -1,0 +1,30 @@
+# Represents an identified, unbounded sequence of data granules (messages) published with a unique topic.
+Stream: !Extends_InformationResource
+  stream_route: !StreamRoute
+  persisted: False
+  # stream type of stream
+  stream_type: ""
+  # The stream name identified by the stream configuration
+  stream_name: ""
+
+
+# Defines a well-known identifier within a TopicTopology
+Topic: !Extends_InformationResource
+  exchange_point: ""
+
+
+# Describes the format, structure, and characteristics of a stream and its granules (data records).
+StreamDefinition: !Extends_InformationResource
+  parameter_dictionary: {}
+  stream_type: ""
+  available_fields: []
+  stream_configuration: {}
+
+
+# Encapsulation for publishing on streams
+Packet:
+  route: !StreamRoute
+  stream_id: ""
+  body: {}
+
+

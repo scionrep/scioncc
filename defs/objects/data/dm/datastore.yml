@@ -1,0 +1,43 @@
+# Describes a mountable filesystem volume
+PersistentArchive: !Extends_InformationResource
+  # Integer Gigabytes
+  size: 0
+  # Device address - usually NFS address in running system. For Development it is a path to a disk image.
+  device: ""
+  # type of volume
+  vfstype: ""
+  # Volume label for fstab
+  label: ""
+---
+
+DataStoreType: !enum (values=(COUCHDB, ELASTICSEARCH, FILESYSTEM), default=FILESYSTEM)
+---
+
+# Represents a separate partition (namespace) within a persistence system (database).
+DataStore: !Extends_InformationResource
+  type: !DataStoreType
+  namespace: ''
+  # Depends on type - could be shards/replicas for couch or elastic search, could be mount point for a file system
+  config: {}
+---
+
+PersistenceType: !enum (values=(COUCHDB, ELASTICSEARCH, COMPELLANT), default=COUCHDB)
+---
+
+# Represents a system that persists data within Data Stores, such as a database installation that is part of ION.
+PersistenceSystem: !Extends_InformationResource
+  type: !PersistenceType
+  # used to define default values for Datastores
+  defaults: {}
+---
+
+# A PersistenceInstance is an instance in a cluster such as a couch instance in a big couch cluster.
+# A Persistence Instance of type CouchDB or Elastic Search is associated to a Datastore of Type File System.
+PersistenceInstance: !Extends_InformationResource
+  type: !PersistenceType
+  host: ''
+  port: ''
+  username: ''
+  password: ''
+  config: {}
+

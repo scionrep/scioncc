@@ -1,0 +1,313 @@
+name: data_product_management
+
+docstring: |
+  Manages data product resources and data product metadata. This includes:
+    - Dataset Creation
+    - External Catalog Creation and Updates
+    - Data Product Resource Management
+    - Data Product Persistence Support (Saving the data)
+    - Adding Parameters to Data Products
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+SA+OV+Data+Product+Management+Service
+
+dependencies: [resource_registry, pubsub_management, data_acquisition_management, dataset_management, ingestion_management, data_retriever, user_notification]
+
+methods:
+  create_data_product_:
+    docstring: |
+      Creates a data product resource with no side-effects.
+    in:
+      data_product: !DataProduct
+    out:
+      data_product_id: ""
+
+  create_data_product:
+    docstring: |
+      Creates a data product. 
+    in:
+      data_product: !DataProduct
+      stream_definition_id: ""
+      exchange_point: ""
+      dataset_id: ""
+      parent_data_product_id: ""
+      default_stream_configuration: !StreamConfiguration
+    out:
+      data_product_id: ""
+
+  update_data_product:
+    docstring: Updates a data product
+    in:
+      data_product: !DataProduct
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_data_product:
+    docstring: Reads a data product
+    in:
+      data_product_id: ""
+    out:
+      data_product: !DataProduct
+
+  delete_data_product:
+    docstring: Retires a data product
+    in:
+      data_product_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  create_device_data_product:
+    docstring: Creates a data product that represents data from a device or agent
+    in:
+      data_product: !DataProduct
+      stream_definition_id: ""
+      stream_configuration: !StreamConfiguration
+    out:
+      data_product_id: ""
+    throws:
+      BadRequest: Data Product with incorrect category type, i.e. not a device data product
+
+  create_site_data_product:
+    docstring: Creates a data product that represents data from a site
+    in:
+      data_product: !DataProduct
+      stream_definition_id: ""
+    out:
+      data_product_id: ""
+    throws:
+      BadRequest: Data Product with incorrect category type, i.e. not a device data product
+
+  create_external_data_product:
+    docstring: Creates a data product that represents data from an external observatory
+    in:
+      data_product: !DataProduct
+      stream_definition_id: ""
+    out:
+      data_product_id: ""
+    throws:
+      BadRequest: Data Product with incorrect category type, i.e. not a device data product
+
+  create_derived_data_product:
+    docstring: Creates a data product that represents a view of an existing data product
+    in:
+      data_product: !DataProduct
+      stream_definition_id: ""
+      parent_data_product_id: ""
+    out:
+      data_product_id: ""
+    throws:
+      BadRequest: Data Product with incorrect category type, i.e. not a device data product
+
+
+  #@OperationVerb=DELETE
+  force_delete_data_product:
+    docstring: Deletes a data product
+    in:
+      data_product_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_stream_definition_to_data_product:
+    docstring: associates stream_definition to data_product
+    in:
+      data_product_id: ''
+      stream_definition_id: ''
+      exchange_point: ''
+      stream_configuration: !StreamConfiguration
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_dataset_to_data_product:
+    doctstring: associates dataset to data product
+    in:
+      data_product_id: ''
+      dataset_id: ''
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  find_data_products:
+    in:
+      filters: !ResourceFilter
+    out:
+      data_product_list: []
+
+  get_data_product_updates:
+    docstring: |
+      For a list of data products, retrieve events since the given timestamp.
+      The return is a dict of dp_id to a dict containing dataset_id, updated:
+      boolean, current geospatial bounds, current temporal bounds.
+    in:
+      data_product_id_list: []
+      since_timestamp: ""
+    out:
+      data_product_list: {}
+
+  create_dataset_for_data_product:
+    docstring: Creates a dataset resource and coverage model for a data product
+    in:
+      data_product_id: ''
+    out:
+      dataset_id: ''
+    throws:
+      BadRequest: Incorrect or missing associated resources
+
+  activate_data_product_persistence:
+    docstring: Launches an ingestion worker and persists data.
+    in:
+      data_product_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+      BadRequest: Incorrect or missing associated resources
+
+  suspend_data_product_persistence:
+    docstring: Suspend data product data persistnce into a data set, multiple options
+    in:
+      data_product_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=GET
+  is_persisted:
+    docstring: Is the data product currently being persisted?
+    in:
+      data_product_id: ""
+    out:
+      persisted: False
+    throws:
+      NotFound: object with specified id does not exist
+
+  add_parameter_to_data_product:
+    docstring: Adds a parameter to a data product.
+    in:
+      parameter_context_id: ""
+      data_product_id: ""
+    out:
+    throws:
+      BadRequest: Associations are incorrect or the data product is not activated
+
+  get_data_product_stream_definition:
+    in:
+      data_product_id: ""
+    out:
+      stream_definition_id: ""
+    throws:
+      BadRequest: If data product doesn't exist
+      NotFound: If no stream definition is associated
+      
+  get_data_product_provenance:
+    in:
+      data_product_id: ""
+    out:
+      provenance_information: {}
+    throws:
+      BadRequest: if provenance can not be retrieved
+      NotFound: object with specified id does not exist
+      
+
+  execute_data_product_lifecycle:
+    in:
+      data_product_id: ""
+      lifecycle_event: ""
+    out:
+
+  get_data_product_group_list:
+    docstring: Return a sorted list of distinct names of ooi_product_name attributes
+    in:
+      org_id: ""  # Optional
+    out:
+      name_list: []
+
+#-------
+
+  get_data_product_extension:
+    docstring: |
+      Returns an DataProductExtension object containing additional related information
+    in:
+      data_product_id: ""
+      ext_associations: {}    # An optional dict of names and associations to get other associations dynamically
+      ext_exclude: []         # An optional list of field names to exclude from retrieving
+      user_id: ""  # An optional user id associated with the requesting user
+    out:
+      data_product: !DataProductExtension
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified data_product_id does not exist
+
+#-------
+
+  prepare_data_product_support:
+    docstring: |
+      Returns the information needed to create or update a data product. The data_product_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      data_product_id: ""
+    out:
+      resource_schema: !DataProductPrepareSupport
+    throws:
+      NotFound: An object with the specified data_product_id does not exist
+
+  get_data_product_parameter_provenance:
+    in:
+      data_product_id: ""
+      parameter_name: ""
+    out:
+      provenance_image: ""
+    throws:
+      BadRequest: if provenance can not be retrieved
+      NotFound: object with specified id does not exist
+
+  get_data_product_parameters:
+    in:
+      data_product_id: ""
+      id_only: False
+    out:
+      parameters: []
+    throws:
+      BadRequest: if the data product id is invalid
+      NotFound: if no parameters are associated with the data product
+
+  create_catalog_entry:
+    docstring: |
+      Creates an entry in the external datasets catalog for a data product.
+    in:
+      data_product_id: ""
+    out:
+    throws:
+      BadRequest: if the data product is malformed or associations are missing
+
+  read_catalog_entry:
+    docstring: |
+      Reads an XML entry from the external datasets catalog for a data product.
+    in:
+      data_product_id: ""
+    out:
+      catalog_entry: XML string for the entry
+    throws:
+      BadRequest: if the data product is malformed.
+
+  update_catalog_entry:
+    docstring: | 
+      Updates a catalog entry for a data product.
+    in:
+      data_product_id: ""
+    out:
+    throws:
+      BadRequest: if the data product is malformed
+      NotFound: if there is no catalog for the system
+
+  delete_catalog_entry:
+    docstring: |
+      Removes a data product entry from the catalog
+    in:
+      data_product_id: ""
+    out: 
+    throws:
+      NotFound: if there is not catalog for the system
+      BadRequest: if the data product is not registered in the catalog
+

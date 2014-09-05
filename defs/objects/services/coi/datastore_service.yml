@@ -1,0 +1,244 @@
+name: datastore
+
+docstring: |
+  Service used to create, read, update and delete persistent Objects in the datastore.
+  The specific name of the datastore schema to use can be provided with most operations.
+  Also provides operations to work with associations and to find objects.
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+COI+OV+Datastore+Service
+
+dependencies: []
+
+# TODO:
+# - Be more specific about return types
+# - Harmonize method naming
+# - Consolidate or remove idref methods
+
+methods:
+  create_datastore:
+    docstring: Create a new datastore namespace.
+    in:
+      datastore_name: ""
+    out:
+      success: True
+
+  delete_datastore:
+    docstring: Delete a datastore namespace and all objects within.
+    in:
+      datastore_name: ""
+    out:
+      success: True
+
+  list_datastores:
+    docstring: Return a list of all datastore namespaces.
+    in:
+    out:
+      list: []
+
+  datastore_exists:
+    docstring: Return True if a given datastore namespace exists.
+    in:
+      datastore_name: ""
+    out:
+      exists: False
+
+  info_datastore:
+    docstring: Get implementation specific information for a datastore namespace.
+    in:
+      datastore_name: ""
+    out:
+      info: []
+
+  # -----------------
+
+  list_objects:
+    docstring: |
+      List the ids of all objects in the given datastore namespace or the default namespace.
+    in:
+      datastore_name: ""
+    out:
+      info: []
+
+  list_object_revisions:
+    docstring: List the revision identifiers for an object.
+    in:
+      object_id: ""
+      datastore_name: ""
+    out:
+      list: []
+
+  create:
+    docstring: |
+      Persist (create) an IonObject in the datastore. If an ID is given, the object is
+      persisted under this ID; otherwise a UUID is generated. If an object with the same ID
+      exists, an exception will occur.
+    in:
+      object: {}
+      object_id: ""
+      datastore_name: ""
+    out:
+      tuple: []
+
+  create_doc:
+    docstring: |
+      Persist (create) a raw dict document in the datastore. If an ID is given, the document is
+      persisted under this ID; otherwise a UUID is generated. If a document with the same ID
+      exists, an exception will occur.
+    in:
+      object: {}
+      object_id: ""
+      datastore_name: ""
+    out:
+      tuple: []
+
+  read:
+    docstring: |
+      Read the latest, or optionally the specific, version of IonObject
+      with id passed in the object_id param. Throws exception if
+      object not found.
+    in:
+      #@ContentType=Resource,str
+      object_id: ""
+      rev_id: ""
+      datastore_name: ""
+    out:
+      object: {}
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_doc:
+    docstring: |
+      Read the latest, or optionally the specific, version of raw dict document
+      with id passed in the object_id param. Throws exception if
+      document not found.
+    in:
+      object_id: ""
+      rev_id: ""
+      datastore_name: ""
+    out:
+      object: {}
+    throws:
+      NotFound: object with specified id does not exist
+
+  update:
+    docstring: |
+      Persist new version of IonObject. Throws exception if previous
+      version of object does not exist or object passed is not based
+      on the latest persisted version.
+    in:
+      object: {}
+      datastore_name: ""
+    out:
+      tuple: []
+    throws:
+      NotFound: object with specified id does not exist
+      Conflict: object not based on latest persisted object version
+
+  update_doc:
+    docstring: |
+      Persist new version of raw dict document. Throws exception if previous
+      version of document does not exist or object passed is not based
+      on the latest persisted version.
+    in:
+      object: {}
+      datastore_name: ""
+    out:
+      tuple: []
+    throws:
+      NotFound: object with specified id does not exist
+      Conflict: object not based on latest persisted object version
+
+  delete:
+    docstring: |
+      Permanently delete object and all previous versions of
+      object. Throws exception if object does not exist.
+    in:
+      object: {}
+      datastore_name: ""
+    out:
+
+  delete_doc:
+    docstring: |
+      Permanently delete raw dict document and all previous versions of
+      document. Throws exception if document does not exist.
+    in:
+      object: {}
+      datastore_name: ""
+    out:
+
+  # -----------------
+
+  create_association:
+    docstring: |
+      Create an association between subject and object resources (IonObjects).
+      Subject and object values can be passed as actual object instances or just
+      object ids.  Valid predicates can be found in res/config/associations.yml.
+      Subject and object must be of the proper types for the predicate or
+      an exception will be thrown.  Type indicates whether this is an association
+      between head versions or specific version instances or some combination there
+      of.
+    in:
+      subject:
+      predicate:
+      object:
+      assoc_type:
+    out:
+      tuple: []
+    throws:
+      NotFound: subject or object does not exist
+      BadRequest: predicate is unknown or subject or object are invalid types for predicate
+
+  delete_association:
+    docstring: |
+      For now, permanently delete an association between two resources (IonObjects).
+      Throws exception if association does not exist.
+    in:
+      #@ContentType=Association,str
+      association: ""
+    out:
+    throws:
+      NotFound: association does not exist
+
+  find_objects:
+    docstring: |
+      Find objects (or object ids) by association from a given subject or
+      subject id (if str). Returns a tuple (list_of_objects, list_of_associations)
+      if id_only == False, or (list_of_object_ids, list_of_associations)
+      if id_only == True. Predicate and object_type are optional to narrow the
+      search down. Object_type can only be set if predicate is set as well.
+    in:
+      subject: ""
+      predicate: ""
+      object_type: ""
+      id_only: False
+    out:
+      list: []
+
+  find_subjects:
+    docstring: |
+      Find subjects (or subject ids) by association from a given object or
+      object id (if str). Returns a tuple (list_of_subjects, list_of_associations)
+      if id_only == False, or (list_of_subject_ids, list_of_associations)
+      if id_only == True. Predicate and subject_type are optional to narrow the
+      search down. Subject_type can only be set if predicate is set as well.
+    in:
+      subject_type: ""
+      predicate: ""
+      object: ""
+      id_only: False
+    out:
+      list: []
+
+  find_associations:
+    docstring: |
+        Find associations by subject, predicate, object. Either subject and
+        predicate have to be provided or predicate only. Returns either a list
+        of associations or a list of association ids.
+    in:
+      subject: ""
+      predicate: ""
+      object: ""
+      assoc_type:
+      id_only: False
+    out:
+      list: []

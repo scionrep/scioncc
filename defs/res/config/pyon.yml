@@ -1,0 +1,492 @@
+# Central configuration file for ION container, system and services.
+# The contents are transformed into a dict that supports dot notation:
+#   CFG.server.amqp.host
+# Do not modify this file! Set overrides in pyon.local.yml or in rel files
+
+# PLEASE DO NOT ADD NEW TOP LEVEL KEYS
+# PLEASE COORDINATE WITH ARCHITECTURE FOR APPROPRIATE CFG KEYS
+
+# ----------------------------------------------------------------------------------
+# The "system" root entry defines settings for the distributed ION system that this
+# container starts or joins. A system comprises all containers with the same sysname.
+system:
+  # Set to define sysname in tests. Otherwise set via pycc --sysname or set to default
+  name:
+
+  # Name of the Org that bootstraps the system. Super-Org in Release 2
+  root_org: ION
+
+  # The name of the ION System ActorIdentity
+  system_actor: ionsystem
+
+  # Global flag indicating debug mode. Code can perform more expensive operations if True
+  debug: True
+
+  # If true, the first pycc program will bootstrap the system config and interfaces
+  # into the directory and resource registry to avoid calling store_interfaces.
+  auto_bootstrap: True
+
+  # Global config for use of a Real SMTP server or a fake logging class
+  # True is Real, False is fake
+  smtp: False
+
+  # Indicates whether policy should be loaded during system bootstrap (False is for development only)
+  load_policy: False
+
+  # The base web UI URL
+  web_ui_url: http://localhost:3000/
+
+
+bootstrap:
+  # Launches a registration worker to register DAP datasets with PyDAP
+  use_pydap: False
+
+
+# ----------------------------------------------------------------------------------
+# The "server" root entry defines profiles for connections/credentials TO external servers
+# These entries are names of server/credential profiles that can be referenced in other settings.
+server:
+  amqp:
+    # The normal container broker connection
+    type: amqp_91
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    vhost: /
+    heartbeat: 30
+  amqp_priv:
+    # The privileged broker connection that the Exchange Management Service uses
+    type: amqp_91
+    host: localhost
+    port: 5672
+    username: ion
+    password: ion
+    vhost: /
+    heartbeat: 30
+  couchdb:
+    # The basic CouchDB connection
+    type: couchdb
+    host: localhost
+    port: 5984
+    username:
+    password:
+  couchbase:
+    # The basic Couchbase connection
+    type: couchbase
+    host: localhost
+    port: 8091
+    api_port: 8092
+    username: default
+    password: default
+    bucket_password:
+    bucket_ram_quota_small_mb: 128
+    bucket_ram_quota_medium_mb: 512
+    bucket_ram_quota_big_mb: 1024
+    bucket_ram_quota_xbig_mb: 2048
+  postgresql:
+    type: postgresql
+    host: localhost
+    port: 5432
+    username: ion
+    password:
+    admin_username:             # If empty, defaults to current login username
+    admin_password:
+    default_database: postgres  # Postgres' internal database
+    database: ion               # Database name for OOI Network (will be sysname prefixed)
+    connection_pool_max: 5      # Number of connections for entire container
+
+  smtp:
+    # Outgoing email server
+    type: smtp
+    host: mail.oceanobservatories.org
+    port: 25
+    sender: data_alerts@oceanobservatories.org
+    password: ""
+  #oms event receiver currently co-locates within service gateway
+  oms:
+    host: localhost
+    port: 5000
+    path: /ion-service/oms_event
+  pydap:
+    # Python DAP server
+    type: pydap
+    host: localhost
+    port: 8001
+    data_path: RESOURCE:ext/pydap
+    datasets_xml_path: RESOURCE:ext/datasets.xml
+    # cache_limit defines the total number of datasets allowed to be cached
+    cache_limit: 2
+    # cache_expiration defines the time limit, in seconds, a dataset is allowed to remain
+    # in the cache.  
+    cache_expiration: 30
+    # Profile and log DAP requests
+    profile_enabled: False
+    # Allowable request limit in MB
+    request_limit: 200
+
+  erddap:
+    # ERDDAP DAP server and data catalog
+    type: erddap
+    host: localhost
+    port: 8081
+    # Whether ERDDAP should cache the dataset extents or update it per request
+    # recommended setting is True
+    dataset_caching: True
+    # How long ERDDAP should cache the dataset extents for (in milliseconds)
+    # recommended setting is at least 30s = 30000
+    refresh_interval: 30000
+  localrouter:
+    # In-process router
+    type: local
+
+
+# ----------------------------------------------------------------------------------
+# The "container" root entry defines settings for the current Pyon container
+container:
+  # Capability profile to use (assumes a file in res/profile/<name>.yml unless a path is specified)
+  # NOTE: This can affect the configuration if there is a config section in the profile file!!!
+  profile: development   # Profile for development purposes
+  #profile: production   # Profile for production container
+  #profile: gumstix      # Profile for gumstix container
+  #profile: dataadmin    # Profile for a database admin
+
+  datastore:
+    default_server: postgresql  # Which server connection (and type) to use as primary datastore
+    server_types:               # Definition of the known server types and how to start them
+      couchdb:
+        base: pyon.datastore.couchdb.base_store.CouchDataStore
+        full: pyon.datastore.couchdb.datastore.CouchPyonDataStore
+      couchbase:
+        base: pyon.datastore.couchbase.base_store.CouchbaseDataStore
+        full: pyon.datastore.couchbase.datastore.CouchbasePyonDataStore
+      postgresql:
+        base: pyon.datastore.postgresql.base_store.PostgresDataStore
+        full: pyon.datastore.postgresql.datastore.PostgresPyonDataStore
+
+  exchange:
+    # @TODO rename to delegate or similar, used for management api calls too
+    auto_register: True
+    names:
+      durable: False
+    management:
+      port: 55672
+      username: guest
+      password: guest
+
+  messaging:
+    server:
+      primary: amqp
+      priviledged:
+    endpoint: # TODO: move entries to here
+      rpc_conversation_enabled: False
+      prefetch_count: 1                 # how many messages to prefetch from broker by default
+    interceptor: # TODO: move entries to here
+    conversation_log:
+      header_fields: []
+
+  processes:
+    exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
+
+  objects:
+    validate: # TODO: move entries to here
+      setattr: False
+
+  org_boundary: False  # If True, then check against policies related to the Org below; else do not.
+
+  org_name: ION  # The default is the ROOT ION Org
+
+  filesystem:
+    force_clean: False
+    root: /tmp/ion
+
+  service_gateway:
+    web_server:
+      port: 5000
+    trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
+    user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
+
+  pydap_gateway:
+    web_server:
+      host: localhost # 0.0.0.0 binds on all
+      port: 8001
+
+  flask_webapp:
+    port: 8080   # Port of the container UI - TODO: move under containerui config
+
+  containerui:
+    association_graph: False    # Show D3 graph of associations
+    read_only: False            # Run in read-only mode
+
+  tracer:
+    enabled: False        # Enable the database class and message tracer in container
+    max_entries: 10000    # Length of trace buffer
+
+      
+# TODO: Rename to "container". See there.
+cc:
+  timeout:
+    # Apparently 10.0 is not enough to start a listener...
+    start_listener: 30.0
+    shutdown: 30.0
+    heartbeat: 30.0
+    heartbeat_proc_time_threshold: 600.0
+    heartbeat_proc_count_threshold: 20
+
+endpoint:
+  receive:
+    timeout: 30   # RPC receive timeout in seconds
+
+interceptor:
+  interceptors:
+    sample:
+      class: pyon.core.interceptor.sample.SampleInterceptor
+    sampleprocessonly:
+      class: pyon.core.interceptor.sample.SampleProcessOnlyInterceptor
+    validate:
+      class: pyon.core.interceptor.validate.ValidateInterceptor
+      config:
+        enabled: true
+    encode:
+      class: pyon.core.interceptor.encode.EncodeInterceptor
+      config:
+        max_message_size: 20000000
+    governance:
+      class: pyon.core.governance.governance_interceptor.GovernanceInterceptor
+      config:
+        enabled: true
+        interceptor_order: [conversation, policy]
+        governance_interceptors:
+          conversation:
+            class: pyon.core.governance.conversation.conversation_monitor_interceptor.ConversationMonitorInterceptor
+          information:
+            class: pyon.core.governance.information.information_model_interceptor.InformationModelInterceptor
+          policy:
+            class: pyon.core.governance.policy.policy_interceptor.PolicyInterceptor
+
+  stack:
+    message_outgoing: [validate, encode]
+    message_incoming: [encode, validate]
+    process_outgoing: [governance]
+    process_incoming: [governance]
+
+# ----------------------------------------------------------------------------------
+# The "exchange" root entry contains config of the system wide Exchange for bootstrap
+exchange:
+  exchange_spaces:
+    # define the names and structure of exchange spaces and exchange points
+    ioncore:
+      description: The system root exchange space
+      exchange_points:
+        science_data:
+          type: ttree
+          description: System default exchange point for data streams
+        events:
+          type: ttree
+          description: System default exchange point for system events
+
+  exchange_brokers:
+    system_broker:
+      server: amqp
+      description: Main exchange broker (RabbitMQ 2.7.x AMQP 0.9.1)
+      join_xs: [ioncore]
+      join_xp: []
+
+  core_xps:
+    # used as defaults by pyon.ion.endpoint and PubSub Mgmt Service
+    ion_rpc: ioncore
+    science_data: ioncore.science_data
+    events: ioncore.events
+
+#core_stream_types:
+#    - "BlogStreamType"
+#    - "ScienceStreamType"
+
+
+# ----------------------------------------------------------------------------------
+# The "process" root entry with config for specific process types
+process:
+  event_persister:
+    persist_interval: 1.0
+    persist_blacklist:
+    - event_type: TimerEvent
+    - event_type: SchedulerEvent
+    - event_type: DatasetModified
+
+
+# ----------------------------------------------------------------------------------
+# The "service" root entry
+service:
+  instrument_management:
+    driver_release_host: "sddevrepo.oceanobservatories.org"
+    driver_release_directory: "/var/www/html/releases"
+    driver_release_wwwprefix: "http://sddevrepo.oceanobservatories.org/releases"
+                              #no trailing slash require
+
+  data_process_management:
+    process_release_host: "sddevrepo.oceanobservatories.org"
+    process_release_directory: "/var/www/html/releases"
+    process_release_wwwprefix: "http://sddevrepo.oceanobservatories.org/releases"
+                              #no trailing slash
+
+  directory:
+    default_uispecs_url: "http://userexperience.oceanobservatories.org/database-exports/Stable"
+
+  ingestion:
+    ignore_gaps: false
+
+  discovery:
+    max_search_results: 250
+
+  qc_processing:
+    # Run every N hours
+    run_interval: 1
+
+  user_notification:
+    max_events_limit: 2000
+    max_daily_notifications: 100
+
+# TODO: Remove (use global flags instead)
+external_data_agent_management:
+  persistent: true
+
+# ----------------------------------------------------------------------------------
+# The "event" root entry defines event types and event originators, and it
+# specifies which events each originator can publish
+event:
+  originators: [container, 
+                process, 
+                application, 
+                datasource, 
+                dataset, 
+                resource_agent, 
+                service]
+  types: [resource_lifecycle,
+          container_lifecycle,
+          process_lifecycle,
+          app_loader,
+          container_startup,
+          datasource_update,
+          schedule,
+          datasource_unavailable,
+          dataset_supplement_added,
+          business_state_modification,
+          dataset_change,
+          datasource_change,
+          ingestion_processing,
+          new_subscription,
+          del_subscription,
+          data,
+          data_block,
+          instrument_sample_data,          
+          stream_ingestion_policy]
+  container: [container_lifecycle, 
+              container_startup]
+  process: [process_lifecycle]
+  application: [app_loader, 
+                schedule, 
+                business_state_modification]
+  datasource: [datasource_update, 
+               datasource_unavailable,
+               datasource_change]
+  dataset: [dataset_supplement_added, 
+            dataset_change]
+  resource_agent: [resource_lifecycle, 
+                   data, 
+                   data_block, 
+                   instrument_sample_data]
+  service: [new_subscription, 
+            del_subscription, 
+            ingestion_processing, 
+            stream_ingestion_policy]
+
+
+device:
+  sbe37:
+    host: sbe37-simulator.oceanobservatories.org
+    port: 4001
+    port_agent_data_port: 4000
+    port_agent_cmd_port: 4003
+    port_agent_binary: port_agent
+    dvr_egg: "http://sddevrepo.oceanobservatories.org/releases/seabird_sbe37smb_ooicore-0.1.6-py2.7.egg"
+    dvr_sha: "b2c8131ae65bdc9b0decd829dade0c7cb16c6fdf"
+    dvr_mod: "mi.instrument.seabird.sbe37smb.ooicore.driver"
+    dvr_cls: "SBE37Driver"
+    workdir: "/tmp/"
+    delim: ["<<",">>"]
+  dataset_agent:
+    datasource_cache_dir: /tmp/dsastore
+
+units: res/config/units/udunits2.xml
+
+# ----------------------------------------------------------------------------------
+# The "eoi" root entry, used by the eoi services
+eoi:
+  #holds some meta data used by the eoi services
+  meta:
+    use_eoi_services: False
+    #add additional debugging information to the log file
+    debug: true
+    #geospatial fields
+    lat_field: lat
+    lon_field: lon
+
+  #geoserver serving OWS/W*S services and geo layers  
+  geoserver:
+    #server and port for geoserver 
+    server: http://localhost:9090
+    #geoserver store for the ooi datasets 
+    geoserver_ooi_store: ooi
+    #geoserver workspace the ooi store belongs too
+    geoserver_ooi_workspace: geonode
+    #geoserver username (default geoserver)
+    user_name: admin
+    #geoserver password (default geoserver)
+    password: geoserver
+    #layers must start and end with a non numeric character
+    layer_prefix: ooi_
+    layer_suffix: _ooi
+
+  #postgres DB for storing the FDT and views        
+  postgres:
+    #postgres db location
+    host: localhost
+    #postgres db user name
+    user_name: ion
+    #postgres db password
+    password: 
+    #postgres db to store FDT in
+    database: postgres
+    #postgres db port
+    port: 5432
+    #postgres views on FDT cannot start with a non numeric character
+    table_prefix: _
+    table_suffix: _view
+    #postgres db session startup command
+    session_startup_ln1: select appendPath();
+    session_startup_ln2: 
+
+  #importer service used for modifying geoserver layers
+  importer_service:
+    #importer service server
+    server: http://localhost
+    #importer service port
+    port: 8844
+    #importer service command to add a geoserver layer
+    add_layer: addlayer
+    #importer service command to remove a geoserver layer
+    remove_layer: removelayer
+    #importer service command to reset the geoserver_ooi_store
+    reset_store: resetstore
+    
+  #coverageFDWSever        
+  fdw:
+    #default server used for FDT and FDW
+    server: cov_srv
+    #not used as yet
+    create_fdw: 
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# PLEASE DO NOT ADD NEW TOP LEVEL KEYS
+# PLEASE COORDINATE WITH ARCHITECTURE FOR APPROPRIATE CFG KEYS
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

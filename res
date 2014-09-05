@@ -1,1 +1,1 @@
-extern/sciondef/res/
+defs/res

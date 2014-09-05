@@ -1,0 +1,507 @@
+name: resource_registry
+
+docstring: |
+  Service used to create, read, update and delete persistent resources
+  (IonObjects).  Additionally, provides methods to manipulate
+  resource associations and resource life cycle state.
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+COI+OV+Resource+Registry+Service
+
+dependencies: []
+
+methods:
+  #@OperationVerb=CREATE
+  create:
+    docstring: |
+      Persist an instance of the resource passed in the object param.
+      Returns a tuple (_id, _rev) for the persistend object.
+    in:
+      object: !Resource
+    out:
+      tuple: []
+    throws:
+      BadRequest: object has _id field
+
+  #@OperationVerb=READ
+  read:
+    docstring: |
+      Read the latest, or optionally the specific, version of resource
+      with id passed in the object_id param. Throws exception if
+      object not found.
+    in:
+      #@ResourceId
+      object_id: ""
+      rev_id: ""
+    out:
+      object: {}
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=READ
+  read_mult:
+    docstring: |
+        Read the latest resources specified in the paramter.
+    in:
+      #@ResourceId
+      object_ids: []
+    out:
+      objects: []
+    throws:
+      NotFound: objects do not exist.
+
+  #@OperationVerb=UPDATE
+  update:
+    docstring: |
+      Persist new version of resource. Throws exception if previous
+      version of object does not exist or object passed is not based
+      on the latest persisted version.
+    in:
+      #@ResourceId=_id
+      object: !Resource
+    out:
+      tuple: []
+    throws:
+      NotFound: object with specified id does not exist
+      Conflict: object not based on latest persisted object version
+      BadRequest: object does not have required _id or _rev or lcstate was modified compared to persisted object version
+
+  #@OperationVerb=DELETE
+  delete:
+    docstring: |
+      Permanently delete object in datastores.
+      Throws exception if object does not exist.
+    in:
+      #@ResourceId
+      object_id: ""
+    out:
+    throws:
+      NotFound: object does not exist
+
+  #@OperationVerb=RETIRE
+  retire:
+    docstring: |
+      Sets resource lifecycle state to RETIRED.
+      Throws exception if object does not exist or state transition is not possible.
+    in:
+      #@ResourceId
+      resource_id: ""
+    out:
+    throws:
+      NotFound: object does not exist
+
+  #@OperationVerb=RETIRE
+  lcs_delete:
+    docstring: |
+      Sets resource lifecycle state to DELETED.
+      Throws exception if object does not exist or state transition is not possible.
+    in:
+      #@ResourceId
+      resource_id: ""
+    out:
+    throws:
+      NotFound: object does not exist
+
+  # -----------------
+
+  #@OperationVerb=LCS-CHANGE
+  execute_lifecycle_transition:
+    docstring: |
+      Alter object lifecycle according to given transition event. Throws exception
+      if resource object does not exist or given transition_event is unknown/illegal.
+      The new life cycle state after applying the transition is returned.
+    in:
+      #@ResourceId
+      resource_id: ""
+      transition_event: ""
+    out:
+      lcstate: ""
+    throws:
+      NotFound: resource object does not exist
+      BadRequest: transition event unknown or illegal in current state; resource type has no lifecycle
+      Conflict: race condition while trying to update
+
+  #@OperationVerb=LCS-CHANGE
+  set_lifecycle_state:
+    docstring: |
+      Alter object lifecycle to set to give lifecycle state. Throws exception
+      if resource object does not exist or given state is unknown/illegal.
+      The optional lcstate argument asserts that the current life cycle state matches.
+    in:
+      #@ResourceId
+      resource_id: ""
+      target_lcstate: ""
+    out:
+    throws:
+      NotFound: resource object does not exist
+      BadRequest: target state unknown or resource type has no lifecycle
+      Conflict: race condition while trying to update
+
+  # -----------------
+
+  #@OperationVerb=CREATE
+  create_attachment:
+    docstring: |
+      Create an Attachment resource associated with another resource.
+      If no resource_id is provided, the attachment is created standalone.
+    in:
+      #@ResourceId
+      resource_id: ""
+      attachment: !Attachment
+    out:
+      attachment_id: ""
+    throws:
+      NotFound: resource object does not exist if resource_id given
+      BadRequest: bad attachment type or content
+
+  #@OperationVerb=READ
+  read_attachment:
+    docstring: |
+      Reads an attachment by id, excludes content unless indicated otherwise.
+    in:
+      attachment_id: ""
+      include_content: False
+    out:
+      attachment: !Attachment
+    throws:
+      NotFound: attachment does not exist
+
+  #@OperationVerb=DELETE
+  delete_attachment:
+    docstring: |
+      Delete an attachment resource and resource associations.
+    in:
+      attachment_id: ""
+    out:
+    throws:
+      NotFound: attachment does not exist
+
+  #@OperationVerb=FIND
+  find_attachments:
+    docstring: |
+      Returns list of attachment resources for given associated resource id.
+      Can limit the number of results and reverse the sort order. Default result order is oldest
+      attachment first.
+    in:
+      resource_id: ""
+      keyword: ""
+      limit: 0
+      descending: False
+      include_content: False
+      id_only: True
+    out:
+      attachment_list: []
+    throws:
+      NotFound: resource does not exist
+
+
+  # -----------------
+
+  #@OperationVerb=CREATE
+  create_association:
+    docstring: |
+      Create an association between subject and object resources (IonObjects).
+      Subject and object values can be passed as actual object instances or just
+      object ids.  Valid predicates can be found in res/config/associations.yml.
+      Subject and object must be of the proper types for the predicate or
+      an exception will be thrown.
+      Assoc_type is deprecated.
+    in:
+      #@ContentType=Resource,str
+      subject: ""
+      predicate: ""
+      #@ContentType=Resource,str
+      object: ""
+      assoc_type:
+    out:
+      tuple: []
+    throws:
+      NotFound: subject or object does not exist
+      BadRequest: subject, predicate or object parameter missing, unknown value passed for the assoc_type parameter, predicate is unknown, subject or object are invalid types for predicate, or subject or object do not have _id field
+
+  #@OperationVerb=CREATE
+  create_association_mult:
+    docstring: |
+      Create multiple associations between subject and object resources (IonObjects).
+      Subject and object values can be passed as actual object instances or just
+      object ids.  Valid predicates can be found in res/config/associations.yml.
+      Subject and object must be of the proper types for the predicate or
+      an exception will be thrown.
+    in:
+      assoc_list: []
+    out:
+      tuple: []
+    throws:
+      NotFound: subject or object does not exist
+      BadRequest: subject, predicate or object parameter missing, predicate is unknown, subject or object are invalid types for predicate, or subject or object do not have _id field
+
+  #@OperationVerb=DELETE
+  delete_association:
+    docstring: |
+      For now, permanently delete an association between two resources (IonObjects).
+      Throws exception if association does not exist.
+    in:
+      #@ContentType=Association,str
+      association: ""
+    out:
+    throws:
+      NotFound: association does not exist
+
+  # -----------------
+
+  #@OperationVerb=READ
+  read_object:
+    docstring: |
+        Returns the object (or object id) by association from a given subject or
+        subject id (if str). Predicate and object_type are optional to narrow the
+        search down. Object_type can only be set if predicate is set as well.
+        Alternatively, an association (or association id) can be given.
+        If no object matches the criteria, NotFound is raised. If more than one
+        object match the criteria, Inconsistent is raised.
+    in:
+      subject: ""
+      predicate: ""
+      object_type: ""
+      assoc: ""
+      id_only: False
+    out:
+      list: []
+    throws:
+      BadRequest: missing parameters, or object id field missing in subject
+      NotFound: object not found
+      Inconsistent: more than one object matching the given criteria
+
+  #@OperationVerb=FIND
+  find_objects:
+    docstring: |
+        Find objects (or object ids) by association from a given subject or
+        subject id (if str). Returns a tuple (list_of_objects, list_of_associations)
+        if id_only == False, or (list_of_object_ids, list_of_associations)
+        if id_only == True. Predicate and object_type are optional to narrow the
+        search down. Object_type can only be set if predicate is set as well.
+    in:
+      #@ContentType=Resource,str
+      subject: ""
+      predicate: ""
+      object_type: ""
+      id_only: False
+      limit: 0
+      skip: 0
+      descending: False
+    out:
+      list: []
+    throws:
+      BadRequest: missing parameters, or object id field missing in subject
+
+  #@OperationVerb=READ
+  read_subject:
+    docstring: |
+        Returns the subject (or subject id) by association from a given object or
+        object id (if str). Predicate and subject_type are optional to narrow the
+        search down. Subject_type can only be set if predicate is set as well.
+        Alternatively, an association (or association id) can be given.
+        If no subject matches the criteria, NotFound is raised. If more than one
+        subject match the criteria, Inconsistent is raised.
+    in:
+      subject_type: ""
+      predicate: ""
+      object: ""
+      assoc: ""
+      id_only: False
+    out:
+      list: []
+    throws:
+      BadRequest: missing parameters, or object id field missing in object
+      NotFound: subject not found
+      Inconsistent: more than one subject matching the given criteria
+
+  #@OperationVerb=FIND
+  find_subjects:
+    docstring: |
+        Find subjects (or subject ids) by association from a given object or
+        object id (if str). Returns a tuple (list_of_subjects, list_of_associations)
+        if id_only == False, or (list_of_subject_ids, list_of_associations)
+        if id_only == True. Predicate and subject_type are optional to narrow the
+        search down. Subject_type can only be set if predicate is set as well.
+    in:
+      subject_type: ""
+      predicate: ""
+      #@ContentType=Resource,str
+      object: ""
+      id_only: False
+      limit: 0
+      skip: 0
+      descending: False
+    out:
+      list: []
+    throws:
+      BadRequest: missing parameters, or object id field missing in object
+
+  #@OperationVerb=FIND
+  find_associations:
+    docstring: |
+        Find associations by subject, predicate, object and assoc_type.
+        If subject and object are provided (with optional predicate and assoc_type),
+        the directed association is returned.
+        If subject only is provided (with optional predicate and assoc_type), any associations
+        as subject or object are returned.
+        Or provide predicate only. Returns either a list
+        of Association objects or a list of association ids.
+    in:
+      #@ContentType=Resource,str
+      subject: ""
+      predicate: ""
+      #@ContentType=Resource,str
+      object: ""
+      assoc_type:
+      id_only: False
+      anyside: ""
+      limit: 0
+      skip: 0
+      descending: False
+    out:
+      list: []
+    throws:
+      BadRequest: missing parameters, or object id field missing in subject or object
+
+  #@OperationVerb=FIND
+  find_objects_mult:
+    docstring: |
+      Find associations by a list of subjects.
+    in:
+      subjects: []
+      id_only: False
+      predicate: ""
+    out:
+      results: []
+    throws:
+      BadRequest: subjects is not a list
+
+  #@OperationVerb=FIND
+  find_subjects_mult:
+    docstring: |
+      Find associations by a list of objects.
+    in:
+      objects: []
+      id_only: False
+      predicate: ""
+    out:
+      results: []
+    throws:
+      BadRequest: subjects is not a list
+
+  #@OperationVerb=GET
+  get_association:
+    docstring: |
+      Read the association specified by the exact subject, predicate, object
+      and type tuple.  Throws exception if association not found or more than one
+      association satisfies the tuple.
+    in:
+      #@ContentType=Resource,str
+      subject: ""
+      predicate: ""
+      #@ContentType=Resource,str
+      object: ""
+      assoc_type:
+      id_only: False
+    out:
+      association: {}
+    throws:
+      BadRequest: missing parameters, or object id field missing in subject or object
+      NotFound: association does not exist
+      Inconsistent: multiple associations satisfy the subject, predicate, object tuple
+
+  #@OperationVerb=FIND
+  find_resources:
+    docstring: |
+      Utility method for finding resources via various attributes, including resource type,
+      life cycle state and name. Legal attribute combinations are:
+        restype
+        lcstate
+        restype, lcstate
+        name
+        name, restype
+      Returns a tuple (list_of_resources, list_of_matches) if id_only == False or
+      (list_of_resource_ids, list_of_matches) otherwise. List_of_matches is a list of
+      dicts with keys (type, lcstate, name, id), providing further information about the
+      matching resources.
+    in:
+      restype: ""
+      lcstate: ""
+      name: ""
+      id_only: False
+    out:
+      list: []
+    throws:
+      BadRequest: incompatible parameters
+
+  #@OperationVerb=FIND
+  find_resources_ext:
+    docstring: |
+      Utility method for finding resources via various attributes, including resource type,
+      life cycle state, name, keyword, nested object type. Allows to influence order and number
+      of results. Legal attribute combinations are:
+        restype (with optional lcstate)
+        lcstate
+        keyword (with optional restype)
+        nested_type (with optional restype)
+        attribute name (with optional value), only for specially indexed attribute names
+        alternative id (with optional alternative id namespace)
+        name (with optional restype)
+      Returns a tuple (list_of_resources, list_of_matches) if id_only == False or
+      (list_of_resource_ids, list_of_matches) otherwise. List_of_matches is a list of
+      dicts with keys (type, lcstate, name, id), providing further information about the
+      matching resources.
+      Note: Only use this operation with keyword args, never with positional args. Signature will be extended.
+    in:
+      restype: ""
+      lcstate: ""
+      name: ""
+      keyword: ""
+      nested_type: ""
+      attr_name: ""
+      attr_value: ""
+      alt_id: ""
+      alt_id_ns: ""
+      limit: 0
+      skip: 0
+      descending: False
+      id_only: False
+      query: {}
+    out:
+      list: []
+    throws:
+      BadRequest: incompatible parameters
+
+#-------
+
+  #@OperationVerb=GET
+  get_resource_extension:
+    docstring: |
+      Returns any ExtendedResource object containing additional related information derived from associations
+    in:
+      #@ResourceId
+      resource_id: ""         # The id of the resource to be extended
+      resource_extension: ""  # The name of the resource extension to fill out.
+      ext_associations: {}    # An optional dict of names and associations to get other associations dynamically
+      ext_exclude: []         # An optional list of field names to exclude from retrieving
+      optional_args: {}       # An optional dict of additional parameters and values to be passed in the kwargs to the extended resource framework.
+    out:
+      extended_resource: !ExtendedResource
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified resource_id does not exist
+
+  #@OperationVerb=CREATE
+  prepare_resource_support:
+    docstring: |
+      Returns a GenericPrepareSupport object containing additional related information needed to create/update resources
+    in:
+      resource_type: ""       # The resource type.
+      #@ResourceId
+      resource_id: ""         # The id of the resource to be extended - empty for a create
+    out:
+      resource_data: !GenericPrepareSupport
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified resource_id does not exist
+

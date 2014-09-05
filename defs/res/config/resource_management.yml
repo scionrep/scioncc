@@ -1,0 +1,70 @@
+# Resource management definitions for the resource management service (RMS).
+# This includes the agent interface definitions
+
+# One goal is that the RMS can represent a multitude of different resource types
+# through a generic management interface and through a resource agent interface,
+# without having an actual agent.
+
+ResourceInterface:
+  DataProcess:
+    params:
+      subscriptions_count:
+        get: serviceop:data_process_management.get_data_process_subscriptions_count($RESOURCE_ID)
+      subscriptions_active_count:
+        get: serviceop:data_process_management.get_data_process_active_subscriptions_count($RESOURCE_ID)
+    commands:
+      activate:
+        execute: serviceop:data_process_management.activate_data_process($RESOURCE_ID)
+      deactivate:
+        execute: serviceop:data_process_management.deactivate_data_process($RESOURCE_ID)
+
+  InstrumentDevice:
+    agent: True
+    execute_lifecycle_transition: serviceop:instrument_management.execute_instrument_device_lifecycle($RESOURCE_ID,$VALUE)
+
+  InstrumentAgent:
+    execute_lifecycle_transition: serviceop:instrument_management.execute_instrument_agent_lifecycle($RESOURCE_ID,$VALUE)
+
+  PlatformDevice:
+    agent: True
+    execute_lifecycle_transition: serviceop:instrument_management.execute_platform_device_lifecycle($RESOURCE_ID,$VALUE)
+
+  PlatformAgent:
+    execute_lifecycle_transition: serviceop:instrument_management.execute_platform_agent_lifecycle($RESOURCE_ID,$VALUE)
+
+  Process:
+    service: process_dispatcher
+    params:
+    commands:
+      terminate:
+        execute: serviceop:process_dispatcher.terminate_process($RESOURCE_ID)
+
+  TaskableResource:
+
+  Resource:
+    create: serviceop:resource_registry.create($RESOURCE)
+    update: serviceop:resource_registry.update($RESOURCE)
+    read: serviceop:resource_registry.read($RESOURCE_ID)
+    delete: serviceop:resource_registry.delete($RESOURCE_ID)
+    execute_lifecycle_transition: serviceop:resource_registry.execute_lifecycle_transition($RESOURCE_ID,$VALUE)
+
+    params:
+      object_size:
+        get: func:self.get_resource_size($RESOURCE_ID)
+      object_size1:
+        get: func:ion.services.coi.agent_management_service.get_resource_size($RESOURCE_ID)
+      description:
+        set: func:self.set_resource_description($RESOURCE_ID,$VALUE)
+      name:
+        get: serviceop:resource_registry.read($RESOURCE_ID)->name
+
+  ExampleResource:
+    agent: False
+    params:
+      one:
+        get: serviceop:process_dispatcher.get_state()
+        set: serviceop:process_dispatcher.set_state()
+      two:
+        get: eval:return True
+      three:
+        get: func:pyon.ion.resource.get_res_size($RESOURCE_ID)

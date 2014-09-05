@@ -1,0 +1,1100 @@
+name: instrument_management
+
+docstring: |
+  This service provides overall coordination for instrument, platform and sensor management. In particular, it
+  manages instrument resource registration and the interaction with instrument agents.
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+SA+OV+Instrument+Management+Service
+
+dependencies: [resource_registry, data_acquisition_management, data_product_management, dataset_management, process_dispatcher, pubsub_management, user_notification]
+
+methods:
+  # -----------------
+  # Working with Instrument Agent Instance resources (they describe how to configure agent instances)
+
+  create_instrument_agent_instance_:
+    docstring: Create an InstrumentAgentInstance resource, associate it to the instrument agent and instrument device it represents
+    in:
+      instrument_agent_instance: !InstrumentAgentInstance
+    out:
+      instrument_agent_instance_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  create_instrument_agent_instance:
+    docstring: |
+      Create an InstrumentAgentInstance resource, associate it to the instrument agent and instrument device it represents.
+      This version of the API should be deprecated.
+    in:
+      instrument_agent_instance: !InstrumentAgentInstance
+      instrument_agent_id: ""
+      instrument_device_id: ""
+    out:
+      instrument_agent_instance_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_instrument_agent_instance:
+    docstring: Update an InstrumentAgentInstance resource
+    in:
+      instrument_agent_instance: !InstrumentAgentInstance
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_instrument_agent_instance:
+    docstring: Read an InstrumentAgentInstance resource
+    in:
+      #@ResourceId
+      instrument_agent_instance_id: ""
+    out:
+      instrument_agent_instance: !InstrumentAgentInstance
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_instrument_agent_instance:
+    docstring: Delete an InstrumentAgentInstance resource
+    in:
+      #@ResourceId
+      instrument_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_instrument_agent_instance:
+    docstring: Delete an InstrumentAgentInstance resource
+    in:
+      #@ResourceId
+      instrument_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  save_resource_state:
+    docstring: |
+      Serialize the instrument agent configuration for an instrument device and save it as a JSON
+      attachment with the given name
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+      name: ""
+    out:
+      attachment_id: ""
+    throws:
+      NotFound: object with the specified ID does not exist
+
+  restore_resource_state:
+    docstring: |
+      Deserialize the instrument agent configuration for an instrument device from an attachment 
+      and store it to the current driver config
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+      attachment_id: ""
+    out:
+    throws:
+      NotFound: object with the specified ID does not exist
+
+  start_instrument_agent_instance:
+    docstring: |
+      Launch an instument agent instance process and return its process id. Agent instance resource
+      must exist and be associated with an InstrumentDevice
+    in:
+      #@ResourceId
+      instrument_agent_instance_id: ""
+    out:
+      process_id: ""
+    throws:
+      NotFound: object with specified id does not exist
+
+  stop_instrument_agent_instance:
+    docstring: Deactivate the instrument agent instance process
+    in:
+      #@ResourceId
+      instrument_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  # -----------------
+  # Working with Instrument Agent definitions. These are types of device specific agent/driver combinations
+
+  create_instrument_agent:
+    docstring: Create an InstrumentAgent resource
+    in:
+      instrument_agent: !InstrumentAgent
+    out:
+      instrument_agent_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_instrument_agent:
+    docstring: Update an InstrumentAgent resource
+    in:
+      instrument_agent: !InstrumentAgent
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_instrument_agent:
+    docstring: Read an InstrumentAgent resource
+    in:
+      #@ResourceId
+      instrument_agent_id: ""
+    out:
+      instrument_agent: !InstrumentAgent
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_instrument_agent:
+    docstring: Delete an InstrumentAgent resource
+    in:
+      #@ResourceId
+      instrument_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_instrument_agent:
+    docstring: Delete an InstrumentAgent resource
+    in:
+      #@ResourceId
+      instrument_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  register_instrument_agent:
+    docstring: Register an InstrumentAgent egg, attach IDK validation docs and move the state to integrated
+    in:
+      #@ResourceId
+      instrument_agent_id: ""
+      agent_egg: ""
+      qa_documents: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+      BadRequest: agent in invalid state or invalid context
+
+  # -----------------
+  # Working with InstrumentDevice resources
+
+  create_instrument_device:
+    docstring: |
+      Create an Instrument device resource. The key characteristic of an instrument device is that it
+      is capable of reporting observed data through its interface. A device may be deployed in one location,
+      retrieved, perhaps serviced, then deployed in another location.
+    in:
+      instrument_device: !InstrumentDevice
+    out:
+      instrument_device_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_instrument_device:
+    docstring: Update an InstrumentDevice resource
+    in:
+      instrument_device: !InstrumentDevice
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_instrument_device:
+    docstring: Read an InstrumentDevice resource
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+    out:
+      instrument_device: !InstrumentDevice
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_instrument_device:
+    docstring: Delete an InstrumentDevice resource
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_instrument_device:
+    docstring: Delete an InstrumentDevice resource
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  # -----------------
+  # Working with InstrumentModel resources
+
+  create_instrument_model:
+    docstring: |
+      Create an InstrumentModel resource. The instrument model defines specifications for a group of
+      instruments defined by the manufacturers model number.
+    in:
+      instrument_model: !InstrumentModel
+    out:
+      instrument_model_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_instrument_model:
+    docstring: Update an InstrumentModel resource
+    in:
+      instrument_model: !InstrumentModel
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_instrument_model:
+    docstring: Read an InstrumentModel resource
+    in:
+      #@ResourceId
+      instrument_model_id: ""
+    out:
+      instrument_model: !InstrumentModel
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_instrument_model:
+    docstring: Delete an InstrumentModel resource
+    in:
+      instrument_model_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_instrument_model:
+    docstring: Delete an InstrumentModel resource
+    in:
+      #@ResourceId
+      instrument_model_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+
+
+  # -----------------
+  # Working with PlatformAgentInstance resources
+
+  create_platform_agent_instance:
+    docstring: |
+      Create a PlatformAgentInstance resource. This describes the parameters for starting a
+      platform specific agent/driver instance combination.
+    in:
+      platform_agent_instance: !PlatformAgentInstance
+      platform_agent_id: ""
+      platform_device_id: ""
+    out:
+      platform_agent_instance_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_platform_agent_instance:
+    docstring: Update a PlatformAgentInstance resource
+    in:
+      platform_agent_instance: !PlatformAgentInstance
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_platform_agent_instance:
+    docstring: Read a PlatformAgentInstance resource
+    in:
+      #@ResourceId
+      platform_agent_instance_id: ""
+    out:
+      platform_agent_instance: !PlatformAgentInstance
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_platform_agent_instance:
+    docstring: Delete a PlatformAgentInstance resource
+    in:
+      #@ResourceId
+      platform_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_platform_agent_instance:
+    docstring: Delete a PlatformAgentInstance resource
+    in:
+      #@ResourceId
+      platform_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  start_platform_agent_instance:
+    docstring: |
+      Launch an platform agent instance process and return its process id. Agent instance resource
+      must exist and be associated with an PlatformDevice
+    in:
+      #@ResourceId
+      platform_agent_instance_id: ""
+    out:
+      process_id: ""
+    throws:
+      NotFound: object with specified id does not exist
+
+  stop_platform_agent_instance:
+    docstring: Deactivate the platform agent instance process
+    in:
+      #@ResourceId
+      platform_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+  # -----------------
+  # Working with PlatformAgent definition resources
+
+  create_platform_agent:
+    docstring: |
+      Create a PlatformAgent resource. This describes a type of platform agent/driver combination
+      for a specific platform model.
+    in:
+      platform_agent: !PlatformAgent
+    out:
+      platform_agent_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_platform_agent:
+    docstring: Update a PlatformAgent resource
+    in:
+      platform_agent: !PlatformAgent
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_platform_agent:
+    docstring: Read a PlatformAgent resource
+    in:
+      #@ResourceId
+      platform_agent_id: ""
+    out:
+      platform_agent: !PlatformAgent
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_platform_agent:
+    docstring: Delete a PlatformAgent resource
+    in:
+      #@ResourceId
+      platform_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_platform_agent:
+    docstring: Delete a PlatformAgent resource
+    in:
+      #@ResourceId
+      platform_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  # -----------------
+  # Working with PlatformDevice resources. These represent the physical platforms
+
+  create_platform_device:
+    docstring: |
+      Create a PlatformDevice resource. Platforms contain power systems, telemetry, networking, clocks,
+      CPU cycles and storage and multiple instruments deployed on that platform.
+    in:
+      platform_device: !PlatformDevice
+    out:
+      platform_device_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_platform_device:
+    docstring: Update a PlatformDevice resource
+    in:
+      platform_device: !PlatformDevice
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_platform_device:
+    docstring: Read a PlatformDevice resource
+    in:
+      #@ResourceId
+      platform_device_id: ""
+    out:
+      platform_device: !PlatformDevice
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_platform_device:
+    docstring: Delete a PlatformDevice resource
+    in:
+      #@ResourceId
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_platform_device:
+    docstring: Delete a PlatformDevice resource
+    in:
+      #@ResourceId
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+  # -----------------
+  # Working with PlatformModel resources. These represent types of platforms
+
+  create_platform_model:
+    docstring: |
+      Create a PlatformModel resource. The Platform Model defines specifications for a group of
+      platform instances that is defined by the manufacturers model number.
+    in:
+      platform_model: !PlatformModel
+    out:
+      platform_model_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_platform_model:
+    docstring: Update a PlatformModel resource
+    in:
+      platform_model: !PlatformModel
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_platform_model:
+    docstring: Read a PlatformModel resource
+    in:
+      #@ResourceId
+      platform_model_id: ""
+    out:
+      platform_model: !PlatformModel
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_platform_model:
+    docstring: Delete a PlatformModel resource
+    in:
+      #@ResourceId
+      platform_model_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_platform_model:
+    docstring: Delete a PlatformModel resource
+    in:
+      #@ResourceId
+      platform_model_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+  # -----------------
+  # Working with SensorDevice resources
+
+  create_sensor_device:
+    docstring: |
+      Create a SensorDevice resource. The sensor is the part of the instrument that actually
+      translates the real-world feature into a measured observation.
+    in:
+      sensor_device: !SensorDevice
+    out:
+      sensor_device_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_sensor_device:
+    docstring: Update a SensorDevice resource
+    in:
+      sensor_device: !SensorDevice
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_sensor_device:
+    docstring: Read a SensorDevice resource
+    in:
+      #@ResourceId
+      sensor_device_id: ""
+    out:
+      sensor_device: !SensorDevice
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_sensor_device:
+    docstring: Deleate a SensorDevice resource
+    in:
+      #@ResourceId
+      sensor_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_sensor_device:
+    docstring: Deleate a SensorDevice resource
+    in:
+      #@ResourceId
+      sensor_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  # -----------------
+  # Working with SensorModel resources, types of sensors
+
+  create_sensor_model:
+    docstring: |
+      Create a SensorModel resource. The sensor model defines specifications for a group of sensors
+      defined by the manufacturers model number.
+    in:
+      sensor_model: !SensorModel
+    out:
+      sensor_model_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_sensor_model:
+    docstring: Update a SensorModel resource
+    in:
+      sensor_model: !SensorModel
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_sensor_model:
+    docstring: Read a SensorModel resource
+    in:
+      #@ResourceId
+      sensor_model_id: ""
+    out:
+      sensor_model: !SensorModel
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_sensor_model:
+    docstring: Delete a SensorModel resource
+    in:
+      #@ResourceId
+      sensor_model_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@OperationVerb=DELETE
+  force_delete_sensor_model:
+    docstring: Delete a SensorModel resource
+    in:
+      #@ResourceId
+      sensor_model_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  # ---------------------------
+  # Associations
+
+
+
+  assign_instrument_agent_to_instrument_agent_instance:
+    in:
+      instrument_agent_id: ""
+      instrument_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_instrument_agent_from_instrument_agent_instance:
+    in:
+      instrument_agent_id: ""
+      instrument_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_instrument_agent_instance_to_instrument_device:
+    in:
+      instrument_agent_instance_id: ""
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_instrument_agent_instance_from_instrument_device:
+    in:
+      instrument_agent_instance_id: ""
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_instrument_model_to_instrument_device:
+    in:
+      instrument_model_id: ""
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_instrument_model_from_instrument_device:
+    in:
+      instrument_model_id: ""
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_instrument_model_to_instrument_agent:
+    in:
+      instrument_model_id: ""
+      instrument_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_instrument_model_from_instrument_agent:
+    in:
+      instrument_model_id: ""
+      instrument_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_platform_agent_instance_to_platform_device:
+    in:
+      platform_agent_instance_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_platform_agent_instance_from_platform_device:
+    in:
+      platform_agent_instance_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  assign_platform_agent_to_platform_agent_instance:
+    in:
+      platform_agent_id: ""
+      platform_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_platform_agent_from_platform_agent_instance:
+    in:
+      platform_agent_id: ""
+      platform_agent_instance_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_platform_model_to_platform_device:
+    in:
+      platform_model_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_platform_model_from_platform_device:
+    in:
+      platform_model_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_platform_model_to_platform_agent:
+    in:
+      platform_model_id: ""
+      platform_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_platform_model_from_platform_agent:
+    in:
+      platform_model_id: ""
+      platform_agent_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_platform_device_to_platform_device:
+    in:
+      child_platform_device_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_platform_device_from_platform_device:
+    in:
+      child_platform_device_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  assign_instrument_device_to_platform_device:
+    in:
+      instrument_device_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_instrument_device_from_platform_device:
+    in:
+      instrument_device_id: ""
+      platform_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_sensor_device_to_instrument_device:
+    in:
+      sensor_device_id: ""
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_sensor_device_from_instrument_device:
+    in:
+      sensor_device_id: ""
+      instrument_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  assign_sensor_model_to_sensor_device:
+    in:
+      sensor_model_id: ""
+      sensor_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_sensor_model_from_sensor_device:
+    in:
+      sensor_model_id: ""
+      sensor_device_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+
+
+
+
+  ##################
+  #
+  # Association Finds
+  #
+
+  find_instrument_model_by_instrument_device:
+    in:
+      instrument_device_id: ""
+    out:
+      instrument_model_list: []
+    
+  
+  find_instrument_device_by_instrument_model:
+    in:
+      instrument_model_id: ""
+    out:
+      instrument_device_list: []
+    
+  
+  find_platform_model_by_platform_device:
+    in:
+      platform_device_id: ""
+    out:
+      platform_model_list: []
+    
+  
+  find_platform_device_by_platform_model:
+    in:
+      platform_model_id: ""
+    out:
+      platform_device_list: []
+
+  
+  find_instrument_model_by_instrument_agent:
+    in:
+      instrument_agent_id: ""
+    out:
+      instrument_model_list: []
+    
+  
+  find_instrument_agent_by_instrument_model:
+    in:
+      instrument_model_id: ""
+    out:
+      instrument_agent_list: []
+    
+
+  find_instrument_device_by_instrument_agent_instance:
+    in:
+      instrument_agent_instance_id: ""
+    out:
+      instrument_device_list: []
+    
+  
+  find_instrument_agent_instance_by_instrument_device:
+    in:
+      instrument_device_id: ""
+    out:
+      instrument_agent_list: []
+   
+  find_platform_device_by_instrument_device:
+    in:
+      instrument_device_id: ""
+    out:
+      platform_device_list: []
+    
+  
+  find_instrument_device_by_platform_device:
+    in:
+      platform_device_id: ""
+    out:
+      instrument_device_list: []
+    
+
+
+
+
+
+  ##################
+  #
+  # LifeCycle States
+  #
+
+  #@OperationVerb=LCS-CHANGE
+  execute_instrument_agent_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      instrument_agent_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_instrument_agent_instance_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      instrument_agent_instance_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_instrument_model_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      instrument_model_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_instrument_device_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_platform_agent_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      platform_agent_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_platform_agent_instance_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      platform_agent_instance_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_platform_model_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      platform_model_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_platform_device_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      platform_device_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_sensor_model_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      sensor_model_id: ""
+      lifecycle_event: ""
+    out:
+
+  #@OperationVerb=LCS-CHANGE
+  execute_sensor_device_lifecycle:
+    docstring: Set resource lifecycle state to given state.
+    in:
+      #@ResourceId
+      sensor_device_id: ""
+      lifecycle_event: ""
+    out:
+
+
+#-------
+
+  get_instrument_device_extension:
+    docstring: |
+      Returns an InstrumentDeviceExtension object containing additional related information
+    in:
+      #@ResourceId
+      instrument_device_id: ""
+      ext_associations: {}   # An optional dict of names and associations to get other associations dynamically
+      ext_exclude: []        # An optional list of field names to exclude from retrieving
+      user_id: "" # An optional user id associated with the requesting user
+    out:
+      instrument_device: !InstrumentDeviceExtension
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified instrument_device_id does not exist
+
+  get_platform_device_extension:
+    docstring: |
+      Returns an PlatformDeviceExtension object containing additional related information
+    in:
+      #@ResourceId
+      platform_device_id: ""
+      ext_associations: {}    # An optional dict of names and associations to get other associations dynamically
+      ext_exclude: []         # An optional list of field names to exclude from retrieving
+      user_id: ""  # An optional user id associated with the requesting user
+    out:
+      platform_device: !PlatformDeviceExtension
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified instrument_device_id does not exist
+
+#-------
+
+  prepare_instrument_device_support:
+    docstring: |
+      Returns the information needed to create or update an instrument device. The instrument_device_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      instrument_device_id: ""
+    out:
+      resource_schema: !InstrumentDevicePrepareSupport
+    throws:
+      NotFound: An object with the specified instrument_device_id does not exist
+
+  prepare_instrument_agent_support:
+    docstring: |
+      Returns the information needed to create or update an instrument agent. The instrument_agent_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      instrument_agent_id: ""
+    out:
+      resource_schema: !InstrumentAgentPrepareSupport
+    throws:
+      NotFound: An object with the specified instrument_agent_id does not exist
+
+  prepare_instrument_agent_instance_support:
+    docstring: |
+      Returns the information needed to create or update an instrument agent instance. The instrument_agent_instance_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      instrument_agent_instance_id: ""
+    out:
+      resource_schema: !InstrumentAgentInstancePrepareSupport
+    throws:
+      NotFound: An object with the specified instrument_agent_instance_id does not exist
+
+
+  prepare_platform_device_support:
+    docstring: |
+      Returns the information needed to create or update a platform device. The platform_device_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      platform_device_id: ""
+    out:
+      resource_schema: !PlatformDevicePrepareSupport
+    throws:
+      NotFound: An object with the specified platform_device_id does not exist
+
+  prepare_platform_agent_support:
+    docstring: |
+      Returns the information needed to create or update an platform agent. The platform_agent_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      platform_agent_id: ""
+    out:
+      resource_schema: !PlatformAgentPrepareSupport
+    throws:
+      NotFound: An object with the specified platform_agent_id does not exist
+
+  prepare_platform_agent_instance_support:
+    docstring: |
+      Returns the information needed to create or update a platform agent instance. The platform_agent_instance_id parameter
+      is optional and should be provided when updating an existing resource but not when creating a new resource.
+    in:
+      platform_agent_instance_id: ""
+    out:
+      resource_schema: !PlatformAgentInstancePrepareSupport
+    throws:
+      NotFound: An object with the specified platform_agent_instance_id does not exist

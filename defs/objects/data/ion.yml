@@ -1,0 +1,25 @@
+# Generic response object
+Response:
+  code: 200
+  body:
+
+
+# A first class object creating a typed cross-reference between 2 resources. It references the subject resource by
+# id and type and the object resource by id and type and a predicate.
+Association:
+  s: ""     # Subject ID
+  st: ""    # Subject type
+  p: ""     # Predicate
+  o: ""     # Object ID
+  ot: ""    # Object type
+  ts: ""    # Timestamp
+  order: ""          # A value that can be ordered lexicographically if needed to provide association precendence
+  attributes: {}     # Arbitrary set of key-value arguments providing details to the association
+  retired: False     # Flag identifying retired associations
+
+
+# Represents the information to make a request to a service operation with predefined call arguments
+ServiceRequest:
+  service_name: ""  #The name of the service
+  service_operation: ""    #The name of the service operation
+  request_parameters: {}  #Optional dict of name=value pairs to be passed on query string

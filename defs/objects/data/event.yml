@@ -1,0 +1,606 @@
+# Base type for all events in the system
+#
+# See Events and Notification hierarchy here:
+#   https://confluence.oceanobservatories.org/display/syseng/CIAD+DM+SV+Events+and+Notifications
+#
+#@TypeVersion=1
+Event:
+  origin: ""        # the origin of the event (content specific to subtype). Mostly a resource id
+  origin_type: ""   # the type of origin (e.g. resource type, etc) or empty
+  description: ""   # readable description of the event (not required)
+  ts_created: ""    # timestamp of event created in millis in UNIX epoch
+  base_types: []    # List of event super types
+  sub_type: ""      # A specialization of the event_type expressed by this object type (or empty)
+  actor_id: ""      # The actor ID requesting the action causing the event
+  persisted_version: 1 # The last version in which the event instance was saved (persisted)
+---
+
+# Object containing additional computed information about one Event
+EventComputedAttributes:
+  event: !Event           # The actual event object or None
+  event_id: ""            # The event id of the described Event
+  ts_computed: ""         # Timestamp when event attributes were computed
+  event_summary: ""       # A summary str describing event based on type and core attributes
+  special_attributes: ""  # A str with additional event attributes in printable form
+  event_attributes_formatted: ""  # A str with event attributes in pretty printed form with newlines
+
+ComputedEventListValue: !Extends_ComputedListValue
+  computed_list: []    # List of EventComputedAttributes in same order than list of events
+
+---
+
+# ------------------------------------------------------------------------------------
+# Resource Events
+# Events about the registration of a resource in the registry and its lifecycle
+#
+# origin: set to the resource_id
+# origin_type: the type of resource
+# sub_type: event specific
+# ------------------------------------------------------------------------------------
+
+# Base type for resource related events in the system.
+ResourceEvent: !Extends_Event
+
+---
+# Event indicating that a resource changed its life cycle or was created.
+# The subtype is lcstate.availability (allowing *.PRIVATE queries)
+ResourceLifecycleEvent: !Extends_ResourceEvent
+  lcstate: ""
+  lcstate_before: ""
+  availability: ""
+  availability_before: ""
+  transition_event: ""
+
+# Event indicating that resource attributes were changed or the resource was created or deleted
+ResourceModifiedEvent: !Extends_ResourceEvent
+  mod_type: !enum (name=ResourceModificationType, values=(CREATE, UPDATE, RETIRE, DELETE), default=UPDATE)
+
+# Event indicating that a (taskable) resource was commanded and a result is available
+ResourceCommandEvent: !Extends_ResourceEvent
+  command: ""
+  result: ""
+
+# Event created by an operator of a resource, for instance to manually indicate a modification or error.
+ResourceOperatorEvent: !Extends_ResourceEvent
+
+# Event created when a user reports an issue, contains a generated guid in the
+# description that should line up with the email.
+ResourceIssueReportedEvent: !Extends_ResourceEvent
+
+---
+# DataSource Events
+ExternalDataSourceEvent: !Extends_ResourceEvent
+
+ExternalDataSourceStatusEnum: !enum (values=(ONLINE, OFFLINE), default=OFFLINE)
+
+---
+
+ExternalDatasetAddedEvent: !Extends_ExternalDataSourceEvent
+  dataset_information: {}
+
+ExternalDatasetRemovedEvent: !Extends_ExternalDataSourceEvent
+  dataset_information: {}
+
+ExternalDatasetChangedEvent: !Extends_ExternalDataSourceEvent
+  dataset_information: {} # Not really sure what this will be...
+
+ExternalDataSourceStatusEvent: !Extends_ExternalDataSourceEvent
+  status: !ExternalDataSourceStatusEnum
+
+
+# ------------------------------------------------------------------------------------
+# Agent Events
+# Events about an agent in the system (but not about the controlled device or the registry entry)
+# origin: the resource_id of the agent
+#  origin_type: type of agent resource
+#  sub_type: event specific
+# ------------------------------------------------------------------------------------
+
+ResourceAgentEvent: !Extends_Event
+---
+
+ResourceAgentCommandEvent: !Extends_ResourceAgentEvent
+  command: ""
+  execute_command: ""
+  args: []
+  kwargs: {}
+  result: {}
+
+ResourceAgentErrorEvent: !Extends_ResourceAgentEvent
+  command: ""
+  execute_command: ""
+  args: []
+  kwargs: {}
+  error_type: ""
+  error_msg: ""
+  error_code: -1
+
+ResourceAgentIOEvent: !Extends_ResourceAgentEvent
+  source_type: ""
+  stats: {}
+
+ResourceAgentConnectionLostErrorEvent: !Extends_ResourceAgentEvent
+  error_msg: "Connection to resource device was lost."
+  error_code: -1
+
+ResourceAgentStateEvent: !Extends_ResourceAgentEvent
+  state: ""
+
+ResourceAgentResourceStateEvent: !Extends_ResourceAgentEvent
+  state: ""
+
+ResourceAgentResourceConfigEvent: !Extends_ResourceAgentEvent
+  config: {}
+
+ResourceAgentAsyncResultEvent: !Extends_ResourceAgentEvent
+  command: ""
+  desc: ""
+  result: ""
+
+ResourceAgentExecutionStatus: !enum (values=(OK, FAILED), default=OK)
+
+---
+
+ResourceAgentLifecycleEvent: !Extends_ResourceAgentEvent
+  # sub_types: STARTED, STOPPED
+  process_id: ""
+  agent_state: ""
+  execution_status: !ResourceAgentExecutionStatus
+
+---
+
+# ------------------------------------------------------------------------------------
+# Device Events
+# Events from a resource agent about the manipulation of an external taskable resource (called "device")
+# origin: resource_id of the device
+#  origin_type: type of device resource
+#  sub_type: event specific
+# ------------------------------------------------------------------------------------
+
+# Base type of events related to physical devices such as instruments
+DeviceEvent: !Extends_Event
+    # The origin is a device (resource) id
+
+---
+DeviceSpecificLifecycleEvent: !Extends_DeviceEvent
+
+DeviceCommonLifecycleEvent: !Extends_DeviceEvent
+
+DeviceCommandEvent: !Extends_ResourceCommandEvent
+
+DeviceOperatorEvent: !Extends_ResourceOperatorEvent
+
+---
+PlatformEvent: !Extends_DeviceEvent
+
+---
+
+TelemetryStatusType: !enum (values=(AVAILABLE, UNAVAILABLE), default=UNAVAILABLE)
+
+---
+
+PlatformTelemetryEvent: !Extends_PlatformEvent
+  status: !TelemetryStatusType
+
+PublicPlatformTelemetryEvent: !Extends_PlatformEvent
+  status: !TelemetryStatusType
+
+RemoteCommandTransmittedEvent: !Extends_PlatformEvent
+  queue_size: 0
+
+RemoteCommandResult: !Extends_Event
+  command: ""
+
+---
+PlatformAlarmEvent: !Extends_PlatformEvent
+  external_alarm_type: ""   # initially this will be the so called "ref_id" in the RSN case
+  external_timestamp: ""    # as reported from the RSN via OMS
+
+DeviceCommsType: !enum (values=(DATA_DELIVERY_INTERRUPTION, OK), default=OK)
+---
+# To be used by transforms monitoring the health of data producers to report the status of the producers
+DeviceCommsEvent: !Extends_Event
+  state: !DeviceCommsType
+  time_stamp: 0
+  lapse_interval_seconds: 0
+---
+
+
+# To be used by transforms monitoring the health of data producers to report the status of the producers
+DeviceStatusEvent: !Extends_DeviceEvent
+  status: !DeviceStatusType
+  values: []
+  time_stamps: []
+  valid_values: []
+
+---
+
+OMSDeviceStatusEvent: !Extends_DeviceStatusEvent
+  status_details: {}
+
+---
+
+DeviceAggregateStatusEvent: !Extends_DeviceStatusEvent
+  status_name: !AggregateStatusType
+  prev_status: !DeviceStatusType
+  roll_up_status: False
+
+# ------------------------------------------------------------------------------------
+# Mission events.
+# Events about the status of mission plan execution
+# ------------------------------------------------------------------------------------
+
+DeviceMissionEvent: !Extends_DeviceEvent
+  mission_id: ""  # the resource id of the mission
+
+MissionExecutionStatus: !enum (values=(OK, ABORTED, KILLED, FAILED), default=OK)
+
+---
+
+MissionLifecycleEvent: !Extends_DeviceMissionEvent
+  # sub_type: STARTED, STOPPED
+  # origin: device id (platform resource id)
+  mission_thread_id: ""   # If not empty, ID of particular mission thread
+  execution_status: !MissionExecutionStatus
+
+
+# ------------------------------------------------------------------------------------
+# Information Content Events
+# Events about the content of an information resource
+#
+# origin: set to the resource_id
+# origin_type: the type of resource
+# ------------------------------------------------------------------------------------
+
+InformationContentEvent: !Extends_Event
+  author: ""
+
+InformationStatus: !enum (values=(NORMAL, ERROR, OFFLINE), default=NORMAL)
+
+InformationContentAccessEnum: !enum (values=(VIEW, REALTIME_VIEW, DOWNLOAD, SUBSCRIBE, MODIFY, OPERATOR_ACTION, OTHER), default=VIEW)
+
+---
+
+InformationContentModifiedEvent: !Extends_InformationContentEvent
+  # origin is the resource identifier
+  # ts created should reflect when the change occurred
+
+InformationContentStatusEvent: !Extends_InformationContentEvent
+  # description should be filled in
+  # New status of the information
+  status: !InformationStatus
+  
+InformationContentAccessedEvent: !Extends_InformationContentEvent
+  # The origin_type identifies the type of resource, e.g. DataProduct.
+  # The sub_type identifies the type of access using the InformationContentAccessEnum
+
+  # Additional information about access
+  access_params: {}
+
+
+
+# ------------------------------------------------------------------------------------
+# Data Process Events
+# Events about data processes and data process definitions
+#
+# origin: set to the data process id
+# origin_type: the type of resource
+# ------------------------------------------------------------------------------------
+
+# Base type of events related to data processes
+DataProcessEvent: !Extends_Event
+    # The origin is a data process (resource) id
+
+DataProcessStatusType: !enum (values=(NORMAL, ERROR, OFFLINE), default=NORMAL)
+
+---
+
+
+# To be used by transforms monitoring the health of data producers to report the status of the producers
+DataProcessStatusEvent: !Extends_DataProcessEvent
+  status: !DataProcessStatusType
+  values: []
+
+
+
+
+
+# ------------------------------------------------------------------------------------
+#                                  Infrastructure Level Events
+# ------------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------------
+# Exchange Event
+# Events about Exchange Spaces and their communicating members
+# ------------------------------------------------------------------------------------
+
+
+RemoteQueueModifiedEvent: !Extends_PlatformEvent
+  queue_size: 0
+
+
+# ------------------------------------------------------------------------------------
+# Ingestion Event
+# Events about Ingestion of streams into datasets
+# ------------------------------------------------------------------------------------
+IngestionEvent: !Extends_ResourceModifiedEvent
+  # origin: dataset id
+  stream_id: ""
+  status: 0
+---
+
+GranuleIngestedEvent: !Extends_IngestionEvent
+  ingest_attributes: {}
+
+GranuleIngestionErrorEvent: !Extends_IngestionEvent
+  error_msg: ""
+
+
+DatasetIngestionConfigurationEvent: !Extends_ResourceModifiedEvent
+  type: !DatasetIngestionTypeEnum
+  configuration: {}
+  deleted: False # Temporary - until we have resource life cycle events
+  resource_id: ""
+
+
+# ------------------------------------------------------------------------------------
+# Policy / Governance Event
+# Events about policy in the system
+# ------------------------------------------------------------------------------------
+
+NegotiationEvent: !Extends_Event
+  # The origin is the id of the negotiation id
+  originator: ""
+
+---
+
+EnrollmentNegotiationStatusEvent: !Extends_NegotiationEvent
+
+RequestRoleNegotiationStatusEvent: !Extends_NegotiationEvent
+  role_name: ""
+
+AcquireResourceNegotiationStatusEvent: !Extends_NegotiationEvent
+  resource_id: ""
+
+---
+
+AcquireResourceExclusiveNegotiationStatusEvent: !Extends_AcquireResourceNegotiationStatusEvent
+
+---
+
+#Base Policy Event
+PolicyEvent: !Extends_Event
+
+---
+
+# The ResourcePolicyEvent is a little different than a Policy resource object event, in that it does not get published
+# when the underlying policy object is updated in the resource registry but by business logic in the Policy Management
+# Service as appropriate, like when it is assigned or removed from a resource
+# The origin is the policy_id
+ResourcePolicyEvent: !Extends_PolicyEvent
+  resource_id: ""
+  resource_type: ""
+  resource_name: ""
+  op: ""      #Optional op name
+
+# The RelatedResourcePolicyEvent is different than a ResourcePolicyEvent object, in that it does not get published
+# when the underlying policy object is updated in the resource registry but by business logic in the Policy Management
+# Service when a related resource's policy is updated.
+# The origin is the policy_id
+RelatedResourcePolicyEvent: !Extends_PolicyEvent
+  resource_id: ""
+
+# The ServicePolicyEvent is a little different that a Policy resource object event, in that it does not get published
+# when the underlying policy object is updated in the resource registry but by business logic in the Policy Management
+# Service as appropriate, like when it is assigned or removed from a service
+# The origin is the policy_id
+ServicePolicyEvent: !Extends_PolicyEvent
+  #If the service_name is not set to a specific name, then all services are assumed.
+  service_name: ""
+  op: ""   #Optional op name
+
+
+#This event is used to flush the caches containing user roles
+UserRoleCacheResetEvent: !Extends_PolicyEvent
+
+# ------------------------------------------------------------------------------------
+# Org Event
+# Events from an Org about its members or resources
+# ------------------------------------------------------------------------------------
+
+
+#Base Org Event
+#The origin is the org_id for all events based off of this OrgEvent
+OrgEvent: !Extends_Event
+  org_name: ""
+
+---
+
+#This event is used as a parent event for User Role related events
+UserRoleModifiedEvent: !Extends_OrgEvent
+  role_name: ""
+
+---
+
+#The following events are published when Org actions occur
+
+OrgNegotiationInitiatedEvent: !Extends_OrgEvent
+  negotiation_id: ""
+
+OrgMembershipGrantedEvent: !Extends_OrgEvent
+
+OrgMembershipCancelledEvent: !Extends_OrgEvent
+
+UserRoleGrantedEvent: !Extends_UserRoleModifiedEvent
+
+UserRoleRevokedEvent: !Extends_UserRoleModifiedEvent
+
+ResourceSharedEvent: !Extends_OrgEvent
+  resource_id: ""
+
+ResourceUnsharedEvent: !Extends_OrgEvent
+  resource_id: ""
+
+ResourceCommitmentCreatedEvent: !Extends_OrgEvent
+  resource_id: ""
+  commitment_id: ""
+  commitment_type: ""
+
+ResourceCommitmentReleasedEvent: !Extends_OrgEvent
+  resource_id: ""
+  commitment_id: ""
+  commitment_type: ""
+
+---
+
+# ------------------------------------------------------------------------------------
+# Execution Event
+# Events about compute resources (containers, processes, EPUs, EEs)
+# ------------------------------------------------------------------------------------
+
+ContainerConfigModifiedEvent: !Extends_Event
+
+ContainerStateEnum: !enum (values=(START, STOP, TERMINATE, ERROR), default=START)
+
+---
+ContainerLifecycleEvent: !Extends_Event
+  # The origin is the container id
+  state: !ContainerStateEnum
+  host: ""
+
+ProcessLifecycleEvent: !Extends_Event
+  # The origin is the process id
+  state: !ProcessStateEnum
+  container_id: ""
+  process_type: ""
+  process_name: ""
+
+# Event for the scheduler's timer functionality
+TimerEvent: !Extends_Event
+# The Scheduler fires off this event so that services can react to it and perform tasks
+SchedulerEvent: !Extends_Event
+
+# a reload_user_info event generated when a notification is created, updated or deleted
+ReloadUserInfoEvent: !Extends_Event
+  notification_id: ""
+
+
+# ------------------------------------------------------------------------------------
+#                                  ION Events
+# ------------------------------------------------------------------------------------
+
+ContainerManagementRequest: !Extends_Event
+  predicate: !ContainerManagementPredicate
+  action: !ContainerManagementAction
+
+ContainerManagementResult: !Extends_Event
+  action: !ContainerManagementAction
+  outcome: ""
+
+
+# ------------------------------------------------------------------------------------
+# !!! UNCATEGORIZED !!!! Events
+# ------------------------------------------------------------------------------------
+
+
+StreamAlertType: !enum (values=(WARNING, ALARM, ALL_CLEAR), default=ALL_CLEAR)
+
+---
+
+DeviceStatusAlertEvent: !Extends_DeviceStatusEvent
+  name: ''
+  stream_name: ''
+  value_id: ''
+
+---
+
+# Used by DM UNS
+ExampleDetectableEvent: !Extends_Event
+  voltage: 0
+  telemetry: 0
+  temperature: 0
+
+# output event from detection process
+DetectionEvent: !Extends_Event
+  message: ""             # Message field for this detection event
+  condition: ""           # Concatenate the filter and make it a message
+  original_origin: ""     # The origin from the event that was detected by the filter
+  original_type: ""       # The type of the event that was detected by the filter
+
+
+---
+
+# Seems to be needed/used only by transforms when an error is encountered
+ExceptionEvent: !Extends_Event
+  exception_type: ""
+  exception_message: ""
+
+---
+
+IngestionOverflow: !Extends_Event
+  process_id: ""
+
+---
+# event to be published for exceptions
+ExceptionEvent: !Extends_Event
+  exception_type: ""
+  message: ""
+---
+
+DatasetModified: !Extends_InformationContentModifiedEvent
+  # The new dataset extents
+  extents:    0
+  # The slice of the dataset modificationsc
+  window:     []
+
+ExternalReferencesUpdatedEvent: !Extends_InformationContentModifiedEvent
+  reference_keys: []
+
+
+---
+
+DatasetCalibrationEvent: !Extends_DatasetModified
+  calibrations: []
+
+---
+
+#  Events published in the context of data processing
+DataProcessingEvent: !Extends_Event
+
+---
+
+# Events published in a Quality Control context
+DataQCEvent: !Extends_DataProcessingEvent
+
+---
+
+# Published when:
+#   - QC Lookup tables are changed
+#   - User driven QC re-evaluation
+#   - System is re-deployed with new QC algorithms
+# The QC Processor should re-evaluate applicable QCs for data products associated
+# with the reference designator
+# origin is the reference designator
+ResetQCEvent: !Extends_DataQCEvent
+  # origin is the reference_designator
+
+# Published when:
+#   - QC Processing detects a failure in the vector of parameter values
+ParameterQCEvent: !Extends_DataQCEvent
+  # Origin is the dataset
+  qc_parameter:   ""
+  temporal_values: []
+  configuration:  {}
+
+---
+# Events generated in the context of NotificationRequest handling
+NotificationEvent: !Extends_Event
+
+---
+
+# Event generated when a NotificationRequest has resulted in message(s) being sent
+NotificationSentEvent: !Extends_NotificationEvent
+  user_id: ""
+  notification_id: ""
+  notification_max: 0
+

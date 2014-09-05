@@ -1,3 +1,0 @@
-[submodule "extern/sciondef"]
-	path = extern/sciondef
-	url = git@github.com:scionrep/sciondef.git

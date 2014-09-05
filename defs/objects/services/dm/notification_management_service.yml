@@ -1,0 +1,49 @@
+name: notification_management
+
+docstring: |
+    The Notification Management Service provides a framework to publish notifications (events) and to subscribe to
+    notifications. Define a notification structure and event categorization. Capabilities to set up notification
+    system and topic trees.
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+DM+OV+Notification+Management+Service
+
+dependencies: [resource_registry]
+
+methods:
+  create_event_type:
+    in:
+      event_type: !EventType
+    out:
+      event_type_id: ""
+
+  update_event_type:
+    in:
+      event_type: !EventType
+    out:
+      success: True
+
+  read_event_type:
+    in:
+      event_type_id: ""
+    out:
+      event_type: !EventType
+
+  delete_event_type:
+    in:
+      event_type_id: ""
+    out:
+      success: True
+
+  # -----------------
+
+  request_notification:
+    in:
+      notification_request: !NotificationRequest
+    out:
+      notification_id: ""
+
+  cancel_notification:
+    in:
+      notification_id: ""
+    out:
+      success: True

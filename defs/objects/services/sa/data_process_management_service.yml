@@ -1,0 +1,264 @@
+name: data_process_management
+
+docstring: |
+  Services to monitor and control instantiated data processes anywhere in the OOI network. Also manage and update metadata related to datasets,
+  data products and data streams.
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+SA+OV+Data+Process+Management+Service
+
+dependencies: [resource_registry, data_product_management, data_acquisition_management, pubsub_management, process_dispatcher, dataset_management, data_retriever]
+
+methods:
+
+  create_data_process_definition:
+    docstring: Create a resource which defines the processing of a stream, from transform definition to scheduling
+    in:
+      data_process_definition: !DataProcessDefinition
+      function_id: ""
+    out:
+      data_process_definition_id: ""
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+
+  update_data_process_definition:
+    in:
+      data_process_definition: !DataProcessDefinition
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  read_data_process_definition:
+    in:
+      data_process_definition_id: ""
+    out:
+      data_process: !DataProcessDefinition
+
+  delete_data_process_definition:
+    in:
+      data_process_definition_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+  
+  #@OperationVerb=DELETE
+  force_delete_data_process_definition:
+    in:
+      data_process_definition_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  get_data_process_definition_extension:
+    docstring: |
+      Returns an DataProcessDefinitionExtension object containing additional related information
+    in:
+      data_process_definition_id: ""
+      ext_associations: {}   # An optional dict of names and associations to get other associations dynamically
+      ext_exclude: []        # An optional list of field names to exclude from retrieving
+      user_id: "" # An optional user id associated with the requesting user
+    out:
+      data_process_definition: !DataProcessDefinitionExtension
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified data_product_id does not exist
+
+  find_data_process_definitions:
+    in:
+      filters: !ResourceFilter
+    out:
+      data_process_definition_list: []
+
+  register_data_process_definition:
+    docstring: Upload a file (base64-encoded) and return the destination URI
+    in:
+      process_code: ""
+    out:
+      uri: ""
+
+  assign_input_stream_definition_to_data_process_definition:
+    docstring: Connect the input  stream with a data process definition
+    in:
+      stream_definition_id: ""
+      data_process_definition_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_input_stream_definition_from_data_process_definition:
+    docstring: Disonnect the input stream from a data process definition
+    in:
+      stream_definition_id: ""
+      data_process_definition_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  assign_stream_definition_to_data_process_definition:
+    docstring: Connect the output stream with a data process definition
+    in:
+      stream_definition_id: ""
+      data_process_definition_id: ""
+      binding: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  unassign_stream_definition_from_data_process_definition:
+    docstring: Disonnect the output stream from a data process definition
+    in:
+      stream_definition_id: ""
+      data_process_definition_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  get_data_process_definition_url:
+    docstring: Returns the URL for the source code
+    in:
+      data_process_definition_id: ""
+    out:
+      url: ""
+    throws:
+      BadRequest: If the object does not contain a URL
+  inspect_data_process_definition:
+    docstring: Returns the source code of the data process definition
+    in:
+      data_process_definition_id: ""
+    out:
+      source_code: ""
+
+  # -----------------
+
+  create_transform_function:
+    docstring: Creates a new transform function
+    in:
+      transform_function: !TransformFunction
+    out:
+      transform_function_id: ""
+
+  read_transform_function:
+    docstring: Reads an existing transform function
+    in:
+      transform_function_id: ""
+    out: 
+      transform_function: !TransformFunction
+    throws:
+      NotFound: If TransformFunction does not exist
+
+  delete_transform_function:
+    docstring: Removes a transform function from the resource registry
+    in:
+      transform_function_id: ""
+    out:
+    throws:
+      BadRequst: If TransformFunction does not exist
+
+
+  # -----------------
+
+  create_data_process:
+    docstring: Create an instance or realization of a data process definition.
+    in:
+      data_process_definition_id: ""
+      inputs: []
+      outputs: []
+      configuration: {}
+      argument_map: {}
+      out_param_name: ""
+    out:
+      data_process_id: ""
+
+  read_data_process:
+    docstring: Reads a data process resource
+    in:
+      data_process_id: ""
+    out:
+      data_process: {}
+    throws:
+      NotFound: If the data process doesn't exist
+
+  read_data_process_for_stream:
+    docstring: |
+      Reads a data process resource associated with a stream. Returns details
+      required by the transform worker process.
+    in:
+      stream_id: ""
+      worker_process_id: ""
+    out:
+      data_process_details: {}
+    throws:
+      NotFound: If the data process doesn't exist
+
+  delete_data_process:
+    docstring: Deletes an instance of a data process
+    in:
+      data_process_id: ""
+    out:
+      sucess: True
+    throws:
+      BadRequest: If the data process doesn't exist
+
+  activate_data_process:
+    docstring: Activates an instance of a data process
+    in:
+      data_process_id: ""
+    out:
+      success: True
+
+  deactivate_data_process:
+    docstring: Deactivates an instance of a data process
+    in:
+      data_process_id: ""
+    out:
+      success: True
+
+  get_data_process_subscriptions_count:
+    docstring: Returns count of subscriptions for data process id
+    in:
+      data_process_id: ""
+    out:
+      count: True
+
+  get_data_process_active_subscriptions_count:
+    docstring: Returns count of active subscriptions for data process id
+    in:
+      data_process_id: ""
+    out:
+      count: True
+
+  # -----------------
+
+  #@OperationVerb=DELETE
+  force_delete_data_process:
+    in:
+      data_process_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  get_data_process_extension:
+    docstring: |
+      Returns an DataProcessExtension object containing additional related information
+    in:
+      data_process_id: ""
+      ext_associations: {}    # An optional dict of names and associations to get other associations dynamically
+      ext_exclude: []         # An optional list of field names to exclude from retrieving
+      user_id: ""  # An optional user id associated with the requesting user
+    out:
+      data_process: !DataProcessExtension
+    throws:
+      BadRequest: A parameter is missing
+      NotFound: An object with the specified data_product_id does not exist
+
+  find_data_process:
+    in:
+      filters: !ResourceFilter
+    out:
+      data_process_list: []
+
+
+
+
+ 
+

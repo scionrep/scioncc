@@ -1,0 +1,48 @@
+# Hello Resource Service interface definition
+
+name: hello_resource
+docstring: Example service demonstrating how to work with resources and their life cycle
+spec: none
+dependencies: [resource_registry]
+methods:
+  create_my_resource:
+    in:
+      my_resource: !SampleResource
+    out:
+      my_resource_id: ""
+
+  update_my_resource:
+    in:
+      my_resource: !SampleResource
+    out:
+      success: True
+
+  read_my_resource:
+    in:
+      my_resource_id: ""
+    out:
+      my_resource: !SampleResource
+
+  delete_my_resource:
+    in:
+      my_resource_id: ""
+    out:
+      success: True
+
+  find_my_resources:
+    in:
+      filters: !ResourceFilter
+    out:
+      my_resource_list: []
+
+  activate_my_resource:
+    in:
+      my_resource_id: ""
+    out:
+      success: True
+
+  deactivate_my_resource:
+    in:
+      my_resource_id: ""
+    out:
+      success: True

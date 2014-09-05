@@ -1,0 +1,258 @@
+name: policy_management
+
+docstring: |
+  Provides the interface to define and manage policy and a repository to store and retrieve policy
+  and templates for policy definitions, aka attribute authority.
+
+spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+COI+OV+Policy+Management+Service
+
+dependencies: [resource_registry]
+
+methods:
+
+  create_resource_access_policy:
+    docstring: |
+      Helper operation for creating an access policy for a specific resource. The id string returned
+      is the internal id by which Policy will be identified in the data store.
+    in:
+      resource_id: ""
+      policy_name: ""
+      description: ""
+      policy_rule: ""
+    out:
+      policy_id: ""
+    throws:
+      BadRequest: If any of the parameters are not set.
+
+  create_service_access_policy:
+    docstring: |
+      Helper operation for creating an access policy for a specific service. The id string returned
+      is the internal id by which Policy will be identified in the data store.
+    in:
+      service_name: ""
+      policy_name: ""
+      description: ""
+      policy_rule: ""
+    out:
+      policy_id: ""
+    throws:
+      BadRequest: If any of the parameters are not set.
+
+  create_common_service_access_policy:
+    docstring: |
+      Helper operation for creating a service access policy common to all services. The id string returned
+      is the internal id by which Policy will be identified in the data store.
+    in:
+      policy_name: ""
+      description: ""
+      policy_rule: ""
+    out:
+      policy_id: ""
+    throws:
+      BadRequest: If any of the parameters are not set.
+
+  add_process_operation_precondition_policy:
+    docstring: |
+      Helper operation for adding a precondition policy for a specific process operation; could be a service or agent.
+      The id string returned is the internal id by which Policy will be identified in the data store. The precondition
+      method must return a tuple (boolean, string).
+    in:
+      process_name: ""
+      op: ""
+      policy_content: ""  #Can be a local method name or snippet of code
+    out:
+      policy_id: ""
+    throws:
+      BadRequest: If any of the parameters are not set.
+
+
+  create_policy:
+    docstring: |
+      Persists the provided Policy object The id string returned
+      is the internal id by which Policy will be identified in the data store.
+    in:
+      policy: !Policy
+    out:
+      policy_id: ""
+    throws:
+      BadRequest: if object passed has _id or _rev attribute
+
+  update_policy:
+    docstring: |
+      Updates the provided Policy object.  Throws NotFound exception if
+      an existing version of Policy is not found.  Throws Conflict if
+      the provided Policy object is not based on the latest persisted
+      version of the object.
+    in:
+      policy: !Policy
+    out:
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+      Conflict: object not based on latest persisted object version
+
+  read_policy:
+    docstring: |
+      Returns the Policy object for the specified policy id.
+      Throws exception if id does not match any persisted Policy
+      objects.
+    in:
+      policy_id: ""
+    out:
+      policy: !Policy
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_policy:
+    docstring: |
+      For now, permanently deletes Policy object with the specified
+      id. Throws exception if id does not match any persisted Policy.
+    in:
+      policy_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  enable_policy:
+    docstring: |
+      Sets a flag to enable the use of the policy rule
+    in:
+      policy_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  disable_policy:
+    docstring: |
+      Resets a flag to disable the use of the policy
+    in:
+      policy_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  add_resource_policy:
+    docstring: |
+      Associates a policy to a specific resource
+    in:
+      resource_id: ""
+      policy_id: ""
+    out:
+      success: True
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  remove_resource_policy:
+    docstring: |
+      Removes an association for a policy to a specific resource
+    in:
+      resource_id: ""
+      policy_id: ""
+    out:
+      success: True
+    throws:
+      NotFound: object with specified id does not exist
+
+  find_resource_policies:
+    docstring: |
+      Finds all policies associated with a specific resource
+    in:
+      resource_id: ""
+    out:
+      policy_list: []
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  get_active_resource_access_policy_rules:
+    docstring: |
+      Generates the set of all enabled access policies for the specified resource within the specified Org. If the org_name
+      is not provided, then the root ION Org will be assumed.
+    in:
+      resource_id: ""
+      org_name: ""
+    out:
+      policy_rules: ""
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  get_active_service_access_policy_rules:
+    docstring: |
+      Generates the set of all enabled access policies for the specified service within the specified Org. If the org_name
+      is not provided, then the root ION Org will be assumed.
+    in:
+      service_name: ""
+      org_name: ""
+    out:
+      policy_rules: ""
+    throws:
+      NotFound: object with specified id does not exist
+
+
+  get_active_process_operation_preconditions:
+    docstring: |
+      Generates the set of all enabled precondition policies for the specified process operation within the specified
+      Org; could be a service or resource agent. If the org_name is not provided, then the root ION Org will be assumed.
+    in:
+      process_name: ""
+      op: ""
+      org_name: ""
+    out:
+      preconditions: []
+    throws:
+      NotFound: object with specified id does not exist
+
+  # -----------------
+
+  create_role:
+    docstring: |
+      Persists the provided UserRole object. The name of a role can only contain
+      alphanumeric and underscore characters while the description can me human
+      readable. The id string returned is the internal id by which a UserRole will
+      be indentified in the data store.
+    in:
+      user_role: !UserRole
+    out:
+      user_role_id: ""
+    throws:
+      BadRequest: if object passed has _id or _rev attribute
+
+  update_role:
+    docstring: |
+      Updates the provided UserRole object.  The name of a role can only contain
+      alphanumeric and underscore characters while the description can me human
+      readable.Throws NotFound exception if an existing version of UserRole is
+      not found.  Throws Conflict if the provided UserRole object is not based on
+      the latest persisted version of the object.
+    in:
+      user_role: !UserRole
+    out:
+      success: True
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+      Conflict: object not based on latest persisted object version
+
+  read_role:
+    docstring: |
+      Returns the UserRole object for the specified role id.
+      Throws exception if id does not match any persisted UserRole
+      objects.
+    in:
+      user_role_id: ""
+    out:
+      user_role: !UserRole
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_role:
+    docstring: |
+      For now, permanently deletes UserRole object with the specified
+      id. Throws exception if id does not match any persisted UserRole.
+    in:
+      user_role_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist

@@ -1,0 +1,62 @@
+
+# These are used for tests - do not remove!
+
+ExtendedPhone: !Extends_Phone
+
+Bad_Phone:
+  phone_number: ""
+  phone_type: ""
+  sms: 0
+
+---
+
+# This is example for adding decorators
+#@SpecialObject
+#@OriginResourceType=MyObject
+Deco_Example:
+  # This attribute is decorated to define the valid value
+  # range for the numeric type (int in this case).
+  #@ValueRange=0,65535
+  unsigned_short_int: 1
+
+  # This attribute is decorated to define the valid value
+  # range for the numeric type (float in this case).
+  #@ValueRange=1.234,5.0
+  a_float: 2.0
+
+  # This attribute is decorated to define the type(s)
+  # which can be present in the list attribute.
+  #@ContentType=Phone, int
+  list1: []
+
+  # This attribute is decorated to define the valid length
+  # of the list.
+  #@ContentCount=1,2
+  list2: []
+
+  # This attribute is decorated to define the type(s)
+  # which can be present in the dict value set.
+  #@ContentType=int,float
+  dict1: {}
+
+  # This attribute is decorated to define the valid length
+  # of the dict.
+  #@ContentCount=1,2
+  dict2: {}
+ 
+  # This attribute is decorated to indicate the attribute
+  # cannot be null.
+  #@Required
+  #@ValuePattern=(^(CAM|CO2|CTD|DO2)$)
+  an_important_value:
+
+  # This attribue is decorated to define the required string pattern.
+  #@ValuePattern=(^\d{3}-\d{3}-\d{4}$)
+  us_phone_number: ""
+
+  # This attribute is decorated with an arbitrary user defined
+  # decorator, the implied meaning of which is determined by the
+  # code that chooses to utilize it.
+  #@ABC=123
+  foo2: ''
+  
