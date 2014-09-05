@@ -1,0 +1,66 @@
+#
+# Simple event driven mission using RSN platform simulator
+# SBE37_SIM_03 will perform its mission once the STOP_AUTOSAMPLE command
+# is given to SBE37_SIM_02 in the main scheduler based mission
+#
+# In this case, mission to be started by platform in COMMAND state.
+#
+
+name: OMS Simulator Mission
+version: 0.4
+description: Sample OMS Simulator Mission
+
+platform:
+  platformID: LJ01D
+
+mission:
+  - missionThread:
+    instrumentID: ['PRE:SBE37_SIM_02']
+    errorHandling:
+      default: retry
+      maxRetries: 3
+    schedule:
+      startTime: 2014-07-18T00:00:00
+      timeZone:
+      loop:
+        quantity: 1
+        value: 3
+        units: mins
+      event:
+        parentID: 
+        eventID: 
+    preMissionSequence:
+      - command: PRE:SBE37_SIM_02, set_resource(INTERVAL{3})
+        onError: retry
+    missionSequence:
+      - command: PRE:SBE37_SIM_02, execute_resource(START_AUTOSAMPLE)
+        onError: retry
+      - command: wait(0.2)
+        onError:
+      - command: PRE:SBE37_SIM_02, execute_resource(STOP_AUTOSAMPLE)
+        onError: retry
+    postMissionSequence:
+      - command: PRE:SBE37_SIM_02, execute_agent(RESET)
+        onError: retry
+
+  - missionThread:
+    instrumentID: ['PRE:SBE37_SIM_03']
+    errorHandling:
+      default: retry
+      maxRetries: 3
+    schedule:
+      startTime: 
+      timeZone:
+      loop:
+        quantity:
+        value:
+        units:
+      event:
+        parentID: PRE:SBE37_SIM_02
+        eventID: STOP_AUTOSAMPLE
+    preMissionSequence:
+      - command: PRE:SBE37_SIM_03, set_resource(INTERVAL{1})
+        onError: retry
+    missionSequence:
+      - command: PRE:SBE37_SIM_03, execute_resource(ACQUIRE_SAMPLE)
+        onError: retry

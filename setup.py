@@ -12,45 +12,29 @@ import sys
 if sys.platform == 'darwin':
     os.environ['C_INCLUDE_PATH'] = '/usr/local/include'
 
-version = '2.1.0'
+version = '0.0.1-dev'
 
-setup(  name = 'pyon',
+setup(  name = 'scion',
         version = version,
-        description = 'OOI Python Capability Container and Core Modules',
-        url = 'https://github.com/ooici/pyon',
-        download_url = 'http://sddevrepo.oceanobservatories.org/releases/',
+        description = 'Scientific Observatory Network',
+        url = '',
+        download_url = '',
         license = 'BSD',
-        author = 'Ocean Observatories Initiative',
-        author_email = 'contactooici@oceanobservatories.org',
-        keywords = ['ooi','ooici','pyon','ooinet'],
+        author = '',
+        author_email = '',
+        keywords = ['scion','pyon'],
         packages = find_packages(),
         entry_points = {
-             'nose.plugins.0.10': [
-                 'stats_plugin=pyon.util.container_stats_plugin:TestStats',
-                 'pycc_plugin=pyon.util.pycc_plugin:PYCC',
-                 'gevent_block_plugin=pyon.util.gevent_block_plugin:GEVENT_BLOCK',
-                 'timer_plugin=pyon.util.timer_plugin:TestTimer',
-                 'queueblame=pyon.util.queueblame_plugin:QueueBlame',
-                 'capture=pyon.util.capture_plugin:PyccCapture',
-                 'insulate=pyon.util.insulate:Insulate',
-                 'insulateslave=pyon.util.insulate:InsulateSlave',
-                 'gevent_profiler=pyon.util.nose_gevent_profiler:TestGeventProfiler',
-                 'greenletleak=pyon.util.greenlet_plugin:GreenletLeak',
-                 'processleak=pyon.util.processblame_plugin:ProcessLeak',
-                 'memprofile=pyon.util.memory_plugin:MemProfile'
-             ],
             'console_scripts' : [
                 'pycc=scripts.pycc:entry',
                 'control_cc=scripts.control_cc:main',
                 'generate_interfaces=scripts.generate_interfaces:main',
                 'store_interfaces=scripts.store_interfaces:main',
-                'json_report=scripts.json_report:main',
-                'clear_couch=pyon.datastore.clear_couch_util:main',
+                'clear_db=pyon.datastore.clear_couch_util:main',
                 ]
             },
         dependency_links = [
             'http://sddevrepo.oceanobservatories.org/releases/',
-            'https://github.com/ooici/gevent-profiler/tarball/master#egg=python-gevent-profiler',
             'https://github.com/ooici/utilities/tarball/v2013.06.11#egg=utilities-2013.06.11',
         ],
         test_suite = 'pyon',
@@ -69,7 +53,6 @@ setup(  name = 'pyon',
             'zope.interface',
             'couchdb==0.9',
             'psycopg2',
-            # 'lockfile==0.9.1',
             'python-daemon==1.6',
             'M2Crypto',
             'nose==1.1.2',
@@ -81,6 +64,12 @@ setup(  name = 'pyon',
             'python-gevent-profiler',
             'lxml',
             'requests',
-            'psutil'
+            'psutil',
+            'Flask',
+            'python-dateutil',
+            'pyparsing==1.5.6',
+            'ntplib',
+            'xlrd',
+            'xlwt',
         ],
      )

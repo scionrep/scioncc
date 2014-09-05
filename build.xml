@@ -1,8 +1,7 @@
 <!-- Ant build file for pyon -->
 <project name="pyon" default="info" basedir=".">
     <description>
-        This is the ANT build file for the OOI CI Python capability
-        container and service platform.
+        This is the ANT build file for the SciON capability container and service platform.
     </description>
 
     <!-- load python specific ant tasks from jar file -->
@@ -14,8 +13,9 @@
     <property name="dist"  location="dist"/>
 
     <target name="info">
-        <echo message="pyon ant build file. Specify a target to build."/>
+        <echo message="SciON ant build file. Specify a target to build."/>
         <echo message="Run 'ant -p' to retrieve a list of targets."/>
+        <echo message="Please run `python bootstrap.py -v 2.2.0` to start buildout."/>
     </target>
 
     <target name="init">
@@ -24,18 +24,19 @@
     </target>
 
     <!-- Precompiles all Python code without executing. Finds compile errors -->
-    <target name="compile" depends="init" description="Compile the source">
-        <py-compile dir="${src}" pythonpath="${src}" optimize="0"/>
+    <target name="compile" depends="init" description="Compile the sources">
+        <py-compile dir="pyon" pythonpath="${src}" optimize="0"/>
+        <py-compile dir="ion" pythonpath="${src}" optimize="0"/>
         <py-compile dir="scripts" pythonpath="${src}" optimize="0"/>
-        <py-compile dir="prototype" pythonpath="${src}" optimize="0"/>
     </target>
 
     <target name="clean" description="clean up">
         <delete>
-            <fileset dir="${src}" includes="**/*.pyc"/>
+            <fileset dir="pyon" includes="**/*.pyc"/>
+            <fileset dir="putil" includes="**/*.pyc"/>
+            <fileset dir="ion" includes="**/*.pyc"/>
             <fileset dir="scripts" includes="**/*.pyc"/>
             <fileset dir="examples" includes="**/*.pyc"/>
-            <fileset dir="prototype" includes="**/*.pyc"/>
         </delete>
         <delete dir="interface"/>
         <delete dir="${build}"/>
@@ -46,7 +47,7 @@
 
     <target name="clean-buildout"
         description="clean up buildout dirs" depends="clean" >
-        <echo message="Clean up buildout directories.  Please run `python bootstrap.py` to start buildout."/>
+        <echo message="Clean up buildout directories.  Please run `python bootstrap.py -v 2.2.0` to start buildout."/>
         <delete dir="parts"/>
         <delete dir="develop-eggs"/>
         <delete dir="bin"/>

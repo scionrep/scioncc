@@ -2,26 +2,41 @@
 Scientific Observatory Network (SciON)
 -----------------------------------------------------------
 
-Capability Container and core modules
+Scientific Observatory Network main repository and services
 
-(C) 2014
+(C) Individual Contributors, 2014
 
-Open source under BSD license. See LICENSE.txt for details.
+Open source under BSD license. See LICENSE for details.
 
 -----------------------------------------------------------
 originally based on the open source (BSD):
 
 Ocean Observatories Initiative Cyberinfrastructure (OOI CI)
-Integrated Observatory Network (ION) 
+Integrated Observatory Network (ION)
 
 (C) The Regents of the University of California, 2010-2014
 ===========================================================
 
 
+This is the repository that defines SciON with its services and agents.
+The SciON system is started from this repository.
+Submodules provide additional required functionality, such as the Pyon
+Capability Container.
+
+
 INSTALL
 =======
 
-Install the following if not yet present:
+This assumes basic development environment setup (git, directory structure).
+Please follow the "New Developers Tutorial" for basic steps.
+  https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
+
+The Pyon Capability Container is packaged as a submodule. All dependencies are
+installed during the process described below. For details, refer to:
+  https://github.com/ooici/pyon/blob/master/README
+
+
+Install the following if not yet present (brew install instructions are for Mac only):
 
 * OS Packages and package management:
 For Mac, use homebrew
@@ -47,7 +62,6 @@ For Mac, use homebrew
 
     If you have trouble with the installation, please see:
     https://confluence.oceanobservatories.org/display/CIDev/Postgres+Datastore
-    https://confluence.oceanobservatories.org/display/CIDev/M112+Geospatial+Search
 
     As user postgres:
     > createuser -s ion
@@ -60,22 +74,33 @@ For Mac, use homebrew
     > easy_install --upgrade virtualenvwrapper
     Note: This require Mac's XCode with installed command line tools
 
-* Setup a virtualenv to use for Pyon:
-    > mkvirtualenv --no-site-packages pyon
+* Setup a virtualenv to run COI-services:
+    > mkvirtualenv --no-site-packages scion
+    Note: Do not use the pyon virtualenv if you are a pyon developer
 
 * Pin setuptools in your virtualenv
     > pip install -U setuptools==0.8
 
-* Install numpy to the virtualenv
-    > pip install numpy==1.7.1
 
 
-DEVELOPMENT TIME DEPENDENCIES
-=============================
+PACKAGE DOWNLOAD
+================
 
-PACKAGES:
+Clone scion (this repository, if you haven't already) in your code directory:
+    > cd code   # Whatever your code repository directory is
+    > git clone git@github.com:scionrep/scion.git
 
-Use Buildout to install the python package dependencies with:
+Initialize submodules::
+    > cd scion
+    > git submodule update --init
+
+(see Pyon README for hints with submodule anonymous checkout and password-less push)
+
+
+PACKAGE DEPENDENCIES
+====================
+
+Use buildout to install the python package dependencies with:
     > python bootstrap.py -v 2.2.0
     > bin/buildout
 
@@ -83,44 +108,9 @@ Use Buildout to install the python package dependencies with:
     compile for packages such as gevent, pyml, etc.
     export C_INCLUDE_PATH=/usr/local/include
 
-ION-DEFINITIONS SUBMODULE:
-
-Link git submodule ion-definitions, containing object and service definitions and resource files:
-    git submodule update --init
-
-Note: This git-submodule always references a specific commit of ion-definitions used by pyon.
-
-Hint: The .gitmodules file  declares the submodule as read only GIT reference (https: instead of git@).
-    If you have problems with a read only (anonymous) clone because of a missing public key,
-    edit .git/config and change the last url to git://github.com/ooici/ion-definitions.git
-
-    If you want to avoid entering your password for every push to the submodule,
-    edit extern/ion-definitions/.git/config and change the remote reference to:
-    git@github.com:ooici/ion-definitions.git
-
-To update the code in pyon and the specific commit in the submodule:
-    > git pull
-    > git submodule update
-
-Notes:
-- The submodule update does NOT happen automatically
-- The submodule update does NOT pull the branch head of the submodule.
-- To change the submodule commit within pyon, cd into the submodule and do a `git pull`, then commit pyon.
-
-The obj/ subdir is a symlink to the checkout's extern/ion-definitions/objects.
-The res/ subdir is a symlink to the checkout's extern/ion-definitions/res.
-
-See more about submodules:
-- http://book.git-scm.com/5_submodules.html
-- http://speirs.org/blog/2009/5/11/understanding-git-submodules.html
-- http://blog.endpoint.com/2010/04/git-submodule-workflow.html
-
-
-GENERATE SERVICE STUBS:
-
 Generate service definition interfaces and abstract base classes files:
     > bin/generate_interfaces
-    Note: These will be placed in the interfaces/ subdirectory (and not in GIT nor in the egg).
+    Note: These will be placed in the interfaces/ subdirectory.
 
 
 RUN-TIME DEPENDENCIES
@@ -136,7 +126,7 @@ RABBITMQ (MESSAGE BROKER):
     > rabbitmq-server
 
 
-SOURCE PATH:
+SOURCE PATH
 
 Add the current directory to your PYTHONPATH for an easier time running
 scripts. Add the following line to your ~/.profile (create it if it
@@ -144,83 +134,94 @@ doesn't exist, or use bash_profile if you already have that):
     export PYTHONPATH=.
 
 
-TEST
-====
-
-Run the unittests:
-    bin/nosetests -a UNIT
-
-Run code coverage:
-    bin/nosetests -w pyon --with-coverage --cover-package=pyon
-
-
 USE
 ===
 
-Provide local configuration overrides in:
-    res/config/pyon.local.yml
-    res/config/logging.local.yml
+Provide local configuration overrides (e.g. broker host, debug levels) in:
+    > res/config/pyon.local.yml
+    > res/config/logging.local.yml
+    Note: DO NOT EDIT the standard configuration and logging config files.
 
-Start the capability container in interactive mode:
-    > bin/pycc
-
-List supported arguments:
+List supported Pyon Capability Container arguments:
     > bin/pycc --help
 
-Start the CC with a deploy file:
+Run unit tests:
+    > bin/nosetests -v -a UNIT
+
+Run smoke tests to verify sanity of the system:
+    > bin/nosetests -v -a SMOKE
+
+Run full integration tests - this will take a long time so may be optional:
+    > bin/nosetests -v -a INT
+
+Start development instance of the ION system with all services:
     > bin/pycc --rel res/deploy/r2deploy.yml
 
-Start the CC with a process to execute and then quit:
-    > bin/pycc --proc examples.service.hello_service.HelloService
 
-Command line configuration options for pycc:
-    Use a different message broker:
-    > bin/pycc server.amqp.host=amoeba.ucsd.edu
+TROUBLESHOOTING
+===============
 
-    Use a different database server:
-    > bin/pycc server.couchdb.host=amoeba.ucsd.edu
+To reset the system use:
+    > bin/pycc -X -fc -bc
 
-    Set the container's system name:
-    > bin/pycc system.name=MINE
+Outdated *.pyc files can causes your
+tests to fail unexpectedly.  Do an ant clean and try again.
+    > ant clean
+    > bin/generate_interface
+
+If your tests still fail, you might have some incorrect values in
+pyon.local.yml or logging.local.yml.  Check with other developers.
+
+If your tests fail unexpectedly when you have tried everything else, your build
+might be corrupted.
+    > deactivate your existing virtualenv
+    > rm and create the virtualenv again
+    > re-run bootstrap.py and buildout
+    > If you suspect an egg is bad, remove the suspected egg from the eggs/ dir. Re-run buildout.
+
+See also:
+  https://confluence.oceanobservatories.org/display/CIDev/Python+and+Virtualenv+Mac+Troubleshooting
+  https://confluence.oceanobservatories.org/display/CIDev/Troubleshooting+OOINet+and+the+developer+environment
 
 
 DEBUG
 =====
 
-USE Pycharm or any other Python IDE to debug; breakpoints and step-by-step are possible.
-Set the executable to the bin/pycc and set the working directory to the repository root.
-Use the -n option to avoid the interactive ipython shell. It does not work property with the debugger.
+Use Pycharm or any other Python IDE to debug; breakpoints and step-by-step
+are possible. Set the executable to the bin/pycc and set the working directory
+to the git repository root. Use the -n option to avoid the interactive IPython
+shell--it does not work properly with the debugger.
 
-You will need to make sure the Pycharm debug egg is available in your path, something like:
-    > export PYTHONPATH=.:/Applications/PyCharm\ 1.5.2.app/pycharm-debug.egg
+Start bin/pycc or bin/nosetests scripts in the debugger, with arguments.
 
-Remote debugging of services in a running container is possible too. Setup a remote debugging
-configuration to use the localhost and port 8585. First start the remote debuging server, then
-start the container from the command line below (the -n seems to be required)
-    > bin/pyccd -n --rel res/deploy/r2services.yml
+PyCharm may need to be enabled to run with gevent. Google how to do this.
 
-
-DATASTORE
-=========
-
-Use psql
+Remote debugging of services in a running container is possible too. Setup a
+remote debugging configuration to use the localhost and port 8585. First start
+the remote debugging server, then start the container from the command line
+below using the pyccd script (the -n seems to be required):
+    > bin/pyccd -n --rel res/deploy/xxx.yml
 
 
-EXAMPLES
-========
+GIT SUBMODULE HOOKS
+===================
 
-Make sure to look in the examples directory for a README and examples.
+A git hook is a script that executes during various points of using git.
+Git hooks exist automating submodules for most people. See the steps here:
+http://blog.chaitanyagupta.com/2009/08/couple-of-hooks-to-make-life-easy-with.html
 
+They do require an initial setup. Simple instructions:
 
-SEE ALSO
-========
+Clone this repository:
+    > cd /some/tmp/directory
+    > git clone https://github.com/chaitanyagupta/gitutils.git
 
-https://confluence.oceanobservatories.org/display/CIDev/ION+R2+Development
-https://confluence.oceanobservatories.org/display/CIDev/R2+Container+Use+Guide
-https://confluence.oceanobservatories.org/display/CIDev/R2+Development+Conventions
-https://confluence.oceanobservatories.org/display/CIDev/R2+Resource+Development+Guide
-https://confluence.oceanobservatories.org/display/CIDev/R2+Service+Implementation+Guide
-https://confluence.oceanobservatories.org/display/CIDev/R2+Service+Testing+Guide
+Use the provided install script:
+    > sh gitutils/submodule-hooks/install.sh /path/to/your/pyon/or/coi-services/dir
 
-https://confluence.oceanobservatories.org/x/ehdTAQ
-https://github.com/ooici/coi-services
+Now, when checking out a branch, pulling, merging etc, git will prompt you to
+automatically update if it notices a change to the commit that your supermodule
+points to.
+
+The pre-commit script is so you don't forget to push changes to the submodule
+*BEFORE* you push changes to the supermodule.
