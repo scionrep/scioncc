@@ -20,9 +20,9 @@ setup(  name = 'scion',
         url = '',
         download_url = '',
         license = 'BSD',
-        author = '',
-        author_email = '',
-        keywords = ['scion','pyon'],
+        author = 'Michael Meisinger',
+        author_email = 'michael.meisinger@gmail.com',
+        keywords = ['scion','pyon','ion'],
         packages = find_packages(),
         entry_points = {
             'console_scripts' : [
