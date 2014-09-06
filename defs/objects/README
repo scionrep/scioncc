@@ -1,8 +1,8 @@
-This is the root directory for ION object and service interface definitions.
+This is the root directory for SciON object and service interface definitions.
 All definitions exist in form of YAML files.
 
-./data  - Object definitions (in YAML) to be used across ION (some object are resource objects)
-./services - Service definitions (in YAML), with implicit message object definitions
+./data/      Object definitions (in YAML) to be used across SciON (some object are resource objects)
+./services/  Service definitions (in YAML), with implicit message object definitions
 
 Naming conventions:
 - Object types: CamelCase, no underscores

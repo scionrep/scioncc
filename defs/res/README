@@ -1,6 +1,6 @@
-This is the ION resource files directory.
+This is the SciON resource files directory.
 
-Resource files are used when the ION system, a capability container or an example is started.
+Resource files are used when the SciON system, a capability container, a test or an example is started.
 
 Resource files may be placed in this directory by different repository owners, in order for them to be
 available when the system is started. Place or edit files with care.
@@ -8,14 +8,14 @@ available when the system is started. Place or edit files with care.
 
 DIRECTORY STRUCTURE:
 
-./apps/     App definition/configuration files (YML format and extension)
+./apps/       App definition/configuration files (YML format and extension)
 
-./config/   ION configuration files (YML format and extension). Example: pyon
+./config/     ION configuration files (YML format and extension). Example: pyon
 
-./deploy/   Container startup (deploy) files (YML format and extension).
+./datastore/  Datastore backend initialization scripts
 
-./launch/   CEI launch configurations
+./deploy/     Container startup (deploy) files (YML format and extension).
 
-./preload/  Files used to preload resources into a fresh system
+./preload/    Files used to preload resources into a fresh system
 
-./profile/  Capability container profile definitions
+./profile/    Capability container profile definitions

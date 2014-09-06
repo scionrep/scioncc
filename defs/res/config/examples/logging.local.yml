@@ -1,0 +1,62 @@
+# Example personal logging configuration.
+# Copy to parent directory and modify as needed. Do not add to git.
+
+formatters:
+  colors:
+    format: '[$BOLD%(asctime)s$RESET %(levelname)-16s %(threadName)s %(name)-10s:%(lineno)3d %(message)s'
+
+handlers:
+  console:
+    class: putil.clog.ColoredStreamHandler
+    formatter: colors
+    level: DEBUG
+    stream: ext://sys.stdout
+    mapping:
+      DEBUG: -1
+      INFO: 2
+      WARNING: 3
+      ERROR: 4
+      CRITICAL: 5
+
+loggers:
+  requests:
+    level: WARNING
+
+  ion:
+    level: INFO
+
+  pyon:
+    level: INFO
+
+#  pyon.net:
+#    level: DEBUG
+
+#  pyon.datastore:
+#    level: DEBUG
+
+  ion.processes.bootstrap.ion_loader:
+    level: DEBUG
+
+  ion.processes.bootstrap.ooi_loader:
+    level: DEBUG
+
+  ion.util.datastore:
+    level: DEBUG
+
+  ion.agents:
+    level: DEBUG
+
+  ion.agents.data:
+    level: DEBUG
+
+  rpc:
+    level: INFO
+
+  ndg:
+    level: ERROR
+
+  coverage_model:
+    level: WARNING
+
+  tracer:
+    level: DEBUG

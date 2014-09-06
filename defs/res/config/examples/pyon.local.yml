@@ -1,0 +1,59 @@
+# Example personal system configuration.
+# Copy to parent directory and modify as needed. Do not add to git.
+
+system:
+  load_policy: False
+  name: scion
+
+server:
+  postgresql:
+    type: postgresql
+    host: localhost
+    port: 5432
+    username: ion
+    password:
+    admin_username:             # If empty, defaults to current login username
+    admin_password:
+    default_database: postgres  # Postgres' internal database
+    database: ion               # Database name for OOI Network (will be sysname prefixed)
+    connection_pool_max: 5      # Number of connections for entire container
+
+container:
+  containerui:
+    association_graph: False
+
+  datastore:
+    default_server: postgresql
+
+  tracer:
+    enabled: True
+    max_entries: 100000
+    log_trace: False
+    log_filter: DB
+    log_stack: False
+    log_color: True
+
+  exchange:
+    management:
+      port: 15672
+      username: guest
+      password: guest
+#    auto_register: True
+#    names:
+#      durable: True
+
+  objects:
+    validate:
+      setattr: False
+      interceptor: False
+
+  extended_resources:
+    strip_results: True
+
+endpoint:
+  receive:
+    timeout: 120   # RPC receive timeout in seconds
+
+process:
+  event_persister:
+    refresh_interval: 100000

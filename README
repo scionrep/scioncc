@@ -1,143 +1,41 @@
 ===========================================================
 Scientific Observatory Network (SciON)
------------------------------------------------------------
-
-Scientific Observatory Network main repository and services
+===========================================================
 
 (C) Individual Contributors, 2014
-
 Open source under BSD license. See LICENSE for details.
 
------------------------------------------------------------
-originally based on the open source (BSD):
+Originally based on the:
 
 Ocean Observatories Initiative Cyberinfrastructure (OOI CI)
 Integrated Observatory Network (ION)
 
 (C) The Regents of the University of California, 2010-2014
+Open source under BSD license. See LICENSE for details.
 ===========================================================
 
 
-This is the repository that defines SciON with its services and agents.
-The SciON system is started from this repository.
-Submodules provide additional required functionality, such as the Pyon
-Capability Container.
+DESCRIPTION
+===========
+
+SciON provides an extensible Python application server, core frameworks and
+services for a variety of applications, including scientific observation,
+data streaming and signal processing.
+
+SciON provides a message-driven, service-oriented scalable application
+deployment platform that can be extended to meet custom needs.
 
 
 INSTALL
 =======
 
-This assumes basic development environment setup (git, directory structure).
-Please follow the "New Developers Tutorial" for basic steps.
-  https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
-
-The Pyon Capability Container is packaged as a submodule. All dependencies are
-installed during the process described below. For details, refer to:
-  https://github.com/ooici/pyon/blob/master/README
-
-
-Install the following if not yet present (brew install instructions are for Mac only):
-
-* OS Packages and package management:
-For Mac, use homebrew
-    > /usr/bin/ruby <(curl -fsSkL raw.github.com/mxcl/homebrew/go)
-- python 2.7.x
-    > brew install python --framework --universal
-    Note: see 'brew doctor' for any path issues
-- git 1.7.7 or higher: Use brew or download the Mac or Linux installer and run it
-    > brew install git
-
-- Install core packages with Homebrew
-
-    > brew install libevent libyaml zeromq rabbitmq hdf5 pkg-config netcdf udunits
-
-    Linux: Note that many installs have much older versions installed by default.
-    (If you have trouble with brew 'MD5 mismatch' errors, try running 'brew update'
-    and try the install again)
-    For any kind of installation trouble run 'brew doctor' and fix any issues.
-
-- Install Postgres with Homebrew
-
-    > brew install postgres postgis
-
-    If you have trouble with the installation, please see:
-    https://confluence.oceanobservatories.org/display/CIDev/Postgres+Datastore
-
-    As user postgres:
-    > createuser -s ion
-
-* Python packages and environment management:
-- pip
-    > easy_install pip
-- virtualenv and virtualenvwrapper modules for your python 2.7 installation
-    > easy_install --upgrade virtualenv
-    > easy_install --upgrade virtualenvwrapper
-    Note: This require Mac's XCode with installed command line tools
-
-* Setup a virtualenv to run COI-services:
-    > mkvirtualenv --no-site-packages scion
-    Note: Do not use the pyon virtualenv if you are a pyon developer
-
-* Pin setuptools in your virtualenv
-    > pip install -U setuptools==0.8
-
-
-
-PACKAGE DOWNLOAD
-================
-
-Clone scion (this repository, if you haven't already) in your code directory:
-    > cd code   # Whatever your code repository directory is
-    > git clone git@github.com:scionrep/scion.git
-
-Initialize submodules::
-    > cd scion
-    > git submodule update --init
-
-(see Pyon README for hints with submodule anonymous checkout and password-less push)
-
-
-PACKAGE DEPENDENCIES
-====================
-
-Use buildout to install the python package dependencies with:
-    > python bootstrap.py -v 2.2.0
-    > bin/buildout
-
-** Add following to your .bashrc profile on Macs if buildout fails to
-    compile for packages such as gevent, pyml, etc.
-    export C_INCLUDE_PATH=/usr/local/include
-
-Generate service definition interfaces and abstract base classes files:
-    > bin/generate_interfaces
-    Note: These will be placed in the interfaces/ subdirectory.
-
-
-RUN-TIME DEPENDENCIES
-=====================
-
-POSTGRESQL (DATABASE):
-
-Run postgresql in second terminal before starting the container or running tests:
-    > /usr/local/bin/postgres -D /usr/local/var/postgres
-
-
-RABBITMQ (MESSAGE BROKER):
-    > rabbitmq-server
-
-
-SOURCE PATH
-
-Add the current directory to your PYTHONPATH for an easier time running
-scripts. Add the following line to your ~/.profile (create it if it
-doesn't exist, or use bash_profile if you already have that):
-    export PYTHONPATH=.
+See file INSTALL for details.
 
 
 USE
 ===
 
-Provide local configuration overrides (e.g. broker host, debug levels) in:
+Provide local configuration overrides (e.g. broker host, logging levels) in:
     > res/config/pyon.local.yml
     > res/config/logging.local.yml
     Note: DO NOT EDIT the standard configuration and logging config files.
@@ -225,3 +123,8 @@ points to.
 
 The pre-commit script is so you don't forget to push changes to the submodule
 *BEFORE* you push changes to the supermodule.
+
+See more about submodules:
+- http://book.git-scm.com/5_submodules.html
+- http://speirs.org/blog/2009/5/11/understanding-git-submodules.html
+- http://blog.endpoint.com/2010/04/git-submodule-workflow.html

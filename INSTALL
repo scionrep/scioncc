@@ -1,0 +1,86 @@
+==================
+SciON INSTALLATION
+==================
+
+This assumes basic development environment setup (git, directory structure).
+Please follow the "New Developers Tutorial" for basic steps.
+  https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
+
+
+Mac OS Prerequisites
+====================
+
+Install homebrew
+    > /usr/bin/ruby <(curl -fsSkL raw.github.com/mxcl/homebrew/go)
+    Note: see 'brew doctor' for any issues with brew and 'brew update' often
+
+Install python 2.7.x
+    > brew install python --framework --universal
+
+Basic packages
+    > brew install git libevent libyaml zeromq rabbitmq hdf5 pkg-config netcdf udunits
+
+Install postgres
+    > brew install postgres postgis
+
+    As user postgres:
+    > createuser -s ion
+
+Python packages and environment management:
+    > easy_install pip
+
+    > easy_install --upgrade virtualenv
+    > easy_install --upgrade virtualenvwrapper
+    Note: This require Mac's XCode with installed command line tools
+
+
+Linux (Ubuntu) Prerequisites
+============================
+
+See scripts/install_ubuntu.sh
+Note: Only run this file on a new VM if you know what you are doing.
+
+
+Common Installation
+===================
+
+Setup a virtualenv to run COI-services:
+    > mkvirtualenv --no-site-packages scion
+    Note: Do not use the pyon virtualenv if you are a pyon developer
+
+Pin setuptools in your virtualenv
+    > pip install -U setuptools==0.8
+
+Clone scion (this repository, if you haven't already) in your code directory:
+    > cd code   # Whatever your code repository directory is
+    > git clone git@github.com:scionrep/scion.git
+
+Use buildout to install the python package dependencies with:
+    > python bootstrap.py -v 2.2.0
+    > bin/buildout
+
+Generate service definition interfaces and abstract base classes files:
+    > bin/generate_interfaces
+    Note: These will be placed in the interfaces/ subdirectory.
+
+
+RUN-TIME DEPENDENCIES
+=====================
+
+POSTGRESQL (DATABASE):
+
+Run postgresql in second terminal before starting the container or running tests:
+    > /usr/local/bin/postgres -D /usr/local/var/postgres
+
+
+RABBITMQ (MESSAGE BROKER):
+    > rabbitmq-server
+
+
+SOURCE PATH
+
+Add the current directory to your PYTHONPATH for an easier time running
+scripts. Add the following line to your ~/.profile (create it if it
+doesn't exist, or use bash_profile if you already have that):
+    export PYTHONPATH=.
+
