@@ -17,12 +17,12 @@ version = '0.0.1-dev'
 setup(  name = 'scioncc',
         version = version,
         description = 'Scientific Observatory Network Capability Container',
-        url = '',
-        download_url = '',
+        url = 'www.github.com/scionrep/scioncc',
+        download_url = 'https://github.com/scionrep/scioncc/releases',
         license = 'BSD',
-        author = 'Michael Meisinger',
+        author = 'SciON Contributors',
         author_email = 'michael.meisinger@gmail.com',
-        keywords = ['scion','pyon','ion'],
+        keywords = ['scion', 'pyon', 'ion'],
         packages = find_packages(),
         entry_points = {
             'console_scripts' : [

@@ -2,13 +2,13 @@
 SciON INSTALLATION
 ==================
 
-This assumes basic development environment setup (git, directory structure).
-Please follow the "New Developers Tutorial" for basic steps.
-  https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
 
 
 Mac OS Prerequisites
 ====================
+
+See also here for a basic development environment setup. Some steps are redundant or not necessary:
+    https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
 
 Install homebrew
     > /usr/bin/ruby <(curl -fsSkL raw.github.com/mxcl/homebrew/go)
@@ -20,7 +20,7 @@ Install python 2.7.x
 Basic packages
     > brew install git libevent libyaml zeromq rabbitmq hdf5 pkg-config netcdf udunits
 
-Install postgres
+Install postgres with postgis extension
     > brew install postgres postgis
 
     As user postgres:
@@ -37,8 +37,10 @@ Python packages and environment management:
 Linux (Ubuntu) Prerequisites
 ============================
 
-See scripts/install_ubuntu.sh
+See scripts/install/install_ubuntu.sh
 Note: Only run this file on a new VM if you know what you are doing.
+
+Then see manual steps in scripts/install/install_ubuntu.txt
 
 
 Common Installation

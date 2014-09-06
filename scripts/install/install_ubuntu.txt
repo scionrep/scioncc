@@ -1,0 +1,110 @@
+-------------------------------------------------------------------------------
+This assumes an installation on a Ubuntu VM (here 14.04) from scratch
+-------------------------------------------------------------------------------
+
+# Execute dependencies install script
+sh scripts/install/install_dep.sh
+
+
+# Copy VM/Github key pair to .ssh as id_rsa and id_rsa.pub
+scp -i ~/.ssh/AWSKey.pem ~/.ssh/vm_rsa ubuntu@host:/home/ubuntu/.ssh/id_rsa
+scp -i ~/.ssh/AWSKey.pem ~/.ssh/vm_rsa.pub ubuntu@host:/home/ubuntu/.ssh/id_rsa.pub
+
+sudo vim /etc/hosts
+# Add host aliases
+
+
+# Set postgres superuser password and create users
+sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'xxxxx';"
+sudo -u postgres createuser ion
+sudo -u postgres psql -U postgres -d postgres -c "alter user ion with password 'xxxxx';"
+
+sudo vim /etc/postgresql/9.3/main/pg_hba.conf
+# For rule all (1 line), change peer to md5 to enable password login
+
+sudo service postgresql restart
+
+
+# Configure git
+git config --global user.email "name@email.com"
+git config --global user.name "Full Name"
+git config --global core.editor vim
+
+
+# Install virtualenv and code
+mkdir ~/.virtualenvs
+vim .profile
+# Add these lines:
+export EDITOR="/usr/bin/vim"
+export WORKON_HOME="~/.virtualenvs"
+source /usr/local/bin/virtualenvwrapper.sh
+
+source .profile
+
+mkvirtualenv --no-site-packages xp
+
+
+# Additional installs
+pip install numpy==1.7.1
+
+
+# Proceed with SciON install as mentioned in README
+
+
+
+-------------------------------------------------------------------------------
+Optional install for additional data related packages:
+-------------------------------------------------------------------------------
+
+
+# Install udunits library
+wget 'ftp://ftp.unidata.ucar.edu/pub/udunits/udunits-2.1.24.tar.gz'
+tar -zxvf udunits-2.1.24.tar.gz
+cd udunits-2.1.24
+./configure
+make
+sudo make install
+cd ..
+pip install udunitspy
+
+# Install HDF5
+wget "http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.13.tar.gz"
+tar -xvf hdf5-1.8.13.tar.gz
+cd hdf5-1.8.13/
+./configure --enable-hl --with-zlib=/usr/local/zlib --enable-cxx --prefix=/usr/local
+make
+sudo make install
+
+wget "ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-1.2.8.tar.gz"
+tar -xvf zlib-1.2.8.tar.gz
+zlib-1.2.8/
+./configure
+make
+sudo make install
+
+wget "ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.2.1.1.tar.gz"
+tar -xvf netcdf-4.2.1.1.tar.gz
+cd netcdf-4.2.1.1/
+./configure --enable-netcdf-4 --enable-shared --enable-dap --prefix=/usr/local
+make
+sudo make install
+
+wget "http://sddevrepo.oceanobservatories.org/pkg-src/lukecampbell-gsw-teos-v3.0r4-0-ge71b5f4.tar.gz"
+tar xvf lukecampbell-gsw-teos-v3.0r4-0-ge71b5f4.tar.gz
+cd lukecampbell-gsw-teos-e71b5f4/
+libtoolize
+aclocal
+autoheader
+bash ./autogen.sh
+./configure --prefix=/usr/local/libgswteos
+make
+sudo make install
+sudo ln -s /usr/local/libgswteos/lib/libgswteos-10.la /usr/local/lib/
+sudo ln -s /usr/local/libgswteos/lib/libgswteos-10.so.3 /usr/local/lib/
+sudo ln -s /usr/local/libgswteos/lib/libgswteos-10.so.3.0.0 /usr/local/lib/
+sudo ln -s /usr/local/libgswteos/lib/libgswteos-10.so /usr/local/lib/
+sudo ln -s /usr/local/libgswteos/include/gswteos-10.h /usr/local/include/
+
+#sudo echo "/usr/local/lib" > /etc/ld.so.conf.d/usr-local.conf
+sudo ldconfig
+
