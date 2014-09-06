@@ -40,10 +40,10 @@ See file INSTALL for details.
 CONFIGURE
 =========
 
-Provide local configuration overrides (e.g. broker host, logging levels) in:
+Provide local configuration (e.g. host names, passwords, log levels) in:
     > res/config/pyon.local.yml
     > res/config/logging.local.yml
-    Note: DO NOT EDIT the standard configuration and logging config files.
+    Note: You can copy from res/config/examples. DO NOT EDIT the provided config files.
 
 
 USE

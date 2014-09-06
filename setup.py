@@ -14,9 +14,9 @@ if sys.platform == 'darwin':
 
 version = '0.0.1-dev'
 
-setup(  name = 'scion',
+setup(  name = 'scioncc',
         version = version,
-        description = 'Scientific Observatory Network',
+        description = 'Scientific Observatory Network Capability Container',
         url = '',
         download_url = '',
         license = 'BSD',

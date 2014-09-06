@@ -44,14 +44,10 @@ Note: Only run this file on a new VM if you know what you are doing.
 Common Installation
 ===================
 
-Setup a virtualenv to run COI-services:
+Setup a virtualenv to run the SciON capability container:
     > mkvirtualenv --no-site-packages scion
-    Note: Do not use the pyon virtualenv if you are a pyon developer
 
-Pin setuptools in your virtualenv
-    > pip install -U setuptools==0.8
-
-Clone scion (this repository, if you haven't already) in your code directory:
+Clone scion (this repository) in your code directory:
     > cd code   # Whatever your code repository directory is
     > git clone git@github.com:scionrep/scion.git
 
@@ -59,7 +55,7 @@ Use buildout to install the python package dependencies with:
     > python bootstrap.py -v 2.2.0
     > bin/buildout
 
-Generate service definition interfaces and abstract base classes files:
+Generate service definition interfaces and abstract base classes:
     > bin/generate_interfaces
     Note: These will be placed in the interfaces/ subdirectory.
 
