@@ -25,6 +25,11 @@ data streaming and signal processing.
 SciON provides a message-driven, service-oriented scalable application
 deployment platform that can be extended to meet custom needs.
 
+Based on the Ocean Observatories Initiative Cyberinfrastructure.
+See:
+  https://github.com/ooici/coi-services
+  https://github.com/ooici/pyon
+
 
 INSTALL
 =======
@@ -32,13 +37,20 @@ INSTALL
 See file INSTALL for details.
 
 
-USE
-===
+CONFIGURE
+=========
 
 Provide local configuration overrides (e.g. broker host, logging levels) in:
     > res/config/pyon.local.yml
     > res/config/logging.local.yml
     Note: DO NOT EDIT the standard configuration and logging config files.
+
+
+USE
+===
+
+Start a development instance of the SciON system with basic services:
+    > bin/pycc --rel res/deploy/basic.yml
 
 List supported Pyon Capability Container arguments:
     > bin/pycc --help
@@ -52,18 +64,21 @@ Run smoke tests to verify sanity of the system:
 Run full integration tests - this will take a long time so may be optional:
     > bin/nosetests -v -a INT
 
-Start development instance of the ION system with all services:
-    > bin/pycc --rel res/deploy/r2deploy.yml
+
+INTERACTIVE SHELL
+=================
+
+After startup with bin/pycc, the capability container drops into an interactive
+IPython shell. Introspect running services or perform any Python programming step.
 
 
 TROUBLESHOOTING
 ===============
 
-To reset the system use:
+To reset the system's messaging and datastore persistence, call:
     > bin/pycc -X -fc -bc
 
-Outdated *.pyc files can causes your
-tests to fail unexpectedly.  Do an ant clean and try again.
+Clean outdated code (*.pyc files):
     > ant clean
     > bin/generate_interface
 
