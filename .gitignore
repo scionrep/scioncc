@@ -9,6 +9,7 @@
 /.settings
 /.metadata
 dropin.cache
+**/.DS_Store
 *.log
 *.pid
 *.pyc
