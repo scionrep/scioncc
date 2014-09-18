@@ -188,7 +188,7 @@ def is_trusted_request():
 #   wget -o out.txt --post-data 'payload={"serviceRequest": { "serviceName": "resource_registry", "serviceOp": "find_resources",
 #   "params": { "restype": "BankAccount", "lcstate": "", "name": "", "id_only": true } } }' http://localhost:5000/ion-service/resource_registry/find_resources
 #
-@service_gateway_app.route('/service/<service_name>/<operation>', methods=['GET', 'POST'])
+@service_gateway_app.route('/services/<service_name>/<operation>', methods=['GET', 'POST'])
 @service_gateway_app.route('/ion-service/<service_name>/<operation>', methods=['GET', 'POST'])
 def process_gateway_request(service_name, operation):
     # @TODO make this service smarter to respond to the mime type in the request data (ie. json vs text)
@@ -261,6 +261,7 @@ def process_gateway_request(service_name, operation):
 # Example:
 #   curl -d 'payload={"agentRequest": { "agentId": "121ab46344cb3b30112", "agentOp": "execute",
 #   "params": { "command": ["AgentCommand",  {"command": "reset"}]  } }' http://localhost:5000/ion-agent/121ab46344cb3b30112/execute
+@service_gateway_app.route('/agents/<resource_id>/<operation>', methods=['POST'])
 @service_gateway_app.route('/ion-agent/<resource_id>/<operation>', methods=['POST'])
 def process_gateway_agent_request(resource_id, operation):
     try:
