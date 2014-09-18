@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__author__ = 'Stephen P. Henrie'
+__author__ = 'Stephen P. Henrie, Michael Meisinger'
 
 import inspect, ast, sys, traceback, string
 import json, simplejson
@@ -188,6 +188,7 @@ def is_trusted_request():
 #   wget -o out.txt --post-data 'payload={"serviceRequest": { "serviceName": "resource_registry", "serviceOp": "find_resources",
 #   "params": { "restype": "BankAccount", "lcstate": "", "name": "", "id_only": true } } }' http://localhost:5000/ion-service/resource_registry/find_resources
 #
+@service_gateway_app.route('/service/<service_name>/<operation>', methods=['GET', 'POST'])
 @service_gateway_app.route('/ion-service/<service_name>/<operation>', methods=['GET', 'POST'])
 def process_gateway_request(service_name, operation):
     # @TODO make this service smarter to respond to the mime type in the request data (ie. json vs text)
@@ -310,52 +311,6 @@ def process_gateway_agent_request(resource_id, operation):
         if e is NotFound:
             log.warning('The agent instance for id %s is not found.' % resource_id)
         return build_error_response(e)
-
-
-# Route to provide the RSN OMS with a means of sending events to the CI system using HTTP requests.
-# test this method with curl:
-# curl -H "Content-type: application/json" --data "{\"summary\": \"fake event triggered from CI using OMS generate_test_event\",
-#     \"severity\": 3, \"class\": \"/Test\", \"platform_id\":\"test_platform_123\" , \"timestamp\":\"timestamp\" , \"message\":
-#     \"fake event triggered from CI using OMS generate_test_event\", \"test_event\": True}" http://localhost:5000/ion-service/oms_event
-@service_gateway_app.route('/ion-service/oms_event', methods=['GET','POST'])
-def process_oms_event():
-    if not request.data:
-        log.warning('process_oms_event: invalid OMS event payload: %r', request.data)
-        return gateway_json_response(OMS_BAD_REQUEST_RESPONSE)
-
-    payload = json_loads(str(request.data))
-    if not isinstance(payload, list):
-        log.warning('process_oms_event: invalid OMS event payload: '
-                    'expecting array but got: %r', payload)
-        return gateway_json_response(OMS_BAD_REQUEST_RESPONSE)
-
-    log.debug('process_oms_event: payload=%s', payload)
-
-    event_publisher = EventPublisher()
-
-    for obj in payload:
-        for k in ['event_id', 'platform_id', 'message']:
-            if k not in obj:
-                log.warning('process_oms_event: invalid OMS event: %r missing. '
-                            'Received object: %s', k, obj)
-                #return gateway_json_response(OMS_BAD_REQUEST_RESPONSE)
-
-        # note the the external event_id is captured in the sub_type field:
-        evt = dict(
-            event_type     = 'OMSDeviceStatusEvent',
-            origin_type    = 'OMS Platform',
-            origin         = obj.get('platform_id', 'platform_id NOT PROVIDED'),
-            sub_type       = obj.get('event_id', 'event_id NOT PROVIDED'),
-            description    = obj.get('message', ''),
-            status_details = obj)
-        try:
-            event_publisher.publish_event(**evt)
-            log.debug('process_oms_event: published: %s', evt)
-
-        except Exception as e:
-            log.exception('process_oms_event: could not publish OMS event: %s', evt)
-
-    return gateway_json_response(OMS_ACCEPTED_RESPONSE)
 
 
 # Private implementation of standard flask jsonify to specify the use of an encoder to walk ION objects
@@ -606,8 +561,6 @@ def set_object_field(obj, field, field_val):
 #Used by json encoder
 def ion_object_encoder(obj):
     return obj.__dict__
-
-
 
 
 # This service method returns the list of registered resource objects sorted alphabetically. Optional query
@@ -866,4 +819,3 @@ def resolve_org_negotiation():
 
     except Exception as e:
         return build_error_response(e)
-

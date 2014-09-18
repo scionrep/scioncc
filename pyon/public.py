@@ -12,8 +12,8 @@ __all__ += ['iex']
 from pyon.core.bootstrap import get_obj_registry, IonObject, get_sys_name, CFG
 __all__ += ['get_obj_registry', 'IonObject', 'get_sys_name', 'CFG']
 
-from pyon.core.exception import BadRequest, NotFound, Inconsistent, Conflict, IonException, Timeout
-__all__ += ['BadRequest', 'NotFound', 'Inconsistent', 'Conflict', 'IonException', 'Timeout']
+from pyon.core.exception import BadRequest, NotFound, Inconsistent, Conflict, IonException, Timeout, Unauthorized
+__all__ += ['BadRequest', 'NotFound', 'Inconsistent', 'Conflict', 'IonException', 'Timeout', 'Unauthorized']
 
 from pyon.core.thread import PyonThreadError, PyonThread, PyonThreadManager
 __all__ += ['PyonThreadError', 'PyonThread', 'PyonThreadManager']
