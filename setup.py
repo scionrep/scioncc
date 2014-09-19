@@ -59,16 +59,16 @@ setup(  name = 'scioncc',
         install_requires = [
             'setuptools',
             'utilities',
-            'greenlet==0.4.0',     # We need the greenlet version matching gevent 0.13.8
-            'gevent',              # Don't put == version on gevent so that buuldout.cfg can set it
+            'greenlet',
+            'gevent',
             'simplejson',
             'msgpack-python==0.1.13',  # TBD: Check if this specific version is needed
             'pika==0.9.5',         # Messaging stack is tested and working with issues of this version
-            'httplib2>=0.7.2',
+            'httplib2',
             'pyzmq==2.2.0',
             'gevent_zeromq==0.2.5',
             'zope.interface',
-            'couchdb==0.9',
+            'couchdb',
             'psycopg2',
             'python-daemon==1.6',
             'M2Crypto',

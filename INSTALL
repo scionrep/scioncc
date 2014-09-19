@@ -3,14 +3,10 @@ SciON INSTALLATION
 ==================
 
 
-
 Mac OS Prerequisites
 ====================
 
-See also here for a basic development environment setup. Some steps are redundant or not necessary:
-    https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
-
-Install homebrew
+Install homebrew package manager
     > /usr/bin/ruby <(curl -fsSkL raw.github.com/mxcl/homebrew/go)
     Note: see 'brew doctor' for any issues with brew and 'brew update' often
 
@@ -33,6 +29,9 @@ Python packages and environment management:
     > easy_install --upgrade virtualenvwrapper
     Note: This require Mac's XCode with installed command line tools
 
+See here for a basic development environment setup. Some steps are redundant or not necessary:
+    https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
+
 
 Linux (Ubuntu) Prerequisites
 ============================
@@ -40,7 +39,7 @@ Linux (Ubuntu) Prerequisites
 See scripts/install/install_ubuntu.sh
 Note: Only run this file on a new VM if you know what you are doing.
 
-Then see manual steps in scripts/install/install_ubuntu.txt
+Then follow manual steps in scripts/install/install_ubuntu.txt
 
 
 Common Installation
@@ -49,9 +48,12 @@ Common Installation
 Setup a virtualenv to run the SciON capability container:
     > mkvirtualenv --no-site-packages scion
 
-Clone scion (this repository) in your code directory:
+Install numpy to the virtualenv
+    > pip install numpy==1.7.1
+
+Clone scioncc (this repository) in your code directory:
     > cd code   # Whatever your code repository directory is
-    > git clone git@github.com:scionrep/scion.git
+    > git clone git@github.com:scionrep/scioncc.git
 
 Use buildout to install the python package dependencies with:
     > python bootstrap.py -v 2.2.0
@@ -67,18 +69,23 @@ RUN-TIME DEPENDENCIES
 
 POSTGRESQL (DATABASE):
 
-Run postgresql in second terminal before starting the container or running tests:
+Start postgresql (in a terminal or as a service) before starting the container or running tests:
+    MacOS:
     > /usr/local/bin/postgres -D /usr/local/var/postgres
+    Ubuntu Linux:
+    > sudo service postgresql start
 
 
 RABBITMQ (MESSAGE BROKER):
+    MacOS:
     > rabbitmq-server
+    Ubuntu Linux:
+    > sudo service rabbitmq-server start
 
 
-SOURCE PATH
+SOURCE PATH:
 
 Add the current directory to your PYTHONPATH for an easier time running
 scripts. Add the following line to your ~/.profile (create it if it
 doesn't exist, or use bash_profile if you already have that):
-    export PYTHONPATH=.
-
+    > export PYTHONPATH=.
