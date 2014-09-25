@@ -1,4 +1,4 @@
-# Central configuration file for ION container, system and services.
+# Central configuration file for SciON container, system and services.
 # The contents are transformed into a dict that supports dot notation:
 #   CFG.server.amqp.host
 # Do not modify this file! Set overrides in pyon.local.yml or in rel files
@@ -64,26 +64,7 @@ server:
     password: ion
     vhost: /
     heartbeat: 30
-  couchdb:
-    # The basic CouchDB connection
-    type: couchdb
-    host: localhost
-    port: 5984
-    username:
-    password:
-  couchbase:
-    # The basic Couchbase connection
-    type: couchbase
-    host: localhost
-    port: 8091
-    api_port: 8092
-    username: default
-    password: default
-    bucket_password:
-    bucket_ram_quota_small_mb: 128
-    bucket_ram_quota_medium_mb: 512
-    bucket_ram_quota_big_mb: 1024
-    bucket_ram_quota_xbig_mb: 2048
+
   postgresql:
     type: postgresql
     host: localhost
@@ -93,7 +74,7 @@ server:
     admin_username:             # If empty, defaults to current login username
     admin_password:
     default_database: postgres  # Postgres' internal database
-    database: ion               # Database name for OOI Network (will be sysname prefixed)
+    database: ion               # Database name for SciON (will be sysname prefixed)
     connection_pool_max: 5      # Number of connections for entire container
 
   smtp:
@@ -103,11 +84,7 @@ server:
     port: 25
     sender: data_alerts@oceanobservatories.org
     password: ""
-  #oms event receiver currently co-locates within service gateway
-  oms:
-    host: localhost
-    port: 5000
-    path: /ion-service/oms_event
+
   pydap:
     # Python DAP server
     type: pydap
@@ -136,8 +113,9 @@ server:
     # How long ERDDAP should cache the dataset extents for (in milliseconds)
     # recommended setting is at least 30s = 30000
     refresh_interval: 30000
+
   localrouter:
-    # In-process router
+    # In-process message router
     type: local
 
 
@@ -145,11 +123,8 @@ server:
 # The "container" root entry defines settings for the current Pyon container
 container:
   # Capability profile to use (assumes a file in res/profile/<name>.yml unless a path is specified)
-  # NOTE: This can affect the configuration if there is a config section in the profile file!!!
+  # NOTE: This can affect the configuration if there is a config section in the profile file
   profile: development   # Profile for development purposes
-  #profile: production   # Profile for production container
-  #profile: gumstix      # Profile for gumstix container
-  #profile: dataadmin    # Profile for a database admin
 
   datastore:
     default_server: postgresql  # Which server connection (and type) to use as primary datastore
@@ -157,9 +132,6 @@ container:
       couchdb:
         base: pyon.datastore.couchdb.base_store.CouchDataStore
         full: pyon.datastore.couchdb.datastore.CouchPyonDataStore
-      couchbase:
-        base: pyon.datastore.couchbase.base_store.CouchbaseDataStore
-        full: pyon.datastore.couchbase.datastore.CouchbasePyonDataStore
       postgresql:
         base: pyon.datastore.postgresql.base_store.PostgresDataStore
         full: pyon.datastore.postgresql.datastore.PostgresPyonDataStore
@@ -168,9 +140,9 @@ container:
     # @TODO rename to delegate or similar, used for management api calls too
     auto_register: True
     names:
-      durable: False
+      durable: False    # Declare exchanges and queues as durable
     management:
-      port: 55672
+      port: 15672       # Note: RabbitMQ management before 3.x versions was on port 55672
       username: guest
       password: guest
 
@@ -187,6 +159,7 @@ container:
 
   processes:
     exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
+    log_exceptions: False    # Whether all RPC call invocation exceptions should be logged
 
   objects:
     validate: # TODO: move entries to here
@@ -211,10 +184,9 @@ container:
       host: localhost # 0.0.0.0 binds on all
       port: 8001
 
-  flask_webapp:
-    port: 8080   # Port of the container UI - TODO: move under containerui config
-
   containerui:
+    web_server:
+      port: 8080
     association_graph: False    # Show D3 graph of associations
     read_only: False            # Run in read-only mode
 
@@ -346,145 +318,8 @@ service:
     max_events_limit: 2000
     max_daily_notifications: 100
 
-# TODO: Remove (use global flags instead)
-external_data_agent_management:
-  persistent: true
-
-# ----------------------------------------------------------------------------------
-# The "event" root entry defines event types and event originators, and it
-# specifies which events each originator can publish
-event:
-  originators: [container, 
-                process, 
-                application, 
-                datasource, 
-                dataset, 
-                resource_agent, 
-                service]
-  types: [resource_lifecycle,
-          container_lifecycle,
-          process_lifecycle,
-          app_loader,
-          container_startup,
-          datasource_update,
-          schedule,
-          datasource_unavailable,
-          dataset_supplement_added,
-          business_state_modification,
-          dataset_change,
-          datasource_change,
-          ingestion_processing,
-          new_subscription,
-          del_subscription,
-          data,
-          data_block,
-          instrument_sample_data,          
-          stream_ingestion_policy]
-  container: [container_lifecycle, 
-              container_startup]
-  process: [process_lifecycle]
-  application: [app_loader, 
-                schedule, 
-                business_state_modification]
-  datasource: [datasource_update, 
-               datasource_unavailable,
-               datasource_change]
-  dataset: [dataset_supplement_added, 
-            dataset_change]
-  resource_agent: [resource_lifecycle, 
-                   data, 
-                   data_block, 
-                   instrument_sample_data]
-  service: [new_subscription, 
-            del_subscription, 
-            ingestion_processing, 
-            stream_ingestion_policy]
-
-
-device:
-  sbe37:
-    host: sbe37-simulator.oceanobservatories.org
-    port: 4001
-    port_agent_data_port: 4000
-    port_agent_cmd_port: 4003
-    port_agent_binary: port_agent
-    dvr_egg: "http://sddevrepo.oceanobservatories.org/releases/seabird_sbe37smb_ooicore-0.1.6-py2.7.egg"
-    dvr_sha: "b2c8131ae65bdc9b0decd829dade0c7cb16c6fdf"
-    dvr_mod: "mi.instrument.seabird.sbe37smb.ooicore.driver"
-    dvr_cls: "SBE37Driver"
-    workdir: "/tmp/"
-    delim: ["<<",">>"]
-  dataset_agent:
-    datasource_cache_dir: /tmp/dsastore
 
 units: res/config/units/udunits2.xml
-
-# ----------------------------------------------------------------------------------
-# The "eoi" root entry, used by the eoi services
-eoi:
-  #holds some meta data used by the eoi services
-  meta:
-    use_eoi_services: False
-    #add additional debugging information to the log file
-    debug: true
-    #geospatial fields
-    lat_field: lat
-    lon_field: lon
-
-  #geoserver serving OWS/W*S services and geo layers  
-  geoserver:
-    #server and port for geoserver 
-    server: http://localhost:9090
-    #geoserver store for the ooi datasets 
-    geoserver_ooi_store: ooi
-    #geoserver workspace the ooi store belongs too
-    geoserver_ooi_workspace: geonode
-    #geoserver username (default geoserver)
-    user_name: admin
-    #geoserver password (default geoserver)
-    password: geoserver
-    #layers must start and end with a non numeric character
-    layer_prefix: ooi_
-    layer_suffix: _ooi
-
-  #postgres DB for storing the FDT and views        
-  postgres:
-    #postgres db location
-    host: localhost
-    #postgres db user name
-    user_name: ion
-    #postgres db password
-    password: 
-    #postgres db to store FDT in
-    database: postgres
-    #postgres db port
-    port: 5432
-    #postgres views on FDT cannot start with a non numeric character
-    table_prefix: _
-    table_suffix: _view
-    #postgres db session startup command
-    session_startup_ln1: select appendPath();
-    session_startup_ln2: 
-
-  #importer service used for modifying geoserver layers
-  importer_service:
-    #importer service server
-    server: http://localhost
-    #importer service port
-    port: 8844
-    #importer service command to add a geoserver layer
-    add_layer: addlayer
-    #importer service command to remove a geoserver layer
-    remove_layer: removelayer
-    #importer service command to reset the geoserver_ooi_store
-    reset_store: resetstore
-    
-  #coverageFDWSever        
-  fdw:
-    #default server used for FDT and FDW
-    server: cov_srv
-    #not used as yet
-    create_fdw: 
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # PLEASE DO NOT ADD NEW TOP LEVEL KEYS

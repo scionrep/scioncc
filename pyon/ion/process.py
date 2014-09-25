@@ -87,6 +87,7 @@ class IonProcessThread(PyonThread):
         self._heartbeat_op      = None              # last operation (by AR)
         self._heartbeat_count   = 0                 # number of times this operation has been seen consecutively
 
+        self._log_call_exception = CFG.get_safe("container.processes.log_exceptions", False)
         PyonThread.__init__(self, target=target, **kwargs)
 
     def heartbeat(self):
@@ -363,16 +364,29 @@ class IonProcessThread(PyonThread):
                 continue
 
             try:
+                # ******                                                      ******
+                # ****** THIS IS WHERE THE RPC OPERATION/SERVICE CALL IS MADE ******
+                # ******                                                      ******
+
                 with self.service.push_context(context):
                     with self.service.container.context.push_context(context):
                         self._ctrl_current = ar
                         res = call(*callargs, **callkwargs)
+
+                # ******                                                      ******
+                # ****** END CALL, EXCEPTION HANDLING FOLLOWS                 ******
+                # ******                                                      ******
+
             except OperationInterruptedException:
                 # endpoint layer takes care of response as it's the one that caused this
                 log.debug("Operation interrupted")
                 pass
+
             except Exception as e:
-                # raise the exception in the calling greenlet, and don't
+                if self._log_call_exception:
+                    log.exception("PROCESS exception: %s" % e.message)
+
+                # Raise the exception in the calling greenlet, and don't
                 # wait for it to die - it's likely not going to do so.
 
                 # try decorating the args of the exception with the true traceback
