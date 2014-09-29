@@ -2,16 +2,8 @@
 This assumes an installation on a Ubuntu VM (here 14.04) from scratch
 -------------------------------------------------------------------------------
 
-# Execute dependencies install script
-sh scripts/install/install_dep.sh
-
-
-# Copy VM/Github key pair to .ssh as id_rsa and id_rsa.pub (adjust file names)
-scp -i ~/.ssh/AWSKey.pem ~/.ssh/vm_rsa ubuntu@host:/home/ubuntu/.ssh/id_rsa
-scp -i ~/.ssh/AWSKey.pem ~/.ssh/vm_rsa.pub ubuntu@host:/home/ubuntu/.ssh/id_rsa.pub
-
-sudo vim /etc/hosts
-# Add host aliases as needed
+# Execute dependencies install script (from repo root):
+sudo sh scripts/install/install_ubuntu.sh
 
 
 # Set postgres superuser password and create users
