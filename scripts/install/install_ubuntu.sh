@@ -40,6 +40,7 @@ sudo apt-get install -y openssl
 sudo apt-get install -y pep8
 sudo apt-get install -y pyflakes
 sudo apt-get install -y python
+sudo apt-get install -y python-all-dev
 sudo apt-get install -y python-apt
 sudo apt-get install -y python-gevent
 sudo apt-get install -y python-greenlet
