@@ -21,7 +21,7 @@ from ion.core.includes.mi import DriverEvent
 from coverage_model.parameter import ParameterContext
 from coverage_model.parameter_types import QuantityType, ArrayType
 
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import  DataAcquisitionManagementServiceClient
 from interface.objects import ExternalDataset, AgentCommand
 from interface.objects import ContactInformation, UpdateDescription, DatasetDescription

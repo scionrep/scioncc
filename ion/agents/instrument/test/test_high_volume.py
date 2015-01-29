@@ -36,10 +36,10 @@ from ion.agents.instrument.test.test_instrument_agent import start_instrument_ag
 from ion.util.enhanced_resource_registry_client import EnhancedResourceRegistryClient
 from ion.services.dm.utility.granule_utils import time_series_domain
 from ion.services.dm.utility.granule_utils import RecordDictionaryTool
-from interface.services.dm.idata_retriever_service import DataRetrieverServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.idata_retriever_service import DataRetrieverServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
 from interface.services.sa.idata_product_management_service import  DataProductManagementServiceClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 from interface.objects import AgentCommand, Dataset
 from pyon.agent.agent import ResourceAgentState

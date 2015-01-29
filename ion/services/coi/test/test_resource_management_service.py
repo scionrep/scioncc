@@ -14,8 +14,8 @@ from pyon.util.context import LocalContextMixin
 from ion.services.coi.resource_management_service import ResourceManagementService
 from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 
-from interface.services.coi.iresource_management_service import ResourceManagementServiceClient, ResourceManagementServiceProcessClient
-from interface.services.coi.iobject_management_service import ObjectManagementServiceClient
+from interface.services.core.iresource_management_service import ResourceManagementServiceClient, ResourceManagementServiceProcessClient
+from interface.services.core.iobject_management_service import ObjectManagementServiceClient
 
 
 @attr('UNIT', group='coi')

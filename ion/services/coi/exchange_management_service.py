@@ -4,7 +4,7 @@ __author__ = 'Michael Meisinger'
 
 from pyon.public import CFG, IonObject, log, RT, PRED
 
-from interface.services.coi.iexchange_management_service import BaseExchangeManagementService
+from interface.services.core.iexchange_management_service import BaseExchangeManagementService
 from pyon.core.exception import Conflict, Inconsistent, NotFound, BadRequest
 from pyon.util.log import log
 #from pyon.ion.exchange import ExchangeSpace, ExchangeName, ExchangePoint

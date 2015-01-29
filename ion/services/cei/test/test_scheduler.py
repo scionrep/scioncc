@@ -4,8 +4,8 @@ from pyon.core.exception import BadRequest, NotFound
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.util.context import LocalContextMixin
 from pyon.event.event import EventSubscriber
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
-from interface.services.cei.ischeduler_service import SchedulerServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.ischeduler_service import SchedulerServiceProcessClient
 from nose.plugins.attrib import attr
 import gevent
 from gevent.event import AsyncResult

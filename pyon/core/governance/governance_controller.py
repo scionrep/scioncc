@@ -17,8 +17,8 @@ from pyon.core.exception import NotFound, Unauthorized
 from pyon.container.procs import SERVICE_PROCESS_TYPE, AGENT_PROCESS_TYPE
 from pyon.util.containers import get_ion_ts, DictDiffer
 
-from interface.services.coi.ipolicy_management_service import PolicyManagementServiceProcessClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.ipolicy_management_service import PolicyManagementServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 class GovernanceController(object):
     """

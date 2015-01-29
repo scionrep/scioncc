@@ -49,9 +49,9 @@ from interface.services.sa.idata_acquisition_management_service import DataAcqui
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceProcessClient
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceProcessClient
 from interface.services.sa.iobservatory_management_service import ObservatoryManagementServiceProcessClient
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceProcessClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceProcessClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceProcessClient
 
 ARG_HELP = {
     "help":         "prints help for operation",

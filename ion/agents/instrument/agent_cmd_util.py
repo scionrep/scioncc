@@ -25,8 +25,8 @@ from ion.agents.instrument.driver_process import DriverProcessType
 from ion.agents.instrument.driver_process import ZMQEggDriverProcess
 from ion.agents.instrument.driver_int_test_support import DriverIntegrationTestSupport
 
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
 
 class FakeProcess(LocalContextMixin):
     """

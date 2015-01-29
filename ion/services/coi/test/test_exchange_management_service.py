@@ -15,8 +15,8 @@ from pyon.net.transport import BaseTransport
 from pyon.util.containers import DotDict
 
 import unittest
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
-from interface.services.coi.iexchange_management_service import ExchangeManagementServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iexchange_management_service import ExchangeManagementServiceClient
 
 from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound
 from pyon.public import PRED, RT, CFG

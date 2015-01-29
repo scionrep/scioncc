@@ -12,7 +12,7 @@ from pyon.event.event import EventPublisher
 from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier
 from pyon.core.governance.negotiation import Negotiation
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum, NegotiationStatusEnum, ComputedValueAvailability, ComputedIntValue, NegotiationTypeEnum
-from interface.services.coi.iorg_management_service import BaseOrgManagementService
+from interface.services.core.iorg_management_service import BaseOrgManagementService
 from pyon.core.governance import ORG_MANAGER_ROLE, ORG_MEMBER_ROLE
 
 INSTRUMENT_OPERATOR_ROLE = "INSTRUMENT_OPERATOR"

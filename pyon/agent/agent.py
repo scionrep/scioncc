@@ -34,7 +34,7 @@ from interface.services.iresource_agent import BaseResourceAgent
 from interface.services.iresource_agent import ResourceAgentProcessClient
 from interface.objects import CapabilityType
 from interface.objects import ResourceAgentExecutionStatus
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 #Agent imports
 from pyon.agent.instrument_fsm import InstrumentFSM, ThreadSafeFSM

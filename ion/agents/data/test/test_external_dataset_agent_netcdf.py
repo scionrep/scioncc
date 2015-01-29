@@ -14,8 +14,8 @@ from coverage_model.parameter import ParameterDictionary, ParameterContext
 from coverage_model.parameter_types import QuantityType
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 from interface.objects import ExternalDatasetAgent, ExternalDatasetAgentInstance, ExternalDataProvider, DataSourceModel, ContactInformation, UpdateDescription, DatasetDescription, ExternalDataset, Institution, DataSource
 from ion.services.dm.utility.granule_utils import time_series_domain
 
@@ -26,7 +26,7 @@ from ion.agents.data.test.test_external_dataset_agent import ExternalDatasetAgen
 from nose.plugins.attrib import attr
 
 #temp until stream defs are completed
-from interface.services.dm.ipubsub_management_service import\
+from interface.services.core.ipubsub_management_service import\
     PubsubManagementServiceClient
 
 import numpy

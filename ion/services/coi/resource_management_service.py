@@ -13,7 +13,7 @@ from pyon.util.containers import get_safe, named_any, get_ion_ts, is_basic_ident
 
 import interface.objects
 from interface.objects import AgentCapability, AgentCommandResult, CapabilityType, Resource
-from interface.services.coi.iresource_management_service import BaseResourceManagementService
+from interface.services.core.iresource_management_service import BaseResourceManagementService
 
 
 class ResourceManagementService(BaseResourceManagementService):

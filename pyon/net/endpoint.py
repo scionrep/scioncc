@@ -22,7 +22,6 @@ from pyon.core.interceptor.interceptor import Invocation, process_interceptors
 from pyon.util.containers import get_ion_ts, get_ion_ts_millis
 from pyon.util.log import log
 from pyon.net.transport import NameTrio, BaseTransport, XOTransport
-from pyon.util.sflow import SFlowManager
 
 # create special logging category for RPC message tracking
 import logging
@@ -1297,22 +1296,6 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
 
         Then performs the transact call if the manager says to do so.
         """
-        if CFG.get_safe('container.sflow.enabled', False):
-            sm = self._get_sflow_manager()
-            if sm and sm.should_sample:
-                sample_name = self._get_sample_name()
-                try:
-                    # get queue length
-                    qlen, _ = self.channel.get_stats()
-                    qlen += self.channel._recv_queue.qsize()      # add delivered but unproc'd msgs, @TODO correct?
-
-                    trans_kwargs = self._build_sample(sample_name, status, status_descr, msg, headers, response, response_headers, qlen)
-                    sm.transaction(**trans_kwargs)
-                except Exception:
-                    log.exception("Could not sample, ignoring")
-
-            else:
-                log.debug("No SFlowManager or it told us not to sample this transaction")
 
     def _get_sample_name(self):
         """
@@ -1322,17 +1305,6 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         """
         # at the rpc level we really don't know, we're not a process.
         return "unknown-rpc-server"
-
-    def _get_sflow_manager(self):
-        """
-        Finds the sFlow manager that should be used.
-        """
-        # at this level, we don't have any ref back to the container other than the singleton
-        from pyon.container.cc import Container
-        if Container.instance:
-            return Container.instance.sflow_manager
-
-        return None
 
     def _build_sample(self, name, status, status_descr, msg, headers, response, response_headers, qlen):
         """
@@ -1375,8 +1347,7 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
 
         op = headers.get('op', 'unknown')
 
-        # status code map => ours to sFlow (defaults to 3 aka INTERNAL_ERROR)
-        status = SFlowManager.status_map.get(status, 3)
+        status = ""
 
         sample = {'app_name':     bootstrap.get_sys_name()[0:64],
                   'op':           op[0:32],

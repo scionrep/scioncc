@@ -9,7 +9,7 @@ from pyon.ion.exchange import ExchangeSpace, ExchangePoint, ExchangeName
 
 from ion.core.bootstrap_process import BootstrapPlugin
 
-from interface.services.coi.iexchange_management_service import ExchangeManagementServiceProcessClient
+from interface.services.core.iexchange_management_service import ExchangeManagementServiceProcessClient
 from interface.objects import ExchangeBroker as ResExchangeBroker
 from interface.objects import ExchangeSpace as ResExchangeSpace
 from interface.objects import ExchangePoint as ResExchangePoint

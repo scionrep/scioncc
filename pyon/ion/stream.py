@@ -11,7 +11,6 @@ import gevent
 from pyon.core.exception import BadRequest
 from pyon.net.endpoint import Publisher, Subscriber
 from pyon.util.arg_check import validate_is_instance
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceProcessClient
 from pyon.util.log import log
 from pyon.ion.service import BaseService
 from interface.objects import StreamRoute
@@ -46,16 +45,14 @@ class StreamPublisher(Publisher):
         self.stream_id = stream_id
         if stream_id:
             # Regardless of what's passed in for stream_route look it up, prevents mismatching
-            pubsub_cli = PubsubManagementServiceProcessClient(process=process, node=process.container.node)
-            self.stream_route = pubsub_cli.read_stream_route(stream_id)
+            pass
 
         elif not stream_route:
             self.stream_route = None
             if exchange_point and routing_key:
                 self.stream_route = StreamRoute(exchange_point=exchange_point, routing_key=routing_key)
             else:
-                pubsub_cli = PubsubManagementServiceProcessClient(process=process, node=process.container.node)
-                stream_id, stream_route = pubsub_cli.create_stream(process.id, exchange_point=exchange_point or 'void')
+                # Create stream
                 self.stream_id = stream_id
                 self.stream_route = stream_route
         else:

@@ -9,7 +9,7 @@ and templates for policy definitions, aka attribute authority.
 __author__ = 'Stephen P. Henrie'
 
 
-from interface.services.coi.ipolicy_management_service import BasePolicyManagementService
+from interface.services.core.ipolicy_management_service import BasePolicyManagementService
 from pyon.core.exception import NotFound, BadRequest, Inconsistent
 from pyon.public import PRED, RT, Container, CFG, OT, IonObject
 from pyon.util.containers import is_basic_identifier, create_basic_identifier

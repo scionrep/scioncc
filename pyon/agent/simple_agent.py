@@ -17,7 +17,7 @@ from pyon.util.log import log
 from pyon.util.containers import get_ion_ts
 
 from interface.services.isimple_resource_agent import BaseSimpleResourceAgent, SimpleResourceAgentProcessClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 class SimpleResourceAgent(BaseSimpleResourceAgent):
     """

@@ -308,7 +308,7 @@ class IonServiceRegistry(object):
             if hasattr(container_instance, 'has_capability') and container_instance.has_capability('RESOURCE_REGISTRY'):
                 service_resource, _ = container_instance.resource_registry.find_resources(restype='Service', name=service_name)
             elif not local_rr_only:
-                from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+                from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
                 rr_client = ResourceRegistryServiceClient(container_instance.node)
                 service_resource, _ = rr_client.find_resources(restype='Service', name=service_name)
             else:

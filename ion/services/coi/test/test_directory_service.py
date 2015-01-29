@@ -7,7 +7,7 @@ from nose.plugins.attrib import attr
 from pyon.core.exception import BadRequest
 from pyon.util.int_test import IonIntegrationTestCase
 
-from interface.services.coi.idirectory_service import DirectoryServiceClient, DirectoryServiceProcessClient
+from interface.services.core.idirectory_service import DirectoryServiceClient, DirectoryServiceProcessClient
 
 @attr('INT', group='coi')
 class TestDirectoryService(IonIntegrationTestCase):

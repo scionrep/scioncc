@@ -8,7 +8,7 @@ from pyon.ion.directory import Directory
 from pyon.public import RT, log
 from ion.processes.bootstrap.ui_loader import UILoader
 
-from interface.services.coi.idirectory_service import BaseDirectoryService
+from interface.services.core.idirectory_service import BaseDirectoryService
 
 
 class DirectoryService(BaseDirectoryService):

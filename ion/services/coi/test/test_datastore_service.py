@@ -11,7 +11,7 @@ from pyon.datastore.datastore import DataStore
 from pyon.public import IonObject, RT
 from pyon.util.int_test import IonIntegrationTestCase
 
-from interface.services.coi.idatastore_service import DatastoreServiceClient, DatastoreServiceProcessClient
+from interface.services.core.idatastore_service import DatastoreServiceClient, DatastoreServiceProcessClient
 
 @attr('INT', group='coi')
 class TestDatastore(IonIntegrationTestCase):

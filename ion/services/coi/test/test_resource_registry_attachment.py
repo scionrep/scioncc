@@ -1,6 +1,6 @@
 from pyon.util.int_test import IonIntegrationTestCase
 
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 from interface.objects import AttachmentType
 from pyon.public import RT, PRED, IonObject
 import unittest

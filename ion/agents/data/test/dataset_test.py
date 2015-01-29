@@ -44,9 +44,9 @@ from ion.services.sa.instrument.agent_configuration_builder import ExternalDatas
 
 # Objects and clients.
 from interface.objects import DataProduct, AgentCapability, CapabilityType, AgentCommand
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceDependentClients
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
 from interface.services.sa.idata_acquisition_management_service import  DataAcquisitionManagementServiceClient
 
 from ion.processes.bootstrap.ion_loader import TESTED_DOC

@@ -25,7 +25,7 @@ from ion.agents.cei.high_availability_agent import HighAvailabilityAgentClient, 
 from ion.services.cei.test import ProcessStateWaiter, get_dashi_uri_from_cfg
 
 from interface.services.icontainer_agent import ContainerAgentClient
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
 from interface.objects import ProcessStateEnum, ProcessDefinition, ServiceStateEnum
 
 

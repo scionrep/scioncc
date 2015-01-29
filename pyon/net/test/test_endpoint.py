@@ -22,7 +22,6 @@ from pyon.net.endpoint import EndpointUnit, BaseEndpoint, RPCServer, Subscriber,
 from pyon.net.messaging import NodeB
 from pyon.ion.service import BaseService
 from pyon.net.transport import NameTrio, BaseTransport
-from pyon.util.sflow import SFlowManager
 
 # NO INTERCEPTORS - we use these mock-like objects up top here which deliver received messages that don't go through the interceptor stack.
 no_interceptors = {'message_incoming': [],
@@ -752,31 +751,9 @@ Routing method for next test, raises an IonException.
 
         self.assertRaises(exception.BadRequest, e.message_received, 3, {})
 
-    @patch('pyon.net.endpoint.ResponseEndpointUnit._send', Mock(side_effect=exception.Timeout))
-    @unittest.skip('timeouts no longer captured by sFlow')
-    def test_timeout_makes_sflow_sample(self):
-        e = RPCResponseEndpointUnit(interceptors={})
-        e._sample_request = Mock()
-
-        self.assertRaises(exception.Timeout, e._send, sentinel.msg, sentinel.headers, timeout=1)
-        e._sample_request.assert_called_once_with(-1, 'Timeout', sentinel.msg, sentinel.headers, '', {})
-
     def test__get_sample_name(self):
         e = RPCResponseEndpointUnit(interceptors={})
         self.assertEquals(e._get_sample_name(), "unknown-rpc-server")
-
-    def test__get_sflow_manager(self):
-        Container.instance = None
-        e = RPCResponseEndpointUnit(interceptors={})
-        self.assertIsNone(e._get_sflow_manager())
-
-    def test__get_sflow_manager_with_container(self):
-        Container.instance = None
-        c = Container() # ensure an instance
-        e = RPCResponseEndpointUnit(interceptors={})
-        self.assertEquals(e._get_sflow_manager(), c.sflow_manager)
-
-        Container.instance = None
 
     @patch('pyon.net.endpoint.time.time', Mock(return_value=1))
     def test__build_sample(self):
@@ -804,12 +781,9 @@ Routing method for next test, raises an IonException.
             'target' : 'theservice'
         })
 
-    @patch.dict('pyon.net.endpoint.CFG', {'container':{'sflow':{'enabled':True}}})
     def test__sample_request(self):
         e = RPCResponseEndpointUnit(interceptors={})
 
-        e._get_sflow_manager = Mock(return_value=Mock(spec=SFlowManager))
-        e._get_sflow_manager.return_value.should_sample = True
         e._build_sample = Mock(return_value={'test':sentinel.test})
         e.channel = Mock()
         e.channel.get_stats = Mock(return_value=(3, 0))
@@ -817,18 +791,13 @@ Routing method for next test, raises an IonException.
 
         e._sample_request(sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers)
 
-        e._get_sflow_manager.assert_called_once_with()
         e._build_sample.assert_called_once_with(ANY, sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers, 6)
 
-        e._get_sflow_manager.return_value.transaction.assert_called_once_with(test=sentinel.test)
 
-    @patch.dict('pyon.net.endpoint.CFG', {'container':{'sflow':{'enabled':True}}})
     @patch('pyon.net.endpoint.log')
     def test__sample_request_no_sample(self, mocklog):
         e = RPCResponseEndpointUnit(interceptors={})
 
-        e._get_sflow_manager = Mock(return_value=Mock(spec=SFlowManager))
-        e._get_sflow_manager.return_value.should_sample = False
         e._get_sample_name = Mock()
 
         e._sample_request(sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers)
@@ -836,14 +805,11 @@ Routing method for next test, raises an IonException.
         self.assertEquals(mocklog.debug.call_count, 1)
         self.assertIn("not to sample", mocklog.debug.call_args[0][0])
 
-    @patch.dict('pyon.net.endpoint.CFG', {'container':{'sflow':{'enabled':True}}})
     @patch('pyon.net.endpoint.log')
     def test__sample_request_exception(self, mocklog):
 
         e = RPCResponseEndpointUnit(interceptors={})
 
-        e._get_sflow_manager = Mock(return_value=Mock(spec=SFlowManager))
-        e._get_sflow_manager.return_value.should_sample = True
         e._build_sample = Mock(side_effect=TestError)
 
         e._sample_request(sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers)

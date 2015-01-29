@@ -23,8 +23,8 @@ from mock import patch
 from pyon.util.int_test import IonIntegrationTestCase
 
 
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
 from ion.services.dm.utility.granule_utils import RecordDictionaryTool
 
 from ion.agents.populate_rdt import populate_rdt

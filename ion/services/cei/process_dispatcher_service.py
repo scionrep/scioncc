@@ -49,7 +49,7 @@ except ImportError:
 
 from ion.agents.cei.execution_engine_agent import ExecutionEngineAgentClient
 
-from interface.services.cei.iprocess_dispatcher_service import BaseProcessDispatcherService
+from interface.services.core.iprocess_dispatcher_service import BaseProcessDispatcherService
 from interface.objects import ProcessStateEnum, Process, ProcessDefinition,\
     ProcessQueueingMode, ProcessRestartMode, ProcessTarget, ProcessSchedule
 

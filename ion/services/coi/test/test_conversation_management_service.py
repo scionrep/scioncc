@@ -12,8 +12,8 @@ from nose.plugins.attrib import attr
 from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound
 from pyon.public import PRED, RT, IonObject, OT
 from ion.services.coi.conversation_management_service import ConversationManagementService
-from interface.services.coi.iconversation_management_service import ConversationManagementServiceClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iconversation_management_service import ConversationManagementServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 @attr('UNIT', group='coi')
 class TestPolicyManagementService(PyonTestCase):

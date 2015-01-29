@@ -17,7 +17,7 @@ from pyon.event.event import EventSubscriber
 
 from pyon.ion.resource import OT
 
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
 
 from interface.objects import ProcessStateEnum, ProcessQueueingMode
 

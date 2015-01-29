@@ -3,7 +3,7 @@
 __author__ = 'Stephen P. Henrie'
 
 
-from interface.services.coi.iobject_management_service import BaseObjectManagementService
+from interface.services.core.iobject_management_service import BaseObjectManagementService
 from pyon.util.containers import is_basic_identifier
 from pyon.core.exception import BadRequest,  NotFound
 from pyon.core.interfaces.interface_util import is_yaml_string_valid

@@ -12,7 +12,7 @@ from ion.core.ooiref import OOIReferenceDesignator
 from ion.processes.bootstrap.ion_loader import TESTED_DOC, IONLoader, OOI_MAPPING_DOC
 from ion.processes.bootstrap.ooi_loader import OOILoader
 
-from interface.services.dm.iingestion_management_service import IngestionManagementServiceClient
+from interface.services.core.iingestion_management_service import IngestionManagementServiceClient
 
 
 class TestLoaderAlgo(IonUnitTestCase):

@@ -5,7 +5,7 @@ __author__ = 'Stephen P. Henrie'
 
 
 
-from interface.services.coi.iservice_management_service import BaseServiceManagementService
+from interface.services.core.iservice_management_service import BaseServiceManagementService
 from pyon.util.containers import is_basic_identifier
 from pyon.core.interfaces.interface_util import is_yaml_string_valid
 from pyon.core.exception import NotFound, BadRequest

@@ -20,13 +20,13 @@ from ion.services.dm.presentation.discovery_service import DiscoveryService
 from ion.util.geo_utils import GeoUtils
 from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 
-from interface.services.dm.idiscovery_service import DiscoveryServiceClient
-from interface.services.dm.iindex_management_service import IndexManagementServiceClient
-from interface.services.dm.icatalog_management_service import CatalogManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.idiscovery_service import DiscoveryServiceClient
+from interface.services.core.iindex_management_service import IndexManagementServiceClient
+from interface.services.core.icatalog_management_service import CatalogManagementServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 from interface.objects import InstrumentDevice, Site, PlatformDevice, BankAccount, DataProduct, Transform, ProcessDefinition, \
     DataProcess, UserInfo, ContactInformation, Dataset, GeospatialIndex, GeospatialBounds, TemporalBounds, View, CustomAttribute

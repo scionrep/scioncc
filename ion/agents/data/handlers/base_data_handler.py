@@ -21,7 +21,7 @@ from interface.objects import Granule, Attachment, AttachmentType, StreamRoute
 from ion.core.includes.mi import DriverParameter, DriverEvent
 from ion.agents.instrument.exceptions import InstrumentParameterException, InstrumentCommandException, InstrumentDataException, NotImplementedException, InstrumentException
 
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 ### For new granule and stream interface
 from ion.services.dm.utility.granule.record_dictionary import RecordDictionaryTool

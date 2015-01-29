@@ -59,9 +59,6 @@ class TestProcessEndpointUnitMixin(PyonTestCase):
         ep = ProcessEndpointUnitMixin(process=Mock())
         self.assertEquals(ep._get_sample_name(), str(ep._process.id))
 
-    def test__get_sflow_manager(self):
-        ep = ProcessEndpointUnitMixin(process=Mock())
-        self.assertEquals(ep._get_sflow_manager(), ep._process.container.sflow_manager)
 
     @patch('pyon.net.endpoint.BaseEndpoint._get_container_instance')
     def test__build_header_no_context(self, mockgci):

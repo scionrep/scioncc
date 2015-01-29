@@ -43,13 +43,13 @@ from pyon.core.exception import ServerError, Conflict
 
 from pyon.event.event import EventSubscriber
 
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceClient
 from interface.services.sa.idata_acquisition_management_service import DataAcquisitionManagementServiceClient
 from interface.services.sa.idata_product_management_service import DataProductManagementServiceClient
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
 from interface.services.sa.iobservatory_management_service import ObservatoryManagementServiceClient
 from pyon.core.governance import get_system_actor_header
 
@@ -92,7 +92,7 @@ from ion.util.enhanced_resource_registry_client import EnhancedResourceRegistryC
 
 from pyon.util.containers import DotDict
 
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceClient
 
 from ion.services.sa.test.helpers import any_old, AgentProcessStateGate
 

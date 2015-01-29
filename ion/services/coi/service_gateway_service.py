@@ -22,12 +22,12 @@ from pyon.util.lru_cache import LRUCache
 from pyon.util.containers import current_time_millis
 from pyon.util.file_sys import FileSystem, FS
 
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
-from interface.services.coi.idirectory_service import DirectoryServiceProcessClient
-from interface.services.coi.iservice_gateway_service import BaseServiceGatewayService
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceProcessClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.idirectory_service import DirectoryServiceProcessClient
+from interface.services.core.iservice_gateway_service import BaseServiceGatewayService
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
 from interface.services.iresource_agent import ResourceAgentProcessClient
 from interface.objects import Attachment, ProcessDefinition
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum

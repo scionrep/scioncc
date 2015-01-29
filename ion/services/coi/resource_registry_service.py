@@ -8,7 +8,7 @@ from pyon.core.governance import ORG_MANAGER_ROLE, DATA_OPERATOR, OBSERVATORY_OP
 from pyon.ion.resregistry import ResourceRegistryServiceWrapper
 from pyon.public import log, OT, RT, PRED, Inconsistent
 
-from interface.services.coi.iresource_registry_service import BaseResourceRegistryService
+from interface.services.core.iresource_registry_service import BaseResourceRegistryService
 
 
 class ResourceRegistryService(BaseResourceRegistryService):

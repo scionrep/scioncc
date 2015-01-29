@@ -10,7 +10,7 @@ from pyon.util.int_test import IonIntegrationTestCase
 from nose.plugins.attrib import attr
 from pyon.core.exception import BadRequest,  NotFound
 from pyon.public import RT, IonObject
-from interface.services.coi.iservice_management_service import ServiceManagementServiceClient
+from interface.services.core.iservice_management_service import ServiceManagementServiceClient
 from ion.services.coi.service_management_service import ServiceManagementService
 
 @attr('UNIT', group='coi')

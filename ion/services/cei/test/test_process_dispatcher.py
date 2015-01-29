@@ -17,11 +17,11 @@ from pyon.core.exception import NotFound, BadRequest, Conflict, IonException
 from pyon.public import log
 from pyon.core import bootstrap
 
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
 from interface.objects import ProcessDefinition, ProcessSchedule, ProcessTarget,\
     ProcessStateEnum, ProcessQueueingMode, ProcessRestartMode, ProcessDefinitionType
 from interface.services.icontainer_agent import ContainerAgentClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 from ion.services.cei.process_dispatcher_service import ProcessDispatcherService,\
     PDLocalBackend, PDNativeBackend, get_dashi, get_pd_dashi_name, PDDashiHandler,\

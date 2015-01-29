@@ -16,8 +16,8 @@ from pyon.public import log, PRED, RT, IonObject, OT, Conflict, Inconsistent, No
 from interface.objects import ProposalOriginatorEnum, NegotiationStatusEnum, NegotiationTypeEnum, \
     SecurityToken, TokenTypeEnum
 
-from interface.services.coi.iidentity_management_service import BaseIdentityManagementService
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.iidentity_management_service import BaseIdentityManagementService
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
 
 MAX_TOKEN_VALIDITY = 365*24*60*60
 

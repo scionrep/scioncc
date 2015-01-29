@@ -142,9 +142,6 @@ class ProcessEndpointUnitMixin(EndpointUnit):
     def _get_sample_name(self):
         return str(self._process.id)
 
-    def _get_sflow_manager(self):
-        return getattr(self._process.container, "sflow_manager", None)
-
 
 class ProcessRPCRequestEndpointUnit(ProcessEndpointUnitMixin, RPCRequestEndpointUnit):
     def __init__(self, process=None, **kwargs):

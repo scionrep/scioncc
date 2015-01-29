@@ -12,7 +12,7 @@ from pyon.core.exception import BadRequest, Timeout, NotFound
 from interface.objects import AgentCommand, ProcessSchedule, \
     ProcessStateEnum, ProcessQueueingMode, ProcessTarget, \
     ProcessRestartMode, Service, ServiceStateEnum
-from interface.services.cei.iprocess_dispatcher_service import ProcessDispatcherServiceClient
+from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
 from ion.services.cei.process_dispatcher_service import ProcessDispatcherService, \
     process_state_to_pd_core
 

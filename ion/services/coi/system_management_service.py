@@ -7,7 +7,7 @@ from pyon.public import OT, IonObject, log
 from pyon.util.containers import get_ion_ts
 
 from interface.objects import AllContainers
-from interface.services.coi.isystem_management_service import BaseSystemManagementService
+from interface.services.core.isystem_management_service import BaseSystemManagementService
 
 
 ALL_CONTAINERS_INSTANCE = AllContainers()

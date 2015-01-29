@@ -23,8 +23,8 @@ import socket
 from interface.objects import ExchangeName as ResExchangeName
 from interface.objects import ExchangeSpace as ResExchangeSpace
 from interface.objects import ExchangePoint as ResExchangePoint
-from interface.services.coi.iexchange_management_service import ExchangeManagementServiceProcessClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.iexchange_management_service import ExchangeManagementServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 
 ION_URN_PREFIX     = "urn:ionx"

@@ -55,8 +55,8 @@ from ion.agents.instrument.driver_int_test_support import DriverIntegrationTestS
 # Objects and clients.
 from interface.objects import AgentCommand
 from interface.services.icontainer_agent import ContainerAgentClient
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
 
 # Alarms.
 from pyon.public import IonObject

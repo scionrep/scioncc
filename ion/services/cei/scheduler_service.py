@@ -6,7 +6,7 @@ from pyon.public import IonObject, RT, log
 from pyon.core.exception import BadRequest
 from pyon.event.event import EventPublisher
 from pyon.core.bootstrap import CFG
-from interface.services.cei.ischeduler_service import BaseSchedulerService
+from interface.services.core.ischeduler_service import BaseSchedulerService
 from interface.objects import IntervalTimer, TimeOfDayTimer
 
 from datetime import datetime, timedelta

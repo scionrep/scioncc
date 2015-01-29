@@ -11,7 +11,7 @@ from pyon.ion.resource import lcstate
 from pyon.util.int_test import IonIntegrationTestCase
 
 from interface.objects import Attachment, AttachmentType, Resource, DataProcess, Transform, ProcessDefinition
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 @attr('INT', group='coi')
 class TestResourceRegistry(IonIntegrationTestCase):

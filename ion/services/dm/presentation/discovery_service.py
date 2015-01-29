@@ -14,7 +14,7 @@ from pyon.util.arg_check import validate_true, validate_is_instance
 from ion.services.dm.utility.query_language import QueryLanguage
 from ion.services.dm.presentation.ds_discovery import DatastoreDiscovery
 
-from interface.services.dm.idiscovery_service import BaseDiscoveryService
+from interface.services.core.idiscovery_service import BaseDiscoveryService
 from interface.objects import View, Catalog
 
 

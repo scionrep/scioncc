@@ -66,8 +66,8 @@ from interface.objects import AgentCommand
 from interface.objects import CapabilityType
 from interface.objects import AgentCapability
 from interface.services.icontainer_agent import ContainerAgentClient
-from interface.services.dm.ipubsub_management_service import PubsubManagementServiceClient
-from interface.services.dm.idataset_management_service import DatasetManagementServiceClient
+from interface.services.core.ipubsub_management_service import PubsubManagementServiceClient
+from interface.services.core.idataset_management_service import DatasetManagementServiceClient
 
 
 """

@@ -10,9 +10,9 @@ Process that loads the system policy
 from pyon.core.governance import get_system_actor, get_system_actor_header
 from pyon.public import CFG, log, ImmediateProcess, iex, Container, IonObject, RT, OT
 
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceProcessClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
-from interface.services.coi.ipolicy_management_service import PolicyManagementServiceProcessClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.ipolicy_management_service import PolicyManagementServiceProcessClient
 
 
 class LoadSystemPolicy(ImmediateProcess):

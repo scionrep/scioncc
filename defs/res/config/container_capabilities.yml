@@ -78,9 +78,3 @@ capabilities:
     class: pyon.ion.state.StateRepository
     field: state_repository
     depends_on: DATASTORE_MANAGER
-  STATS_MANAGER:
-    docstring: Controls sFlow stat emission
-    class: pyon.util.sflow.SFlowManager
-    field: sflow_manager
-    enabled_config: container.sflow.enabled
-    enabled_default: False

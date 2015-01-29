@@ -10,8 +10,8 @@ from pyon.ion.exchange import ION_ROOT_XS
 from pyon.public import IonObject, RT
 
 from interface.objects import Org, UserRole, ExchangeSpace
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
-from interface.services.coi.iexchange_management_service import ExchangeManagementServiceProcessClient
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.iexchange_management_service import ExchangeManagementServiceProcessClient
 
 
 class BootstrapOrg(BootstrapPlugin):

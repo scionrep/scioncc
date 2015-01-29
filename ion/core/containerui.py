@@ -762,7 +762,7 @@ def _process_cmd_undeploy_prim(resource_id, res_obj=None):
 def _process_cmd_sites(resource_id, res_obj=None):
     from ion.services.sa.observatory.observatory_util import ObservatoryUtil
     from ion.util.enhanced_resource_registry_client import EnhancedResourceRegistryClient
-    from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+    from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
     from ion.processes.event.device_state import DeviceStateManager
     RR2 = EnhancedResourceRegistryClient(ResourceRegistryServiceClient())
     outil = ObservatoryUtil(container=Container.instance, enhanced_rr=RR2, device_status_mgr=DeviceStateManager())

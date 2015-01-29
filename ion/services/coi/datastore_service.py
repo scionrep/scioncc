@@ -5,7 +5,7 @@ __author__ = 'Thomas R. Lennan, Michael Meisinger'
 
 from pyon.datastore.datastore import DataStore
 
-from interface.services.coi.idatastore_service import BaseDatastoreService
+from interface.services.core.idatastore_service import BaseDatastoreService
 
 
 class DataStoreService(BaseDatastoreService):

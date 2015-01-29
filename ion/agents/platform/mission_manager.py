@@ -22,8 +22,8 @@ from pyon.util.containers import get_ion_ts
 from ion.agents.mission_executive import MissionLoader
 from ion.agents.mission_executive import MissionScheduler
 
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
 
 
 class MissionManager(object):

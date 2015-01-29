@@ -17,9 +17,9 @@ from pyon.core.governance import ORG_MANAGER_ROLE
 
 from ion.services.coi.identity_management_service import IdentityManagementService
 
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceClient, IdentityManagementServiceProcessClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceClient
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceClient, IdentityManagementServiceProcessClient
+from interface.services.core.iorg_management_service import OrgManagementServiceClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum
 

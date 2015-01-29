@@ -18,9 +18,9 @@ from pyon.public import log, OT, RT, PRED, EventPublisher, IonObject
 from ion.services.coi.service_gateway_service import service_gateway_app, GATEWAY_RESPONSE, \
             GATEWAY_ERROR, GATEWAY_ERROR_MESSAGE, GATEWAY_ERROR_EXCEPTION, GATEWAY_ERROR_TRACE
 
-from interface.services.coi.iservice_gateway_service import ServiceGatewayServiceClient
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceClient
+from interface.services.core.iservice_gateway_service import ServiceGatewayServiceClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceClient
+from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.objects import ResourceVisibilityEnum
 
 

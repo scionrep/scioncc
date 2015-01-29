@@ -17,14 +17,14 @@ from pyon.event.event import EventRepository
 
 from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound, Unauthorized, InstStateError
 from pyon.public import PRED, RT, IonObject, CFG, log, OT, LCS, LCE, AS
-from interface.services.coi.iresource_registry_service import ResourceRegistryServiceProcessClient
-from interface.services.coi.iorg_management_service import OrgManagementServiceProcessClient
-from interface.services.coi.iidentity_management_service import IdentityManagementServiceProcessClient
+from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
+from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
+from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceProcessClient
-from interface.services.coi.iexchange_management_service import ExchangeManagementServiceProcessClient
-from interface.services.coi.ipolicy_management_service import PolicyManagementServiceProcessClient
-from interface.services.cei.ischeduler_service import SchedulerServiceProcessClient
-from interface.services.coi.isystem_management_service import SystemManagementServiceProcessClient
+from interface.services.core.iexchange_management_service import ExchangeManagementServiceProcessClient
+from interface.services.core.ipolicy_management_service import PolicyManagementServiceProcessClient
+from interface.services.core.ischeduler_service import SchedulerServiceProcessClient
+from interface.services.core.isystem_management_service import SystemManagementServiceProcessClient
 from interface.services.sa.iobservatory_management_service import ObservatoryManagementServiceProcessClient
 from pyon.ion.resregistry import ResourceRegistryServiceWrapper
 from interface.objects import AgentCommand, ProposalOriginatorEnum, ProposalStatusEnum, NegotiationStatusEnum, ComputedValueAvailability
