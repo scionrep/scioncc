@@ -87,5 +87,6 @@ setup(  name = 'scioncc',
             'xlwt==0.7.5',
             'antlr_python_runtime==3.1.3',
             'lxml==3.4.0',
+            'bcrypt'
         ],
      )
