@@ -2,8 +2,12 @@ import calendar
 import dateutil.parser
 import datetime
 import time
-import netCDF4
 import numpy as np
+try:
+    import netCDF4
+except ImportError:
+    pass
+
 
 class TimeUtils(object):
 

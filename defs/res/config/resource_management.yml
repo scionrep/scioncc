@@ -6,31 +6,6 @@
 # without having an actual agent.
 
 ResourceInterface:
-  DataProcess:
-    params:
-      subscriptions_count:
-        get: serviceop:data_process_management.get_data_process_subscriptions_count($RESOURCE_ID)
-      subscriptions_active_count:
-        get: serviceop:data_process_management.get_data_process_active_subscriptions_count($RESOURCE_ID)
-    commands:
-      activate:
-        execute: serviceop:data_process_management.activate_data_process($RESOURCE_ID)
-      deactivate:
-        execute: serviceop:data_process_management.deactivate_data_process($RESOURCE_ID)
-
-  InstrumentDevice:
-    agent: True
-    execute_lifecycle_transition: serviceop:instrument_management.execute_instrument_device_lifecycle($RESOURCE_ID,$VALUE)
-
-  InstrumentAgent:
-    execute_lifecycle_transition: serviceop:instrument_management.execute_instrument_agent_lifecycle($RESOURCE_ID,$VALUE)
-
-  PlatformDevice:
-    agent: True
-    execute_lifecycle_transition: serviceop:instrument_management.execute_platform_device_lifecycle($RESOURCE_ID,$VALUE)
-
-  PlatformAgent:
-    execute_lifecycle_transition: serviceop:instrument_management.execute_platform_agent_lifecycle($RESOURCE_ID,$VALUE)
 
   Process:
     service: process_dispatcher
@@ -51,8 +26,6 @@ ResourceInterface:
     params:
       object_size:
         get: func:self.get_resource_size($RESOURCE_ID)
-      object_size1:
-        get: func:ion.services.coi.agent_management_service.get_resource_size($RESOURCE_ID)
       description:
         set: func:self.set_resource_description($RESOURCE_ID,$VALUE)
       name:

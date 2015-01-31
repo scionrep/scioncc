@@ -1,7 +1,10 @@
 
 from pyon.public import  log, IonObject, OT
 from pyon.core.exception import BadRequest
-from pyproj import Geod
+try:
+    from pyproj import Geod
+except ImportError:
+    pass
 
 from interface.objects import GeospatialBounds, TemporalBounds
 

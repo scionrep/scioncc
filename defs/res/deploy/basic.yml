@@ -21,31 +21,31 @@ apps:
         - plugin: [ion.processes.bootstrap.plugins.bootstrap_core, BootstrapCore]
 
   - name: resource_registry
-    processapp: [resource_registry, ion.services.coi.resource_registry_service, ResourceRegistryService]
+    processapp: [resource_registry, ion.services.resource_registry_service, ResourceRegistryService]
     bootlevel: 5
 
   - name: system_management
-    processapp: [system_management, ion.services.coi.system_management_service, SystemManagementService]
+    processapp: [system_management, ion.services.system_management_service, SystemManagementService]
     bootlevel: 5
 
   - name: directory
-    processapp: [directory, ion.services.coi.directory_service, DirectoryService]
+    processapp: [directory, ion.services.directory_service, DirectoryService]
     bootlevel: 8
 
   - name: identity_management
-    processapp: [identity_management, ion.services.coi.identity_management_service, IdentityManagementService]
+    processapp: [identity_management, ion.services.identity_management_service, IdentityManagementService]
     bootlevel: 8
 
   - name: policy_management
-    processapp: [policy_management, ion.services.coi.policy_management_service, PolicyManagementService]
+    processapp: [policy_management, ion.services.policy_management_service, PolicyManagementService]
     bootlevel: 8
 
   - name: exchange_management
-    processapp: [exchange_management, ion.services.coi.exchange_management_service, ExchangeManagementService]
+    processapp: [exchange_management, ion.services.exchange_management_service, ExchangeManagementService]
     bootlevel: 8
 
   - name: org_management
-    processapp: [org_management, ion.services.coi.org_management_service, OrgManagementService]
+    processapp: [org_management, ion.services.org_management_service, OrgManagementService]
     bootlevel: 8
 
   - name: bootstrapper2
@@ -63,15 +63,15 @@ apps:
   ##### COI SERVICES
 
   - name: resource_management
-    processapp: [resource_management, ion.services.coi.resource_management_service, ResourceManagementService]
+    processapp: [resource_management, ion.services.resource_management_service, ResourceManagementService]
     bootlevel: 10
 
 #  - name: process_dispatcher
-#    processapp: [process_dispatcher, ion.services.cei.process_dispatcher_service, ProcessDispatcherService]
+#    processapp: [process_dispatcher, ion.services.process_dispatcher_service, ProcessDispatcherService]
 #    bootlevel: 10
 
   - name: discovery
-    processapp: [discovery, ion.services.dm.presentation.discovery_service, DiscoveryService]
+    processapp: [discovery, ion.services.discovery_service, DiscoveryService]
     bootlevel: 10
 
   #The bootstrap for loading policy should be the final bootstrap process.
@@ -88,5 +88,5 @@ apps:
   # service gateway workers from being scheduled onto the same VM, because they
   # all attempt to bind the same port.
   - name: service_gateway
-    processapp: [service_gateway, ion.services.coi.service_gateway_service, ServiceGatewayService]
+    processapp: [service_gateway, ion.services.service_gateway_service, ServiceGatewayService]
     bootlevel: 30
