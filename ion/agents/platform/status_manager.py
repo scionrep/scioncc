@@ -938,7 +938,7 @@ def publish_event_for_diagnostics():  # pragma: no cover
                            rollup_status : STATUS_OK           STATUS_OK           STATUS_OK           STATUS_OK
     """
 
-    from pyon.event.event import EventPublisher
+    from pyon.ion.event import EventPublisher
     ep = EventPublisher()
     evt = dict(event_type='DeviceStatusEvent', sub_type='diagnoser', origin='command_line')
     print("publishing: %s" % str(evt))

@@ -12,12 +12,10 @@ from couchdb.http import ResourceNotFound
 from gevent.coros import RLock
 
 from pyon.agent.agent import ResourceAgent
-from pyon.agent.simple_agent import SimpleResourceAgent
 from pyon.core import exception
 from pyon.core.bootstrap import CFG, IonObject, get_sys_name
 from pyon.core.exception import ContainerConfigError, BadRequest, NotFound
 from pyon.ion.endpoint import ProcessRPCServer
-from pyon.ion.conversation import ConversationRPCServer
 from pyon.ion.stream import StreamPublisher, StreamSubscriber
 from pyon.ion.process import IonProcessThreadManager, IonProcessError
 from pyon.net.messaging import IDPool
@@ -388,11 +386,7 @@ class ProcManager(object):
             eptype          = getattr(mod, cls)
             ep              = eptype(**kwargs)
         else:
-            conv_enabled = CFG.get_safe('container.messaging.endpoint.rpc_conversation_enabled', False)
-            if conv_enabled:
-                ep = ConversationRPCServer(**kwargs)
-            else:
-                ep = ProcessRPCServer(**kwargs)
+            ep = ProcessRPCServer(**kwargs)
         return ep
 
     # -----------------------------------------------------------------
@@ -505,7 +499,7 @@ class ProcManager(object):
         Attach to service pid.
         """
         process_instance = self._create_process_instance(process_id, name, module, cls, config, proc_attr)
-        if not isinstance(process_instance, ResourceAgent) and not isinstance(process_instance, SimpleResourceAgent):
+        if not isinstance(process_instance, ResourceAgent):
             raise ContainerConfigError("Agent process must extend ResourceAgent")
         listeners = []
 

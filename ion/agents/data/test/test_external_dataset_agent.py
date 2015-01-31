@@ -43,7 +43,7 @@ from interface.objects import ContactInformation, UpdateDescription, DatasetDesc
 from pyon.util.containers import get_safe
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.util.context import LocalContextMixin
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.ion.resource import PRED, RT
 
 # MI imports

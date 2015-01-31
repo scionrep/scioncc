@@ -26,7 +26,7 @@ from ion.agents.platform.platform_agent_enums import PlatformAgentState
 from interface.objects import AgentCommand
 from interface.objects import MissionExecutionStatus
 
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from pyon.public import log, CFG
 
 import gevent

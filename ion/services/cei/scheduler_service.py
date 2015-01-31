@@ -4,7 +4,7 @@ _author_ = 'Seman, Michael Meisinger'
 
 from pyon.public import IonObject, RT, log
 from pyon.core.exception import BadRequest
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from pyon.core.bootstrap import CFG
 from interface.services.core.ischeduler_service import BaseSchedulerService
 from interface.objects import IntervalTimer, TimeOfDayTimer

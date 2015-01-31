@@ -13,7 +13,7 @@ __author__ = 'Edward Hunter'
 # Pyon imports.
 from pyon.core import bootstrap
 from pyon.core.bootstrap import IonObject
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from pyon.util.log import log
 from pyon.util.containers import get_ion_ts
 from pyon.ion.resource import RT, PRED, OT, LCS

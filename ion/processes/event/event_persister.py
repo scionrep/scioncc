@@ -6,7 +6,7 @@ import pprint
 from gevent.queue import Queue
 from gevent.event import Event
 
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.ion.process import StandaloneProcess
 from pyon.util.async import spawn
 from pyon.util.containers import named_any

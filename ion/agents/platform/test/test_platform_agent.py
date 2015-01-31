@@ -41,7 +41,7 @@ from interface.objects import StreamAlertType, AggregateStatusType
 
 from pyon.core.exception import Conflict, ServerError
 
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 
 from ion.agents.platform.platform_agent import PlatformAgentState
 from ion.agents.platform.platform_agent import PlatformAgentEvent

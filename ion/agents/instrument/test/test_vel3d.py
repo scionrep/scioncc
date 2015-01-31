@@ -35,7 +35,7 @@ from mock import patch
 import numpy
 
 # Pyon pubsub and event support.
-from pyon.event.event import EventSubscriber, EventPublisher
+from pyon.ion.event import EventSubscriber, EventPublisher
 from pyon.ion.stream import StandaloneStreamSubscriber
 from ion.services.dm.utility.granule_utils import RecordDictionaryTool
 

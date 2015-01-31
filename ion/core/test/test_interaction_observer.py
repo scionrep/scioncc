@@ -8,7 +8,7 @@ import time
 from nose.plugins.attrib import attr
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.net.endpoint import Publisher
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from ion.core.interaction_observer import InteractionObserver
 import unittest
 import os

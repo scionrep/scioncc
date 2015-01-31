@@ -14,7 +14,7 @@ from pyon.core.exception import NotFound, BadRequest, Inconsistent
 from pyon.public import PRED, RT, Container, CFG, OT, IonObject
 from pyon.util.containers import is_basic_identifier, create_basic_identifier
 from pyon.util.log import log
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from pyon.ion.endpoint import ProcessEventSubscriber
 from ion.util.related_resources_crawler import RelatedResourcesCrawler
 

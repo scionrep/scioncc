@@ -17,7 +17,7 @@ from datetime import datetime
 from pyon.agent.agent import ResourceAgentState
 from pyon.agent.agent import ResourceAgentEvent
 from pyon.agent.common import BaseEnum
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.public import log
 from pyon.util.config import Config
 from pyon.util.breakpoint import breakpoint

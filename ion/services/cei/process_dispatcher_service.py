@@ -13,7 +13,7 @@ from pyon.net.endpoint import Subscriber
 from pyon.public import log
 from pyon.core.exception import NotFound, BadRequest, ServerError, Conflict, IonException
 from pyon.util.containers import create_valid_identifier
-from pyon.event.event import EventPublisher, EventSubscriber
+from pyon.ion.event import EventPublisher, EventSubscriber
 from gevent import event as gevent_event
 
 try:

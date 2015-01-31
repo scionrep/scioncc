@@ -151,11 +151,8 @@ container:
       primary: amqp
       priviledged:
     endpoint: # TODO: move entries to here
-      rpc_conversation_enabled: False
       prefetch_count: 1                 # how many messages to prefetch from broker by default
     interceptor: # TODO: move entries to here
-    conversation_log:
-      header_fields: []
 
   processes:
     exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
@@ -227,10 +224,8 @@ interceptor:
       class: pyon.core.governance.governance_interceptor.GovernanceInterceptor
       config:
         enabled: true
-        interceptor_order: [conversation, policy]
+        interceptor_order: [policy]
         governance_interceptors:
-          conversation:
-            class: pyon.core.governance.conversation.conversation_monitor_interceptor.ConversationMonitorInterceptor
           information:
             class: pyon.core.governance.information.information_model_interceptor.InformationModelInterceptor
           policy:

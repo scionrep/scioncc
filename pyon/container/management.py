@@ -37,7 +37,7 @@ from pyon.ion.event import EventPublisher, EventSubscriber
 from pyon.util.tracer import CallTracer
 
 from interface.objects import ContainerManagementRequest, ChangeLogLevel, ReportStatistics, ClearStatistics, \
-    ResetPolicyCache, TriggerGarbageCollection, TriggerContainerSnapshot, PrepareSystemShutdown, StartGeventBlock, StopGeventBlock
+    ResetPolicyCache, TriggerGarbageCollection, TriggerContainerSnapshot, PrepareSystemShutdown
 
 
 # define selectors to determine if this message should be handled by this container.

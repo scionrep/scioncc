@@ -38,7 +38,7 @@ capabilities:
     class: pyon.container.cc.EventPublisherCapability
   EVENT_REPOSITORY:
     docstring: Provides the capability to store and find events in a persistent datastore
-    class: pyon.event.event.EventRepository
+    class: pyon.ion.event.EventRepository
     field: event_repository
   EXCHANGE_MANAGER:
     docstring: Manages communication endpoints (via pyon.net) of various transport

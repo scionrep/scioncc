@@ -6,7 +6,7 @@ import unittest
 from nose.plugins.attrib import attr
 from gevent.event import Event
 
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.public import RT, log, PRED, OT
 from pyon.agent.agent import ResourceAgentClient, ResourceAgentEvent
 from pyon.util.int_test import IonIntegrationTestCase

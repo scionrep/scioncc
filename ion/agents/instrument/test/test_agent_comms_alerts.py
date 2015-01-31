@@ -27,7 +27,7 @@ from nose.plugins.attrib import attr
 from mock import patch
 
 # Pyon pubsub and event support.
-from pyon.event.event import EventSubscriber, EventPublisher
+from pyon.ion.event import EventSubscriber, EventPublisher
 from pyon.ion.stream import StandaloneStreamSubscriber
 
 # Pyon unittest support.

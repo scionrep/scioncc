@@ -42,7 +42,6 @@ from pyon.ion.resregistry import ResourceRegistryServiceWrapper
 from pyon.ion.service import BaseService, BaseClients
 from pyon.net.endpoint import RPCClient
 from pyon.ion.endpoint import ProcessRPCClient
-from pyon.ion.conversation import ConversationRPCClient
 from pyon.util.log import log
 ${dep_client_imports}
 
@@ -845,22 +844,12 @@ class ServiceObjectGenerator:
         _client_rpcclient = client_templates['rpcclient'].substitute(name=class_name,
                                                                      targetname=service_name)
 
-        if rpv_convos_enabled:
-
-            _client_convorpc_client = client_templates['conversationrpcclient'].substitute(name=class_name,
-                targetname=service_name)
-            _client = client_templates['full'].substitute(client=_client_class,
-                                                        rpcclient=_client_rpcclient,
-                                                        processrpcclient='',
-                                                        conversationrpcclient=_client_convorpc_client)
-
-        else:
-            _client_processrpc_client = client_templates['processrpcclient'].substitute(name=class_name,
-                                                                                        targetname=service_name)
-            _client = client_templates['full'].substitute(client=_client_class,
-                                                          rpcclient=_client_rpcclient,
-                                                          processrpcclient=_client_processrpc_client,
-                                                          conversationrpcclient='')
+        _client_processrpc_client = client_templates['processrpcclient'].substitute(name=class_name,
+                                                                                    targetname=service_name)
+        _client = client_templates['full'].substitute(client=_client_class,
+                                                      rpcclient=_client_rpcclient,
+                                                      processrpcclient=_client_processrpc_client,
+                                                      conversationrpcclient='')
 
 
         interface_contents = templates['file'].substitute(dep_client_imports=dep_client_imports_str,

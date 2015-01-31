@@ -14,7 +14,7 @@ from pyon.public import log, OT, RT
 from pyon.util.async import spawn
 from pyon.core.exception import NotFound
 from pyon.util.containers import get_safe
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from pyon.core.bootstrap import IonObject
 from interface.objects import Granule, Attachment, AttachmentType, StreamRoute
 

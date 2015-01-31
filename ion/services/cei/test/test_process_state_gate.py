@@ -13,7 +13,7 @@ from pyon.util.unit_test import PyonTestCase
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.public import log
 from pyon.public import IonObject
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 
 from pyon.ion.resource import OT
 

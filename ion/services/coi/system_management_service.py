@@ -2,7 +2,7 @@
 
 __author__ = 'Michael Meisinger, Jonathan Newbrough'
 
-from pyon.event.event import EventPublisher
+from pyon.ion.event import EventPublisher
 from pyon.public import OT, IonObject, log
 from pyon.util.containers import get_ion_ts
 

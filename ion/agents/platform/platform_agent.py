@@ -26,7 +26,7 @@ from pyon.agent.agent import ResourceAgent
 from pyon.agent.agent import ResourceAgentState
 from pyon.agent.agent import ResourceAgentEvent
 from pyon.agent.agent import ResourceAgentClient
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.agent.instrument_fsm import FSMStateError
 from pyon.agent.instrument_fsm import FSMError
 from pyon.core.exception import NotFound, Inconsistent

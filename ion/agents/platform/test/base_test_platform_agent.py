@@ -41,7 +41,7 @@ from pyon.public import IonObject
 from pyon.core.exception import ServerError, Conflict
 
 
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.sa.iinstrument_management_service import InstrumentManagementServiceClient

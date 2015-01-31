@@ -27,7 +27,7 @@ from ion.agents.instrument.common import BaseEnum
 from pyon.util.int_test import IonIntegrationTestCase
 
 # Pyon
-from pyon.event.event import EventSubscriber, EventPublisher
+from pyon.ion.event import EventSubscriber, EventPublisher
 from pyon.ion.stream import StandaloneStreamSubscriber
 from pyon.core.exception import ConfigNotFound, ResourceError, ServerError
 from pyon.core.object import IonObjectSerializer

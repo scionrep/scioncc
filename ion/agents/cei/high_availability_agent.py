@@ -5,7 +5,7 @@ import gevent
 from gevent.event import Event
 
 from pyon.agent.simple_agent import SimpleResourceAgent
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.public import log, get_sys_name
 from pyon.core.exception import BadRequest, Timeout, NotFound
 

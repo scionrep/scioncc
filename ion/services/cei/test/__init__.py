@@ -1,7 +1,7 @@
 from gevent import queue
 from datetime import datetime, timedelta
 
-from pyon.event.event import EventSubscriber
+from pyon.ion.event import EventSubscriber
 from pyon.public import log
 from pyon.core.bootstrap import CFG
 

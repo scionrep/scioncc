@@ -13,7 +13,7 @@ from pyon.util.context import LocalContextMixin
 from pyon.agent.agent import ResourceAgentState, ResourceAgentEvent
 
 from pyon.datastore.datastore import DatastoreManager
-from pyon.event.event import EventRepository
+from pyon.ion.event import EventRepository
 
 from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound, Unauthorized, InstStateError
 from pyon.public import PRED, RT, IonObject, CFG, log, OT, LCS, LCE, AS
