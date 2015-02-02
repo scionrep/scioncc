@@ -2,22 +2,23 @@
 
 __author__ = 'Stephen P. Henrie, Michael Meisinger'
 
-from pyon.public import CFG, IonObject, RT, PRED, OT, LCS, Inconsistent, NotFound, BadRequest, log, EventPublisher
-from pyon.ion.directory import Directory
-from pyon.core.registry import issubtype
-from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier
-from pyon.core.governance.negotiation import Negotiation
 from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, OPERATOR_ROLE
+from pyon.core.governance.negotiation import Negotiation
+from pyon.core.registry import issubtype
+from pyon.ion.directory import Directory
+from pyon.public import CFG, IonObject, RT, PRED, OT, Inconsistent, NotFound, BadRequest, log, EventPublisher
+from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier
 
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum, NegotiationStatusEnum
 from interface.services.core.iorg_management_service import BaseOrgManagementService
 
 
-#Supported Negotiations - perhaps move these to data at some point if there are more negotiation types and/or remove
-#references to local functions to make this more dynamic
+# Supported Negotiations - perhaps move these to data at some point if there are
+# more negotiation types and/or remove references to local functions to make this more dynamic
 negotiation_rules = {
     OT.EnrollmentProposal: {
-        'pre_conditions': ['is_registered(sap.consumer)', 'not is_enrolled(sap.provider,sap.consumer)',
+        'pre_conditions': ['is_registered(sap.consumer)',
+                           'not is_enrolled(sap.provider,sap.consumer)',
                            'not is_enroll_negotiation_open(sap.provider,sap.consumer)'],
         'accept_action': 'enroll_member(sap.provider,sap.consumer)',
         'auto_accept': True
@@ -49,29 +50,25 @@ negotiation_rules = {
 
 class OrgManagementService(BaseOrgManagementService):
     """
-    Services to define and administer a facility (synonymous Org, community), to enroll/remove members and to provide
+    Services to define and administer an Org (organization, facility), to enroll/remove members and to provide
     access to the resources of an Org to enrolled or affiliated entities (identities). Contains contract
     and commitment repository
     """
     def on_init(self):
-
         self.event_pub = EventPublisher(process=self)
         self.negotiation_handler = Negotiation(self, negotiation_rules, self.event_pub)
 
     def _get_root_org_name(self):
-
         if self.container is None or self.container.governance_controller is None:
             return CFG.get_safe('system.root_org', "ION")
 
         return self.container.governance_controller.system_root_org_name
 
     def _validate_parameters(self, **kwargs):
-
         parameter_objects = dict()
-
         org_id = None
 
-        if kwargs.has_key('org_id'):
+        if 'org_id' in kwargs:
             org_id = kwargs['org_id']
 
             if not org_id:
@@ -83,7 +80,7 @@ class OrgManagementService(BaseOrgManagementService):
 
             parameter_objects['org'] = org
 
-        if kwargs.has_key('actor_id'):
+        if 'actor_id' in kwargs:
             actor_id = kwargs['actor_id']
 
             if not actor_id:
@@ -96,7 +93,7 @@ class OrgManagementService(BaseOrgManagementService):
             parameter_objects['actor'] = actor
 
 
-        if kwargs.has_key('role_name'):
+        if 'role_name' in kwargs:
             role_name = kwargs['role_name']
 
             if not role_name:
@@ -112,7 +109,7 @@ class OrgManagementService(BaseOrgManagementService):
             parameter_objects['user_role'] = user_role
 
 
-        if kwargs.has_key('resource_id'):
+        if 'resource_id' in kwargs:
             resource_id = kwargs['resource_id']
 
             if not resource_id:
@@ -125,7 +122,7 @@ class OrgManagementService(BaseOrgManagementService):
             parameter_objects['resource'] = resource
 
 
-        if kwargs.has_key('negotiation_id'):
+        if 'negotiation_id' in kwargs:
             negotiation_id = kwargs['negotiation_id']
 
             if not negotiation_id:
@@ -137,7 +134,7 @@ class OrgManagementService(BaseOrgManagementService):
 
             parameter_objects['negotiation'] = negotiation
 
-        if kwargs.has_key('affiliate_org_id'):
+        if 'affiliate_org_id' in kwargs:
 
             affiliate_org_id = kwargs['affiliate_org_id']
 
@@ -155,41 +152,42 @@ class OrgManagementService(BaseOrgManagementService):
     def create_org(self, org=None):
         """Creates an Org based on the provided object. The id string returned
         is the internal id by which Org will be identified in the data store.
-
-        @param org    Org
-        @retval org_id    str
-        @throws BadRequest    if object passed has _id or _rev attribute
         """
-
         if not org:
             raise BadRequest("The org parameter is missing")
 
-        #Only allow one root ION Org in the system
+        # Only allow one root ION Org in the system
         if org.name == self._get_root_org_name():
             res_list,_  = self.clients.resource_registry.find_resources(restype=RT.Org, name=self._get_root_org_name())
             if len(res_list) > 0:
                 raise BadRequest('There can only be one Org named %s' % self._get_root_org_name())
 
-        #If this governance identifier is not set, then set to a safe version of the org name.
+        # If this governance identifier is not set, then set to a safe version of the org name.
         if not org.org_governance_name:
             org.org_governance_name = create_basic_identifier(org.name)
 
         if not is_basic_identifier(org.org_governance_name):
-            raise BadRequest("The Org org_governance_name '%s' can only contain alphanumeric and underscore characters" % org.org_governance_name)
+            raise BadRequest("The Org org_governance_name '%s' contains invalid characters" % org.org_governance_name)
 
 
         org_id, org_rev = self.clients.resource_registry.create(org)
         org._id = org_id
         org._rev = org_rev
 
-        #Instantiate a Directory for this Org
+        # Instantiate a Directory for this Org
         directory = Directory(orgname=org.name)
 
-        #Instantiate initial set of User Roles for this Org
-        manager_role = IonObject(RT.UserRole, name='Facility Administrator', governance_name=MODERATOR_ROLE, description='Change Facility Information, assign Roles, post Facility events')
+        # Instantiate initial set of User Roles for this Org
+        manager_role = IonObject(RT.UserRole, name='MODERATOR', governance_name=MODERATOR_ROLE,
+                                 description='Manage organization members, resources and roles')
         self.add_user_role(org_id, manager_role)
 
-        member_role = IonObject(RT.UserRole, name='Facility Member', governance_name=MEMBER_ROLE, description='Subscribe to events, set personal preferences')
+        operator_role = IonObject(RT.UserRole, name='OPERATOR', governance_name=OPERATOR_ROLE,
+                                description='Control and modify organization resources')
+        self.add_user_role(org_id, operator_role)
+
+        member_role = IonObject(RT.UserRole, name='MEMBER', governance_name=MEMBER_ROLE,
+                                description='Access organization resources')
         self.add_user_role(org_id, member_role)
 
         return org_id
@@ -205,19 +203,18 @@ class OrgManagementService(BaseOrgManagementService):
         if not org:
             raise BadRequest("The org parameter is missing")
 
-        #If this governance identifier is not set, then set to a safe version of the org name.
+        # If this governance identifier is not set, then set to a safe version of the org name.
         if not org.org_governance_name:
             org.org_governance_name = create_basic_identifier(org.name)
 
         if not is_basic_identifier(org.org_governance_name):
-            raise BadRequest("The Org org_governance_name '%s' can only contain alphanumeric and underscore characters" % org.org_governance_name)
+            raise BadRequest("The Org org_governance_name '%s' contains invalid characters" % org.org_governance_name)
 
         self.clients.resource_registry.update(org)
 
     def read_org(self, org_id=''):
         """Returns the Org object for the specified id.
-        Throws exception if id does not match any persisted Org
-        objects.
+        Throws exception if id does not match any persisted Org objects.
 
         @param org_id    str
         @retval org    Org
@@ -258,6 +255,8 @@ class OrgManagementService(BaseOrgManagementService):
             raise NotFound('The Org with name %s does not exist' % name )
         return res_list[0]
 
+    # -------------------------------------------------------------------------
+    # Org roles
 
     def add_user_role(self, org_id='', user_role=None):
         """Adds a UserRole to an Org. Will call Policy Management Service to actually
@@ -308,7 +307,7 @@ class OrgManagementService(BaseOrgManagementService):
                                  (user_role.name, str(len(alist))))
 
 
-        #Finally remove the association to the Org
+        # Finally remove the association to the Org
         aid = self.clients.resource_registry.get_association(org, PRED.hasRole, user_role)
         if not aid:
             raise NotFound("The role association between the specified Org (%s) and UserRole (%s) is not found" %
@@ -333,7 +332,6 @@ class OrgManagementService(BaseOrgManagementService):
 
         return user_role
 
-
     def _find_role(self, org_id='', role_name=''):
 
         if not org_id:
@@ -349,7 +347,6 @@ class OrgManagementService(BaseOrgManagementService):
 
         return None
 
-
     def find_org_roles(self, org_id=''):
         """Returns a list of roles available in an Org. Will throw a not NotFound exception
         if none of the specified ids do not exist.
@@ -364,6 +361,9 @@ class OrgManagementService(BaseOrgManagementService):
         role_list,_ = self.clients.resource_registry.find_objects(org, PRED.hasRole, RT.UserRole)
 
         return role_list
+
+    # -------------------------------------------------------------------------
+    # Negotiations
 
     def negotiate(self, sap=None):
         """A generic operation for negotiating actions with an Org, such as for enrollment, role request or to acquire a
@@ -385,94 +385,96 @@ class OrgManagementService(BaseOrgManagementService):
 
             org = self.read_org(org_id=sap.provider)
 
-            #Publish an event indicating an Negotiation has been initiated
+            # Publish an event indicating an Negotiation has been initiated
             self.event_pub.publish_event(event_type=OT.OrgNegotiationInitiatedEvent, origin=org._id, origin_type='Org',
                 description=sap.description, org_name=org.name, negotiation_id=neg_id, sub_type=sap.type_ )
 
-            #Synchronize the internal reference for later use
+            # Synchronize the internal reference for later use
             sap.negotiation_id = neg_id
 
-        #Get the most recent version of the Negotiation resource
+        # Get the most recent version of the Negotiation resource
         negotiation = self.negotiation_handler.read_negotiation(sap)
 
-        #Update the Negotiation object with the latest SAP
+        # Update the Negotiation object with the latest SAP
         neg_id = self.negotiation_handler.update_negotiation(sap)
 
-        #Get the most recent version of the Negotiation resource
+        # Get the most recent version of the Negotiation resource
         negotiation = self.clients.resource_registry.read(neg_id)
 
-        #hardcodng some rules at the moment - could be replaced by a Rules Engine
+        # hardcodng some rules at the moment - could be replaced by a Rules Engine
         if sap.type_ == OT.AcquireResourceExclusiveProposal:
 
             if self.is_resource_acquired_exclusively(None, sap.resource_id):
-                #Automatically accept the proposal for exclusive access if it is not already acquired exclusively
+                # Automatically accept the proposal for exclusive access if it is not already acquired exclusively
                 provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.REJECTED, ProposalOriginatorEnum.PROVIDER)
 
                 rejection_reason = "The resource has already been acquired exclusively"
 
-                #Update the Negotiation object with the latest SAP
+                # Update the Negotiation object with the latest SAP
                 neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap, rejection_reason)
 
-                #Get the most recent version of the Negotiation resource
+                # Get the most recent version of the Negotiation resource
                 negotiation = self.clients.resource_registry.read(neg_id)
 
             else:
 
-                #Automatically reject the proposal if the exipration request is greater than 12 hours from now or 0
+                # Automatically reject the proposal if the expiration request is greater than 12 hours from now or 0
                 cur_time = int(get_ion_ts())
                 expiration = int(cur_time +  ( 12 * 60 * 60 * 1000 )) # 12 hours from now
                 if int(sap.expiration) == 0 or int(sap.expiration) > expiration:
-                    #Automatically accept the proposal for exclusive access if it is not already acquired exclusively
-                    provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.REJECTED, ProposalOriginatorEnum.PROVIDER)
+                    # Automatically accept the proposal for exclusive access if it is not already acquired exclusively
+                    provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.REJECTED,
+                                                                              ProposalOriginatorEnum.PROVIDER)
 
                     rejection_reason = "A proposal to acquire a resource exclusively must be more than 0 and be less than 12 hours."
 
-                    #Update the Negotiation object with the latest SAP
+                    # Update the Negotiation object with the latest SAP
                     neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap, rejection_reason)
 
-                    #Get the most recent version of the Negotiation resource
+                    # Get the most recent version of the Negotiation resource
                     negotiation = self.clients.resource_registry.read(neg_id)
 
                 else:
 
-                    #Automatically accept the proposal for exclusive access if it is not already acquired exclusively
-                    provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.ACCEPTED, ProposalOriginatorEnum.PROVIDER)
+                    # Automatically accept the proposal for exclusive access if it is not already acquired exclusively
+                    provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.ACCEPTED,
+                                                                              ProposalOriginatorEnum.PROVIDER)
 
-                    #Update the Negotiation object with the latest SAP
+                    # Update the Negotiation object with the latest SAP
                     neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap)
 
-                    #Get the most recent version of the Negotiation resource
+                    # Get the most recent version of the Negotiation resource
                     negotiation = self.clients.resource_registry.read(neg_id)
 
-        #Check to see if the rules allow for auto acceptance of the negotiations - where the second party is assumed to accept if the
-        #first party accepts.
+        # Check to see if the rules allow for auto acceptance of the negotiations -
+        # where the second party is assumed to accept if the
+        # first party accepts.
         if negotiation_rules[sap.type_]['auto_accept']:
 
-            #Automatically accept for the consumer if the Org Manager as provider accepts the proposal
+            # Automatically accept for the consumer if the Org Manager as provider accepts the proposal
             latest_sap = negotiation.proposals[-1]
 
             if latest_sap.proposal_status == ProposalStatusEnum.ACCEPTED and latest_sap.originator == ProposalOriginatorEnum.PROVIDER:
                 consumer_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.ACCEPTED)
 
-                #Update the Negotiation object with the latest SAP
+                # Update the Negotiation object with the latest SAP
                 neg_id = self.negotiation_handler.update_negotiation(consumer_accept_sap)
 
-                #Get the most recent version of the Negotiation resource
+                # Get the most recent version of the Negotiation resource
                 negotiation = self.clients.resource_registry.read(neg_id)
 
             elif latest_sap.proposal_status == ProposalStatusEnum.ACCEPTED and latest_sap.originator == ProposalOriginatorEnum.CONSUMER:
                 provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.ACCEPTED, ProposalOriginatorEnum.PROVIDER)
 
-                #Update the Negotiation object with the latest SAP
+                # Update the Negotiation object with the latest SAP
                 neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap)
 
-                #Get the most recent version of the Negotiation resource
+                # Get the most recent version of the Negotiation resource
                 negotiation = self.clients.resource_registry.read(neg_id)
 
 
-        #Return the latest proposal
+        # Return the latest proposal
         return negotiation.proposals[-1]
-
 
     def find_org_negotiations(self, org_id='', proposal_type='', negotiation_status=-1):
         """Returns a list of negotiations for an Org. An optional proposal_type can be supplied
@@ -553,6 +555,8 @@ class OrgManagementService(BaseOrgManagementService):
 
         return neg_list
 
+    # -------------------------------------------------------------------------
+    # Member management
 
     def enroll_member(self, org_id='', actor_id=''):
         """Enrolls a specified actor into the specified Org so that they may find and negotiate to use resources
@@ -601,12 +605,12 @@ class OrgManagementService(BaseOrgManagementService):
         if org.name == self._get_root_org_name():
             raise BadRequest("A request to cancel enrollment in the root ION Org is not allowed")
 
-        #First remove all associations to any roles
+        # First remove all associations to any roles
         role_list = self.find_org_roles_by_user(org_id, actor_id)
         for user_role in role_list:
             self._delete_role_association(org, actor, user_role)
 
-        #Finally remove the association to the Org
+        # Finally remove the association to the Org
         aid = self.clients.resource_registry.get_association(org, PRED.hasMembership, actor)
         if not aid:
             raise NotFound("The membership association between the specified actor and Org is not found")
@@ -724,9 +728,7 @@ class OrgManagementService(BaseOrgManagementService):
 
         return ret
 
-
     def _add_role_association(self, org, actor, user_role):
-
         aid = self.clients.resource_registry.create_association(actor, PRED.hasRole, user_role)
         if not aid:
             return False
@@ -793,25 +795,23 @@ class OrgManagementService(BaseOrgManagementService):
         return False
 
     def _find_org_roles_by_user(self, org=None, actor=None):
-
         if org is None:
             raise BadRequest("The org parameter is missing")
-
         if actor is None:
             raise BadRequest("The actor parameter is missing")
 
         role_list,_ = self.clients.resource_registry.find_objects(actor, PRED.hasRole, RT.UserRole)
 
-        #Iterate the list of roles associated with user and filter by the org_id. TODO - replace this when
-        #better indexing/views are available in couch
+        # Iterate the list of roles associated with user and filter by the org_id. TODO - replace this when
+        # better indexing/views are available in couch
         ret_list = []
         for role in role_list:
             if role.org_governance_name == org.org_governance_name:
                 ret_list.append(role)
 
         if org.org_governance_name == self.container.governance_controller.system_root_org_name:
-
-            #Because a user is automatically enrolled with the ION Org then the membership role is implied - so add it to the list
+            # Because a user is automatically enrolled with the ION Org then the membership role
+            # is implied - so add it to the list
             member_role = self._find_role(org._id, MEMBER_ROLE)
             if member_role is None:
                 raise Inconsistent('The %s User Role is not found.' % MEMBER_ROLE)
@@ -1139,7 +1139,7 @@ class OrgManagementService(BaseOrgManagementService):
         self.clients.resource_registry.delete_association(aid)
         return True
 
-    #Local helper functions are below - do not remove them
+    # Local helper functions are below - do not remove them
 
     def is_enroll_negotiation_open(self, org_id, actor_id):
 
