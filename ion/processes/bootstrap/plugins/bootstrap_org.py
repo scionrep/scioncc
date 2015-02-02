@@ -5,7 +5,7 @@
 __author__ = 'Michael Meisinger, Stephen Henrie'
 
 from ion.core.bootstrap_process import BootstrapPlugin, AbortBootstrap
-from pyon.core.governance import ORG_MANAGER_ROLE, ION_MANAGER
+from pyon.core.governance import MODERATOR_ROLE, SUPERUSER_ROLE
 from pyon.ion.exchange import ION_ROOT_XS
 from pyon.public import IonObject, RT
 
@@ -35,12 +35,12 @@ class BootstrapOrg(BootstrapPlugin):
         self.org_id = org_ms_client.create_org(org)
 
         # Instantiate initial set of User Roles for this Org
-        ion_manager = UserRole(governance_name=ION_MANAGER, name='ION Manager', description='ION Manager')
-        org_ms_client.add_user_role(self.org_id, ion_manager)
-        org_ms_client.grant_role(self.org_id, system_actor_id, ION_MANAGER )
+        SUPERUSER_ROLE = UserRole(governance_name=SUPERUSER_ROLE, name='ION Manager', description='ION Manager')
+        org_ms_client.add_user_role(self.org_id, SUPERUSER_ROLE)
+        org_ms_client.grant_role(self.org_id, system_actor_id, SUPERUSER_ROLE )
 
         # Make the ION system agent a manager for the ION Org
-        org_ms_client.grant_role(self.org_id, system_actor_id, ORG_MANAGER_ROLE )
+        org_ms_client.grant_role(self.org_id, system_actor_id, MODERATOR_ROLE )
 
         # Create root ExchangeSpace
         xs = ExchangeSpace(name=ION_ROOT_XS, description="ION service XS")

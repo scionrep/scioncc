@@ -13,7 +13,7 @@ from pyon.util.int_test import IonIntegrationTestCase
 from pyon.core.exception import Unauthorized
 from pyon.core.governance.negotiation import Negotiation
 from pyon.public import PRED, RT, IonObject, OT, BadRequest, Conflict, Inconsistent, NotFound, get_ion_ts_millis
-from pyon.core.governance import ORG_MANAGER_ROLE
+from pyon.core.governance import MODERATOR_ROLE
 
 from ion.services.identity_management_service import IdentityManagementService
 
@@ -602,11 +602,11 @@ Mh9xL90hfMJyoGemjJswG5g3fAdTP/Lv0I6/nWeH/cLjwwpQgIEjEAVXl7KHuzX5vPD/wqQ=
         ion_org = self.org_client.find_org()
 
         #Build the Service Agreement Proposal to to request a role but never close it
-        sap = IonObject(OT.RequestRoleProposal,consumer=actor_id, provider=ion_org._id, role_name=ORG_MANAGER_ROLE )
+        sap = IonObject(OT.RequestRoleProposal,consumer=actor_id, provider=ion_org._id, role_name=MODERATOR_ROLE )
         sap_response = self.org_client.negotiate(sap)
 
         #Just grant the role anyway
-        #self.org_client.grant_role(ion_org._id, actor_id, ORG_MANAGER_ROLE)
+        #self.org_client.grant_role(ion_org._id, actor_id, MODERATOR_ROLE)
 
         with self.assertRaises(NotFound):
             self.identity_management_service.get_user_info_extension('That rug really tied the room together.')
@@ -640,7 +640,7 @@ Mh9xL90hfMJyoGemjJswG5g3fAdTP/Lv0I6/nWeH/cLjwwpQgIEjEAVXl7KHuzX5vPD/wqQ=
 
         self.identity_management_service.delete_user_info(user_info_id)
 
-        self.org_client.revoke_role(org_id=ion_org._id, actor_id=actor_id, role_name=ORG_MANAGER_ROLE)
+        self.org_client.revoke_role(org_id=ion_org._id, actor_id=actor_id, role_name=MODERATOR_ROLE)
 
         self.identity_management_service.unregister_user_credentials(actor_id, self.subject)
 

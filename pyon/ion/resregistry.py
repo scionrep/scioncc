@@ -687,15 +687,15 @@ class ResourceRegistry(object):
 
     def get_superuser_actors(self, reset=False):
         """Returns a memoized list of system superusers, including the system actor and all actors with
-        ION_MANAGER role assignment"""
+        SUPERUSER role assignment"""
         if reset or self.superuser_actors is None:
             found_actors = []
             system_actor_name = CFG.get_safe("system.system_actor", "ionsystem")
             sysactors,_ = self.find_resources(restype=RT.ActorIdentity, name=system_actor_name, id_only=True)
             found_actors.extend(sysactors)
-            ion_mgrs,_ = self.find_resources_ext(restype=RT.UserRole, attr_name="governance_name", attr_value="ION_MANAGER", id_only=False)
+            ion_mgrs,_ = self.find_resources_ext(restype=RT.UserRole, attr_name="governance_name", attr_value="SUPERUSER", id_only=False)
             # roles,_ = self.find_resources(restype=RT.UserRole, id_only=False)
-            # ion_mgrs = [role for role in roles if role.governance_name == "ION_MANAGER"]
+            # ion_mgrs = [role for role in roles if role.governance_name == "SUPERUSER"]
             actors, assocs = self.find_subjects_mult(ion_mgrs, id_only=False)
             super_actors = list({actor._id for actor, assoc in zip(actors, assocs) if assoc.p == PRED.hasRole and assoc.st == RT.ActorIdentity})
             found_actors.extend(super_actors)

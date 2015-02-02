@@ -79,7 +79,7 @@ class LoadSystemPolicy(ImmediateProcess):
             <Subjects>
                 <Subject>
                     <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ION_MANAGER</AttributeValue>
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">SUPERUSER</AttributeValue>
                         <SubjectAttributeDesignator
                              AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                              DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -92,7 +92,7 @@ class LoadSystemPolicy(ImmediateProcess):
         </Rule>
         '''
 
-        policy_id = policy_client.create_common_service_access_policy( 'ION_Manager_Permit_Everything',
+        policy_id = policy_client.create_common_service_access_policy( 'SUPERUSER_Permit_Everything',
             'A global policy rule that permits access to everything with the ION Manager role',
             policy_text, headers=sa_user_header)
 
@@ -352,7 +352,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -360,23 +360,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DATA_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -416,7 +400,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -424,23 +408,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DATA_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -532,7 +500,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -540,7 +508,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -548,23 +516,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DATA_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MEMBER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MEMBER</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -781,7 +733,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -809,7 +761,7 @@ class LoadSystemPolicy(ImmediateProcess):
 
         </Rule> '''
 
-        policy_id = policy_client.create_service_access_policy('org_management', 'OrgMS_Org_Manager_Role_Permitted',
+        policy_id = policy_client.create_service_access_policy('org_management', 'OrgMS_MODERATOR_ROLE_Permitted',
             'Permit these operations in the Org Management Service for the role of Org Manager',
             policy_text, headers=sa_user_header)
 
@@ -838,7 +790,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -866,7 +818,7 @@ class LoadSystemPolicy(ImmediateProcess):
 
         </Rule> '''
 
-        policy_id = policy_client.create_service_access_policy('policy_management', 'PolicyMS_Org_Manager_Role_Permitted',
+        policy_id = policy_client.create_service_access_policy('policy_management', 'PolicyMS_MODERATOR_ROLE_Permitted',
             'Permit these operations in the Policy Management Service for the role of Org Manager',
             policy_text, headers=sa_user_header)
 
@@ -903,23 +855,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DATA_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -967,7 +903,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MEMBER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MEMBER</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -980,7 +916,7 @@ class LoadSystemPolicy(ImmediateProcess):
 
         </Rule> '''
 
-        policy_id = policy_client.create_service_access_policy('org_management', 'OMS_Org_Member_Role_Permitted',
+        policy_id = policy_client.create_service_access_policy('org_management', 'OMS_MEMBER_ROLE_Permitted',
             'Permit these operations in the Org Management Service for any user that is a simple Member of the Org',
             policy_text, headers=sa_user_header)
 
@@ -1009,15 +945,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1104,15 +1032,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1203,7 +1123,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1211,15 +1131,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1292,7 +1204,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1300,15 +1212,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1353,7 +1257,7 @@ class LoadSystemPolicy(ImmediateProcess):
                <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1361,23 +1265,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DATA_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1499,7 +1387,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1507,23 +1395,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DATA_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1577,7 +1449,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MEMBER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MEMBER</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1634,7 +1506,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MEMBER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MEMBER</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1778,7 +1650,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MEMBER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MEMBER</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1790,13 +1662,13 @@ class LoadSystemPolicy(ImmediateProcess):
         </Rule> '''
 
         #All resource_agents are kind of handled the same - but the resource-id in the rule is set to the specific type
-        policy_id = policy_client.create_service_access_policy('InstrumentDevice', 'Instrument_Agent_Org_Member_Permitted',
+        policy_id = policy_client.create_service_access_policy('InstrumentDevice', 'Instrument_Agent_MEMBER_Permitted',
         'Permit these operations in an instrument agent for a Member of the Org',
         policy_text, headers=sa_user_header)
 
 
         #All resource_agents are kind of handled the same - but the resource-id in the rule is set to the specific type
-        policy_id = policy_client.create_service_access_policy('PlatformDevice', 'Platform_Agent_Org_Member_Permitted',
+        policy_id = policy_client.create_service_access_policy('PlatformDevice', 'Platform_Agent_MEMBER_Permitted',
             'Permit these operations in an platform agent for a Member of the Org',
             policy_text, headers=sa_user_header)
 
@@ -1845,7 +1717,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1853,15 +1725,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1940,7 +1804,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -1948,15 +1812,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -2043,7 +1899,7 @@ class LoadSystemPolicy(ImmediateProcess):
                 <Subjects>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">INSTRUMENT_OPERATOR</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -2051,15 +1907,7 @@ class LoadSystemPolicy(ImmediateProcess):
                     </Subject>
                     <Subject>
                         <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OBSERVATORY_OPERATOR</AttributeValue>
-                            <SubjectAttributeDesignator
-                                 AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
-                                 DataType="http://www.w3.org/2001/XMLSchema#string"/>
-                        </SubjectMatch>
-                    </Subject>
-                    <Subject>
-                        <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ORG_MANAGER</AttributeValue>
+                            <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
                             <SubjectAttributeDesignator
                                  AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                                  DataType="http://www.w3.org/2001/XMLSchema#string"/>

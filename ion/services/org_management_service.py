@@ -2,20 +2,15 @@
 
 __author__ = 'Stephen P. Henrie, Michael Meisinger'
 
-from pyon.public import CFG, IonObject, RT, PRED, OT, LCS
-from pyon.core.exception import  Inconsistent, NotFound, BadRequest
+from pyon.public import CFG, IonObject, RT, PRED, OT, LCS, Inconsistent, NotFound, BadRequest, log, EventPublisher
 from pyon.ion.directory import Directory
-from pyon.ion.resource import ExtendedResourceContainer
 from pyon.core.registry import issubtype
-from pyon.util.log import log
-from pyon.ion.event import EventPublisher
 from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier
 from pyon.core.governance.negotiation import Negotiation
+from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, OPERATOR_ROLE
+
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum, NegotiationStatusEnum
 from interface.services.core.iorg_management_service import BaseOrgManagementService
-from pyon.core.governance import ORG_MANAGER_ROLE, ORG_MEMBER_ROLE
-
-INSTRUMENT_OPERATOR_ROLE = "INSTRUMENT_OPERATOR"
 
 
 #Supported Negotiations - perhaps move these to data at some point if there are more negotiation types and/or remove
@@ -37,7 +32,7 @@ negotiation_rules = {
 
     OT.AcquireResourceProposal: {
         'pre_conditions': ['is_enrolled(sap.provider,sap.consumer)',
-                           'has_role(sap.provider,sap.consumer,"' + INSTRUMENT_OPERATOR_ROLE + '")',
+                           'has_role(sap.provider,sap.consumer,"' + OPERATOR_ROLE + '")',
                            'is_resource_shared(sap.provider,sap.resource_id)'],
         'accept_action': 'acquire_resource(sap)',
         'auto_accept': True
@@ -191,10 +186,10 @@ class OrgManagementService(BaseOrgManagementService):
         directory = Directory(orgname=org.name)
 
         #Instantiate initial set of User Roles for this Org
-        manager_role = IonObject(RT.UserRole, name='Facility Administrator', governance_name=ORG_MANAGER_ROLE, description='Change Facility Information, assign Roles, post Facility events')
+        manager_role = IonObject(RT.UserRole, name='Facility Administrator', governance_name=MODERATOR_ROLE, description='Change Facility Information, assign Roles, post Facility events')
         self.add_user_role(org_id, manager_role)
 
-        member_role = IonObject(RT.UserRole, name='Facility Member', governance_name=ORG_MEMBER_ROLE, description='Subscribe to events, set personal preferences')
+        member_role = IonObject(RT.UserRole, name='Facility Member', governance_name=MEMBER_ROLE, description='Subscribe to events, set personal preferences')
         self.add_user_role(org_id, member_role)
 
         return org_id
@@ -582,7 +577,7 @@ class OrgManagementService(BaseOrgManagementService):
         if not aid:
             return False
 
-        member_role = self.find_org_role_by_name(org._id,ORG_MEMBER_ROLE )
+        member_role = self.find_org_role_by_name(org._id,MEMBER_ROLE )
         self._add_role_association(org, actor, member_role)
 
         self.event_pub.publish_event(event_type=OT.OrgMembershipGrantedEvent, origin=org._id, origin_type='Org',
@@ -817,9 +812,9 @@ class OrgManagementService(BaseOrgManagementService):
         if org.org_governance_name == self.container.governance_controller.system_root_org_name:
 
             #Because a user is automatically enrolled with the ION Org then the membership role is implied - so add it to the list
-            member_role = self._find_role(org._id, ORG_MEMBER_ROLE)
+            member_role = self._find_role(org._id, MEMBER_ROLE)
             if member_role is None:
-                raise Inconsistent('The %s User Role is not found.' % ORG_MEMBER_ROLE)
+                raise Inconsistent('The %s User Role is not found.' % MEMBER_ROLE)
 
             ret_list.append(member_role)
 

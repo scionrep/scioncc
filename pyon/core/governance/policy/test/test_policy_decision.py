@@ -12,7 +12,7 @@ from pyon.util.unit_test import PyonTestCase
 @attr('UNIT')
 class PolicyDecisionUnitTest(PyonTestCase):
 
-    permit_ION_MANAGER_rule = '''
+    permit_SUPERUSER_rule = '''
         <Rule RuleId="123:" Effect="Permit">
             <Description>
                 %s
@@ -23,7 +23,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
             <Subjects>
                 <Subject>
                     <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ION_MANAGER</AttributeValue>
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">SUPERUSER</AttributeValue>
                         <SubjectAttributeDesignator
                              AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                              DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -36,7 +36,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         </Rule>
         '''
 
-    deny_ION_MANAGER_rule = '''
+    deny_SUPERUSER_rule = '''
         <Rule RuleId="456:" Effect="Deny">
             <Description>
                 %s
@@ -47,7 +47,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
             <Subjects>
                 <Subject>
                     <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
-                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">ION_MANAGER</AttributeValue>
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">SUPERUSER</AttributeValue>
                         <SubjectAttributeDesignator
                              AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
                              DataType="http://www.w3.org/2001/XMLSchema#string"/>
@@ -127,7 +127,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         # see that the PDP for resource is empty
         self.assertEqual(pdpm.get_resource_pdp(resource_id), pdpm.empty_pdp)
 
-        pdpm.load_resource_policy_rules(resource_id, self.permit_ION_MANAGER_rule )
+        pdpm.load_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule )
 
         # see that the PDP for resource is not empty anymore
         self.assertNotEqual(pdpm.get_resource_pdp(resource_id), pdpm.empty_pdp)
@@ -163,7 +163,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         mock_args.side_effect = get_arg_value
         invocation.get_arg_value = mock_args
 
-        # check that, because actor does not have ION_MANAGER role, policy evaluates to a denial
+        # check that, because actor does not have SUPERUSER role, policy evaluates to a denial
 
         invocation.message_annotations = {}
         invocation.message = {'argument1': 0}
@@ -177,9 +177,9 @@ class PolicyDecisionUnitTest(PyonTestCase):
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "NotApplicable")
 
-        # check that policy evaluates to Permit because actor has ION_MANAGER role
+        # check that policy evaluates to Permit because actor has SUPERUSER role
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
@@ -189,7 +189,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
 
         invocation.message = {'argument1': 0}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Deny")
@@ -198,7 +198,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
 
         invocation.message = {'argument1': 5}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
@@ -209,7 +209,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
 
         invocation.message = {'argument1': 0}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
@@ -217,7 +217,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
 
         invocation.message = {'argument1': 5}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), True)
@@ -232,7 +232,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         # see that the PDP for service is the default
         self.assertEqual(pdpm.get_service_pdp(service_key), pdpm.load_common_service_pdp)
 
-        pdpm.load_service_policy_rules(service_key, self.permit_ION_MANAGER_rule)
+        pdpm.load_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
 
         # see that the PDP for service is not the default anymore
         self.assertNotEqual(pdpm.get_service_pdp(service_key), pdpm.load_common_service_pdp)
@@ -246,7 +246,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
             pdpm.check_service_request_policies(invocation)
         self.assertIn(chk_res.exception.message, 'No receiver for this message')
 
-        # check that, because actor does not have ION_MANAGER role, policy evaluates to a denial
+        # check that, because actor does not have SUPERUSER role, policy evaluates to a denial
         # (really Not Applicable, because of the inelegant hack of a policy we are setting up our pdp with)
         mock_header = Mock()
         invocation.message_annotations = {}
@@ -276,10 +276,10 @@ class PolicyDecisionUnitTest(PyonTestCase):
         response = pdpm.check_service_request_policies(invocation)
         self.assertEqual(response.value, "NotApplicable")
 
-        # check that policy evaluates to Permit because actor has ION_MANAGER role
+        # check that policy evaluates to Permit because actor has SUPERUSER role
         invocation.message_annotations = {}
         invocation.headers = {'op': 'op', 'process': 'process', 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         response = pdpm.check_service_request_policies(invocation)
         self.assertEqual(response.value, "Permit")
 
@@ -296,7 +296,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         invocation.message = {'argument1': 0 }
         invocation.headers = {'op': 'op', 'process': 'process', 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
-                                   'sender-type': 'sender-type', 'sender-service': 'Unknown', 'ion-actor-roles': {'org_name':  ['ION_MANAGER']}}
+                                   'sender-type': 'sender-type', 'sender-service': 'Unknown', 'ion-actor-roles': {'org_name':  ['SUPERUSER']}}
         invocation.get_message_receiver.return_value = 'service_key'
         invocation.get_service_name.return_value = 'Unknown'
         invocation.get_message_sender.return_value = ['Unknown','Unknown']
@@ -318,19 +318,19 @@ class PolicyDecisionUnitTest(PyonTestCase):
         gc.system_root_org_name = 'sys_org_name'
 
         # check that service policies result in denying the request
-        pdpm.load_service_policy_rules(service_key, self.deny_ION_MANAGER_rule)
-        pdpm.load_resource_policy_rules(resource_id, self.permit_ION_MANAGER_rule)
+        pdpm.load_service_policy_rules(service_key, self.deny_SUPERUSER_rule)
+        pdpm.load_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule)
         response = pdpm.check_agent_request_policies(invocation)
         self.assertEqual(response.value, "Deny")
 
         # check that resource policies result in denying the request
-        pdpm.load_service_policy_rules(service_key, self.permit_ION_MANAGER_rule)
-        pdpm.load_resource_policy_rules(resource_id, self.deny_ION_MANAGER_rule)
+        pdpm.load_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
+        pdpm.load_resource_policy_rules(resource_id, self.deny_SUPERUSER_rule)
         response = pdpm.check_agent_request_policies(invocation)
         self.assertEqual(response.value, "Deny")
 
         # check that both service and resource policies need to allow a request
-        pdpm.load_service_policy_rules(service_key, self.permit_ION_MANAGER_rule)
-        pdpm.load_resource_policy_rules(resource_id, self.permit_ION_MANAGER_rule)
+        pdpm.load_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
+        pdpm.load_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule)
         response = pdpm.check_agent_request_policies(invocation)
         self.assertEqual(response.value, "Permit")

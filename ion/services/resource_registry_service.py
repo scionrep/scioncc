@@ -3,8 +3,7 @@
 __author__ = 'Thomas R. Lennan, Michael Meisinger, Stephen Henrie'
 
 
-from pyon.core.governance import ORG_MANAGER_ROLE, DATA_OPERATOR, OBSERVATORY_OPERATOR, INSTRUMENT_OPERATOR, \
-    GovernanceHeaderValues, has_org_role
+from pyon.core.governance import MODERATOR_ROLE, OPERATOR_ROLE, GovernanceHeaderValues, has_org_role
 from pyon.ion.resregistry import ResourceRegistryServiceWrapper
 from pyon.public import log, OT, RT, PRED, Inconsistent
 
@@ -183,7 +182,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
         # Allow attachment to an org
         if resource.type_ == 'Org':
             if (has_org_role(gov_values.actor_roles, resource.org_governance_name,
-                             [ORG_MANAGER_ROLE, INSTRUMENT_OPERATOR, OBSERVATORY_OPERATOR, DATA_OPERATOR])):
+                             [MODERATOR_ROLE, OPERATOR_ROLE])):
                 return True, ''
 
         # Allow actor to add attachment to his own UserInfo
@@ -198,7 +197,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
                                                           object=resource_id, id_only=False)
             for org in orgs:
                 if (has_org_role(gov_values.actor_roles, org.org_governance_name,
-                                 [ORG_MANAGER_ROLE, INSTRUMENT_OPERATOR, OBSERVATORY_OPERATOR, DATA_OPERATOR])):
+                                 [MODERATOR_ROLE, OPERATOR_ROLE])):
                     return True, ''
 
         return False, '%s(%s) has been denied since the user is not a member in any org to which the resource id %s belongs ' % (process.name, gov_values.op, resource_id)
@@ -214,7 +213,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
         resource = self.resource_registry.read(resource_id)
         # Allow edit to an org
         if resource.type_ == 'Org':
-            if (has_org_role(gov_values.actor_roles, resource.org_governance_name, [ORG_MANAGER_ROLE, INSTRUMENT_OPERATOR, OBSERVATORY_OPERATOR, DATA_OPERATOR])):
+            if (has_org_role(gov_values.actor_roles, resource.org_governance_name, [MODERATOR_ROLE, OPERATOR_ROLE])):
                 return True, ''
 
         # Allow edit to add attachment to his own UserInfo
@@ -228,7 +227,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
             orgs,_ = self.resource_registry.find_subjects(subject_type=RT.Org, predicate=PRED.hasResource, object=resource_id, id_only=False)
             for org in orgs:
                 if (has_org_role(gov_values.actor_roles, org.org_governance_name,
-                                 [ORG_MANAGER_ROLE, INSTRUMENT_OPERATOR, OBSERVATORY_OPERATOR, DATA_OPERATOR])):
+                                 [MODERATOR_ROLE, OPERATOR_ROLE])):
                     return True, ''
 
         return False, '%s(%s) has been denied since the user is not a member in any org to which the resource id %s belongs ' % (process.name, gov_values.op, resource_id)
@@ -245,7 +244,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
         orgs,_ = self.resource_registry.find_subjects(subject_type=RT.Org, predicate=PRED.hasResource, object=resource_id, id_only=False)
         for org in orgs:
             if (has_org_role(gov_values.actor_roles, org.org_governance_name,
-                             [INSTRUMENT_OPERATOR, DATA_OPERATOR, ORG_MANAGER_ROLE, OBSERVATORY_OPERATOR])):
+                             [OPERATOR_ROLE, MODERATOR_ROLE])):
                 log.error("returning true: "+str(gov_values.actor_roles))
                 return True, ''
 

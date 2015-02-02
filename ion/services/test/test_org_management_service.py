@@ -15,7 +15,7 @@ from pyon.public import PRED, RT, IonObject
 from ion.services.org_management_service import OrgManagementService
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
-from pyon.core.governance import ORG_MANAGER_ROLE
+from pyon.core.governance import MODERATOR_ROLE
 
 
 
@@ -150,13 +150,13 @@ class TestOrgManagementServiceInt(IonIntegrationTestCase):
         self.assertEqual(org.name, 'Updated Test Facility')
         self.assertEqual(org.org_governance_name, 'Test_Facility')
 
-        user_role = self.org_management_service.find_org_role_by_name(org_id, ORG_MANAGER_ROLE)
+        user_role = self.org_management_service.find_org_role_by_name(org_id, MODERATOR_ROLE)
         self.assertNotEqual(user_role, None)
 
-        self.org_management_service.remove_user_role(org_id, ORG_MANAGER_ROLE)
+        self.org_management_service.remove_user_role(org_id, MODERATOR_ROLE)
         with self.assertRaises(BadRequest) as cm:
-            user_role = self.org_management_service.find_org_role_by_name(org_id, ORG_MANAGER_ROLE)
-        self.assertIn("The User Role 'ORG_MANAGER' does not exist for this Org", cm.exception.message)
+            user_role = self.org_management_service.find_org_role_by_name(org_id, MODERATOR_ROLE)
+        self.assertIn("The User Role 'MODERATOR' does not exist for this Org", cm.exception.message)
 
 
         with self.assertRaises(BadRequest):

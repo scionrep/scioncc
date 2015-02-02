@@ -699,9 +699,9 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
 
         self.assertIn('ION', response_data)
         self.assertEqual(len(response_data['ION']), 3)
-        self.assertIn('ION_MANAGER', response_data['ION'])
-        self.assertIn('ORG_MANAGER', response_data['ION'])
-        self.assertIn('ORG_MEMBER', response_data['ION'])
+        self.assertIn('SUPERUSER', response_data['ION'])
+        self.assertIn('MODERATOR', response_data['ION'])
+        self.assertIn('MEMBER', response_data['ION'])
 
     def test_user_role_cache(self):
         #Create a user
@@ -721,14 +721,14 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
         role_header = service_gateway_user_role_cache.get(actor_id)
         self.assertIn('ION', role_header)
         self.assertEqual(len(role_header['ION']), 1)
-        self.assertIn('ORG_MEMBER', role_header['ION'])
+        self.assertIn('MEMBER', role_header['ION'])
 
         org_client = OrgManagementServiceClient()
 
         ion_org = org_client.find_org()
-        manager_role = org_client.find_org_role_by_name(org_id=ion_org._id, role_name='ORG_MANAGER')
+        manager_role = org_client.find_org_role_by_name(org_id=ion_org._id, role_name='MODERATOR')
 
-        org_client.grant_role(org_id=ion_org._id, actor_id=actor_id, role_name='ORG_MANAGER')
+        org_client.grant_role(org_id=ion_org._id, actor_id=actor_id, role_name='MODERATOR')
 
         #Just allow some time for event processing on slower platforms
         gevent.sleep(2)
@@ -747,8 +747,8 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
         role_header = service_gateway_user_role_cache.get(actor_id)
         self.assertIn('ION', role_header)
         self.assertEqual(len(role_header['ION']), 2)
-        self.assertIn('ORG_MEMBER', role_header['ION'])
-        self.assertIn('ORG_MANAGER', role_header['ION'])
+        self.assertIn('MEMBER', role_header['ION'])
+        self.assertIn('MODERATOR', role_header['ION'])
 
         #Now flush the user_role_cache and make sure it was flushed
         event_publisher = EventPublisher()
@@ -761,7 +761,7 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
         self.assertEqual(service_gateway_user_role_cache.size(), 0)
 
         #Change the role once again and see if it is there again
-        org_client.revoke_role(org_id=ion_org._id, actor_id=actor_id, role_name='ORG_MANAGER')
+        org_client.revoke_role(org_id=ion_org._id, actor_id=actor_id, role_name='MODERATOR')
 
         #Just allow some time for event processing on slower platforms
         gevent.sleep(2)
@@ -780,7 +780,7 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
         role_header = service_gateway_user_role_cache.get(actor_id)
         self.assertIn('ION', role_header)
         self.assertEqual(len(role_header['ION']), 1)
-        self.assertIn('ORG_MEMBER', role_header['ION'])
+        self.assertIn('MEMBER', role_header['ION'])
 
         id_client.delete_actor_identity(actor_id)
 

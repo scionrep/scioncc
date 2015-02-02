@@ -8,16 +8,13 @@ from pyon.ion.resource import RT, PRED, LCS, OT
 from pyon.util.containers import get_safe, get_ion_ts_millis
 from pyon.util.log import log
 
-#These constants are ubiquitous, so define in the container
+# These constants are ubiquitous, so define in the container
 DEFAULT_ACTOR_ID = 'anonymous'
-ORG_MANAGER_ROLE = 'ORG_MANAGER'  # Can only act upon resource within the specific Org
-ORG_MEMBER_ROLE = 'ORG_MEMBER'    # Can only access resources within the specific Org
-ION_MANAGER = 'ION_MANAGER'   # Can act upon resources across all Orgs - like a Super User access
-INSTRUMENT_OPERATOR = 'INSTRUMENT_OPERATOR'
-OBSERVATORY_OPERATOR = 'OBSERVATORY_OPERATOR'
-DATA_OPERATOR = 'DATA_OPERATOR'
+MODERATOR_ROLE = 'MODERATOR'   # Can only act upon resource within the specific Org
+MEMBER_ROLE = 'MEMBER'     # Can only access resources within the specific Org
+SUPERUSER_ROLE = 'SUPERUSER'   # Can act upon resources across all Orgs - like a Super User access
+OPERATOR_ROLE = 'OPERATOR'
 
-#Helper methods
 
 def get_role_message_headers(org_roles):
     '''
@@ -116,7 +113,7 @@ def find_roles_by_actor(actor_id=None):
     if not role_dict.has_key(gov_controller.system_root_org_name):
         role_dict[gov_controller.system_root_org_name] = list()
 
-    role_dict[gov_controller.system_root_org_name].append(ORG_MEMBER_ROLE)
+    role_dict[gov_controller.system_root_org_name].append(MEMBER_ROLE)
 
 
     return role_dict

@@ -25,7 +25,7 @@ from ndg.xacml.core.context.pdp import PDP
 from ndg.xacml.core.context.result import Decision
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound
-from pyon.core.governance import ION_MANAGER
+from pyon.core.governance import SUPERUSER_ROLE
 from pyon.core.registry import is_ion_object, message_classes, get_class_decorator_value
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
 
@@ -302,9 +302,9 @@ class PolicyDecisionPointManager(object):
 
             #Handle the special case for the ION system actor
             if actor_roles.has_key(self.governance_controller.system_root_org_name):
-                if ION_MANAGER in actor_roles[self.governance_controller.system_root_org_name]:
-                    log.debug("Including ION_MANAGER role")
-                    self.create_org_role_attribute([ION_MANAGER],subject)
+                if SUPERUSER_ROLE in actor_roles[self.governance_controller.system_root_org_name]:
+                    log.debug("Including SUPERUSER role")
+                    self.create_org_role_attribute([SUPERUSER_ROLE],subject)
 
 
         request.subjects.append(subject)

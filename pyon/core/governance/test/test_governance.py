@@ -13,7 +13,7 @@ from pyon.ion.service import BaseService
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.core.bootstrap import IonObject
 from pyon.ion.resource import PRED, RT
-from pyon.core.governance import ORG_MANAGER_ROLE, ORG_MEMBER_ROLE, ION_MANAGER, GovernanceHeaderValues
+from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, SUPERUSER_ROLE, GovernanceHeaderValues
 from pyon.core.governance import find_roles_by_actor, get_actor_header, get_system_actor_header, get_role_message_headers, get_valid_resource_commitments
 from interface.services.examples.hello.ihello_service  import HelloServiceProcessClient
 from pyon.util.context import LocalContextMixin
@@ -319,43 +319,43 @@ class GovernanceUnitTest(PyonTestCase):
 
         headers = {'op': 'test_op', 'process': process, 'request': 'request', 'ion-actor-id': 'ionsystem', 'receiver': 'resource-registry',
                                    'sender-type': 'sender-type', 'resource-id': '123xyz' ,'sender-service': 'sender-service',
-                                   'ion-actor-roles': {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]}}
+                                   'ion-actor-roles': {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]}}
 
         gov_values = GovernanceHeaderValues(headers)
         self.assertEqual(gov_values.op, 'test_op')
         self.assertEqual(gov_values.process_name, 'test_process')
         self.assertEqual(gov_values.actor_id, 'ionsystem')
-        self.assertEqual(gov_values.actor_roles, {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]})
+        self.assertEqual(gov_values.actor_roles, {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]})
         self.assertEqual(gov_values.resource_id,'123xyz')
 
         self.assertRaises(BadRequest, GovernanceHeaderValues, {})
 
         headers = {'op': 'test_op', 'request': 'request', 'ion-actor-id': 'ionsystem', 'receiver': 'resource-registry',
                    'sender-type': 'sender-type', 'resource-id': '123xyz' ,'sender-service': 'sender-service',
-                   'ion-actor-roles': {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]}}
+                   'ion-actor-roles': {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]}}
 
         gov_values = GovernanceHeaderValues(headers)
         self.assertEqual(gov_values.op, 'test_op')
         self.assertEqual(gov_values.process_name, 'Unknown-Process')
         self.assertEqual(gov_values.actor_id, 'ionsystem')
-        self.assertEqual(gov_values.actor_roles, {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]})
+        self.assertEqual(gov_values.actor_roles, {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]})
         self.assertEqual(gov_values.resource_id,'123xyz')
 
         headers = {'op': 'test_op', 'request': 'request', 'receiver': 'resource-registry',
                    'sender-type': 'sender-type', 'resource-id': '123xyz' ,'sender-service': 'sender-service',
-                   'ion-actor-roles': {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]}}
+                   'ion-actor-roles': {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]}}
 
         self.assertRaises(Inconsistent, GovernanceHeaderValues, headers)
 
         headers = {'op': 'test_op', 'request': 'request', 'ion-actor-id': 'ionsystem', 'receiver': 'resource-registry',
                    'sender-type': 'sender-type', 'resource-id': '123xyz' ,'sender-service': 'sender-service',
-                   'ion-actor-123-roles': {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]}}
+                   'ion-actor-123-roles': {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]}}
 
         self.assertRaises(Inconsistent, GovernanceHeaderValues, headers)
 
         headers = {'op': 'test_op', 'request': 'request', 'ion-actor-id': 'ionsystem', 'receiver': 'resource-registry',
                    'sender-type': 'sender-type','sender-service': 'sender-service',
-                   'ion-actor-roles': {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]}}
+                   'ion-actor-roles': {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]}}
 
         self.assertRaises(Inconsistent, GovernanceHeaderValues, headers)
 
@@ -363,7 +363,7 @@ class GovernanceUnitTest(PyonTestCase):
         self.assertEqual(gov_values.op, 'test_op')
         self.assertEqual(gov_values.process_name, 'Unknown-Process')
         self.assertEqual(gov_values.actor_id, 'ionsystem')
-        self.assertEqual(gov_values.actor_roles, {'ION': [ION_MANAGER, ORG_MANAGER_ROLE, ORG_MEMBER_ROLE]})
+        self.assertEqual(gov_values.actor_roles, {'ION': [SUPERUSER_ROLE, MODERATOR_ROLE, MEMBER_ROLE]})
         self.assertEqual(gov_values.resource_id,'')
 
 
@@ -408,18 +408,18 @@ class GovernanceIntTest(IonIntegrationTestCase):
         ion_org_id, _ = self.rr.create(ion_org)
         ion_org._id = ion_org_id
 
-        manager_role = IonObject(RT.UserRole, name='Org Manager', governance_name=ORG_MANAGER_ROLE, description='Org Manager')
+        manager_role = IonObject(RT.UserRole, name='Org Manager', governance_name=MODERATOR_ROLE, description='Org Manager')
         manager_role_id = self.add_user_role(ion_org, manager_role)
 
-        member_role = IonObject(RT.UserRole, name='Org Member', governance_name=ORG_MEMBER_ROLE, description='Org Member')
+        member_role = IonObject(RT.UserRole, name='Org Member', governance_name=MEMBER_ROLE, description='Org Member')
 
 
-        # all actors have a defaul org_member_role
+        # all actors have a defaul MEMBER_ROLE
         actor_roles = find_roles_by_actor(actor_id)
-        self.assertDictEqual(actor_roles, {'ION': [ORG_MEMBER_ROLE]})
+        self.assertDictEqual(actor_roles, {'ION': [MEMBER_ROLE]})
 
         actor_header = get_actor_header(actor_id)
-        self.assertDictEqual(actor_header, {'ion-actor-id': actor_id, 'ion-actor-roles': {'ION': [ORG_MEMBER_ROLE]}})
+        self.assertDictEqual(actor_header, {'ion-actor-id': actor_id, 'ion-actor-roles': {'ION': [MEMBER_ROLE]}})
 
         #Add Org Manager Role
         self.rr.create_association(actor_id, PRED.hasRole, manager_role_id)
@@ -434,10 +434,10 @@ class GovernanceIntTest(IonIntegrationTestCase):
         org2._id = org2_id
 
 
-        member2_role = IonObject(RT.UserRole, governance_name=ORG_MEMBER_ROLE, name='Org Member', description='Org Member')
+        member2_role = IonObject(RT.UserRole, governance_name=MEMBER_ROLE, name='Org Member', description='Org Member')
         member2_role_id = self.add_user_role(org2, member2_role)
 
-        operator2_role = IonObject(RT.UserRole, governance_name='INSTRUMENT_OPERATOR', name='Instrument Operator',
+        operator2_role = IonObject(RT.UserRole, governance_name='OPERATOR', name='Instrument Operator',
                                    description='Instrument Operator')
         operator2_role_id = self.add_user_role(org2, operator2_role)
 
@@ -455,16 +455,16 @@ class GovernanceIntTest(IonIntegrationTestCase):
         self.assertIn('Second_Org', role_header)
         self.assertEqual(len(actor_roles['Second_Org']), 2)
         self.assertEqual(len(role_header['Second_Org']), 2)
-        self.assertIn('INSTRUMENT_OPERATOR', actor_roles['Second_Org'])
-        self.assertIn('INSTRUMENT_OPERATOR', role_header['Second_Org'])
-        self.assertIn(ORG_MEMBER_ROLE, actor_roles['Second_Org'])
-        self.assertIn(ORG_MEMBER_ROLE, role_header['Second_Org'])
+        self.assertIn('OPERATOR', actor_roles['Second_Org'])
+        self.assertIn('OPERATOR', role_header['Second_Org'])
+        self.assertIn(MEMBER_ROLE, actor_roles['Second_Org'])
+        self.assertIn(MEMBER_ROLE, role_header['Second_Org'])
         self.assertIn('ION', actor_roles)
         self.assertIn('ION', role_header)
-        self.assertIn(ORG_MANAGER_ROLE, actor_roles['ION'])
-        self.assertIn(ORG_MEMBER_ROLE, actor_roles['ION'])
-        self.assertIn(ORG_MANAGER_ROLE, role_header['ION'])
-        self.assertIn(ORG_MEMBER_ROLE, role_header['ION'])
+        self.assertIn(MODERATOR_ROLE, actor_roles['ION'])
+        self.assertIn(MEMBER_ROLE, actor_roles['ION'])
+        self.assertIn(MODERATOR_ROLE, role_header['ION'])
+        self.assertIn(MEMBER_ROLE, role_header['ION'])
 
         actor_header = get_actor_header(actor_id)
 
@@ -484,16 +484,16 @@ class GovernanceIntTest(IonIntegrationTestCase):
         self.assertIn('Second_Org', role_header)
         self.assertEqual(len(actor_roles['Second_Org']), 2)
         self.assertEqual(len(role_header['Second_Org']), 2)
-        self.assertIn('INSTRUMENT_OPERATOR', actor_roles['Second_Org'])
-        self.assertIn('INSTRUMENT_OPERATOR', role_header['Second_Org'])
-        self.assertIn(ORG_MEMBER_ROLE, actor_roles['Second_Org'])
-        self.assertIn(ORG_MEMBER_ROLE, role_header['Second_Org'])
+        self.assertIn('OPERATOR', actor_roles['Second_Org'])
+        self.assertIn('OPERATOR', role_header['Second_Org'])
+        self.assertIn(MEMBER_ROLE, actor_roles['Second_Org'])
+        self.assertIn(MEMBER_ROLE, role_header['Second_Org'])
         self.assertIn('ION', actor_roles)
         self.assertIn('ION', role_header)
-        self.assertIn(ORG_MANAGER_ROLE, actor_roles['ION'])
-        self.assertIn(ORG_MEMBER_ROLE, actor_roles['ION'])
-        self.assertIn(ORG_MANAGER_ROLE, role_header['ION'])
-        self.assertIn(ORG_MEMBER_ROLE, role_header['ION'])
+        self.assertIn(MODERATOR_ROLE, actor_roles['ION'])
+        self.assertIn(MEMBER_ROLE, actor_roles['ION'])
+        self.assertIn(MODERATOR_ROLE, role_header['ION'])
+        self.assertIn(MEMBER_ROLE, role_header['ION'])
 
         actor_header = get_actor_header(actor_id)
 
@@ -507,7 +507,7 @@ class GovernanceIntTest(IonIntegrationTestCase):
         actor_id, _ = self.rr.create(actor)
 
         system_actor_header = get_system_actor_header()
-        self.assertDictEqual(system_actor_header['ion-actor-roles'],{'ION': [ORG_MEMBER_ROLE]})
+        self.assertDictEqual(system_actor_header['ion-actor-roles'],{'ION': [MEMBER_ROLE]})
 
     def test_get_valid_resource_commitment(self):
         from pyon.util.containers import get_ion_ts_millis
