@@ -2,11 +2,11 @@
 
 __author__ = 'Stephen P. Henrie, Michael Meisinger'
 
+from pyon.public import CFG, IonObject, RT, PRED, OT, Inconsistent, NotFound, BadRequest, log, EventPublisher
 from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, OPERATOR_ROLE
 from pyon.core.governance.negotiation import Negotiation
 from pyon.core.registry import issubtype
 from pyon.ion.directory import Directory
-from pyon.public import CFG, IonObject, RT, PRED, OT, Inconsistent, NotFound, BadRequest, log, EventPublisher
 from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier
 
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum, NegotiationStatusEnum
@@ -16,7 +16,7 @@ from interface.services.core.iorg_management_service import BaseOrgManagementSer
 # Supported Negotiations - perhaps move these to data at some point if there are
 # more negotiation types and/or remove references to local functions to make this more dynamic
 negotiation_rules = {
-    OT.EnrollmentProposal: {
+    "EnrollmentProposal": {
         'pre_conditions': ['is_registered(sap.consumer)',
                            'not is_enrolled(sap.provider,sap.consumer)',
                            'not is_enroll_negotiation_open(sap.provider,sap.consumer)'],
@@ -24,14 +24,14 @@ negotiation_rules = {
         'auto_accept': True
     },
 
-    OT.RequestRoleProposal: {
+    "RequestRoleProposal": {
         'pre_conditions': ['is_enrolled(sap.provider,sap.consumer)',
                            'not has_role(sap.provider,sap.consumer,sap.role_name)'],
         'accept_action': 'grant_role(sap.provider,sap.consumer,sap.role_name)',
         'auto_accept': True
     },
 
-    OT.AcquireResourceProposal: {
+    "AcquireResourceProposal": {
         'pre_conditions': ['is_enrolled(sap.provider,sap.consumer)',
                            'has_role(sap.provider,sap.consumer,"' + OPERATOR_ROLE + '")',
                            'is_resource_shared(sap.provider,sap.resource_id)'],
@@ -39,7 +39,7 @@ negotiation_rules = {
         'auto_accept': True
     },
 
-    OT.AcquireResourceExclusiveProposal: {
+    "AcquireResourceExclusiveProposal": {
         'pre_conditions': ['is_resource_acquired(sap.consumer, sap.resource_id)',
                            'not is_resource_acquired_exclusively(sap.consumer, sap.resource_id)'],
         'accept_action': 'acquire_resource(sap)',

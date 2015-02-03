@@ -1,0 +1,38 @@
+SampleEnum: !enum (values=(SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY), default=SUNDAY)
+---
+
+SampleObject:
+  name: ''
+  time: "1341269890404"
+  an_int: 0
+  q_float: 0.0
+  a_str: ''
+  none_val:
+  a_dict: {}
+  a_list: []
+  an_enum: !SampleEnum
+  another_enum: !enum (name=AnEnum, values=(VALUE1, VALUE2), default=VALUE2)
+  # attribute can be of any type that extends Resource
+  abstract_val: !InformationResource
+---
+
+SampleResource: !Extends_Resource
+  num: 0
+  other_field: ""
+  list_element: []
+  dict_element: {}
+---
+
+SampleEvent: !Extends_Event
+  num: 0
+  other_field: ""
+  list_element: []
+  dict_element: {}
+---
+
+SampleComplexEvent: !Extends_Event
+  num: 0
+  other_field: ""
+  list_element: []
+  dict_element: {}
+  resource: {}

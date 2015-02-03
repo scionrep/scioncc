@@ -1,5 +1,5 @@
 from pyon.util.int_test import IonIntegrationTestCase
-from interface.services.examples.hello.ihello_service import HelloServiceClient
+from interface.services.examples.ihello_service import HelloServiceClient
 
 class TestHelloService(IonIntegrationTestCase):
     def setUp(self):

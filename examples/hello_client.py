@@ -7,7 +7,7 @@ from pyon.public import Container, ImmediateProcess
 from pyon.util.context import LocalContextMixin
 from pyon.core.governance import get_actor_header
 
-from interface.services.examples.hello.ihello_service  import HelloServiceProcessClient
+from interface.services.examples.ihello_service  import HelloServiceProcessClient
 from interface.services.icontainer_agent import ContainerAgentProcessClient
 
 class FakeProcess(LocalContextMixin):

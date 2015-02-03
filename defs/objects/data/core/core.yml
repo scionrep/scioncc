@@ -1,0 +1,34 @@
+
+# Node and leaf object within a directory tree
+DirEntry:
+  # Name of the Org this directory entry belongs to
+  org: ""
+  # Path of the parent node within the directory tree
+  parent: ""
+  # Name of this node (composite or leaf) in the directory tree
+  key: ""
+  # Key-value attributes associated to this node in the directory tree
+  attributes: {}
+  # Timestamp str in millis in UNIX epoch when this node was created
+  ts_created: ""
+  # Timestamp str in millis in UNIX epoch when this node was updated
+  ts_updated: ""
+
+
+# Specifies a standing, parameterizable query for resources and events. Can represent a "saved search".
+View: !Extends_InformationResource
+  # Designates the type of view definition
+  view_type: ""
+
+  # Detailed definition of the view according to the type
+  view_definition: {}
+
+  # Definition of parameterized values within the view definition
+  #@ContentType=CustomAttribute
+  view_parameters: []
+
+  # Default or filled set of parameterized values (matching view_parameters)
+  param_values: {}
+
+
+

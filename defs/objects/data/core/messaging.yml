@@ -1,0 +1,78 @@
+# Distributed namespace of Exchange participants, operated within one domain of authority.
+ExchangeSpace: !Extends_InformationResource
+
+
+# RCommunicating participant within an Exchange Space.
+ExchangeName: !Extends_InformationResource
+  xn_type: "entity"
+
+
+# A message router within an Exchange Space.
+ExchangePoint: !Extends_InformationResource
+  topology_type: "ttree"
+
+
+# A message broker
+ExchangeBroker: !Extends_InformationResource
+  impl_type: "rabbitmq"
+  impl_version: ""
+
+
+StreamRoute:
+  exchange_point: ""
+  routing_key: ""
+  credentials: {}
+---
+
+# Identified, unbounded sequence of data messages published with a unique topic.
+Stream: !Extends_InformationResource
+  stream_route: !StreamRoute
+  persisted: False
+  # stream type of stream
+  stream_type: ""
+  # The stream name identified by the stream configuration
+  stream_name: ""
+
+
+# Describes the format, structure, and characteristics of a stream and its granules (data records).
+StreamDefinition: !Extends_InformationResource
+  parameter_dictionary: {}
+  stream_type: ""
+  available_fields: []
+  stream_configuration: {}
+---
+
+# Represents a standing request to receive information from streaming sources. Typically,
+# represents a pubsub queue receiving science data granules from a data stream.
+Subscription: !Extends_InformationResource
+  exchange_points: []
+  exchange_name: ""
+  activated: False
+
+
+# Object containing data to be transported in messages on data streams.
+Granule:
+  # Contains the relevant parts of the parameter dictionary definition for this granule and stream
+  param_dictionary: {}
+  # The data content of this granule
+  record_dictionary: {}
+  # References the stream definition for this stream
+  stream_definition_id: ""
+  # Contains the relevant parts of the stream definition
+  stream_definition: {}
+  # Defines the domain pertinent to this granule's data
+  domain: []
+  # Locates this granule's data content within the coverage domain
+  locator: {}
+  # Identifies a data producer
+  data_producer_id: ""
+  # Informs about any updates to data producer metadata
+  provider_metadata_update: {}
+  # Timestamp of granule creation
+  creation_timestamp: 0.
+  # UUID for Connection (instrument)
+  connection_id: ""
+  # Connection window index
+  connection_index: ""
+
+

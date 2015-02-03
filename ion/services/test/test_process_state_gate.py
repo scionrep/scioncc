@@ -1,33 +1,18 @@
 
-from ion.services.process_dispatcher_service import ProcessStateGate
 
 from nose.plugins.attrib import attr
 from gevent import queue, spawn_later
 from gevent.queue import Empty
 
+from pyon.util.int_test import IonIntegrationTestCase
 
 from pyon.net.endpoint import RPCClient
-from pyon.service.service import BaseService
-from pyon.util.containers import DotDict
-from pyon.util.unit_test import PyonTestCase
-from pyon.util.int_test import IonIntegrationTestCase
-from pyon.public import log
-from pyon.public import IonObject
-from pyon.ion.event import EventSubscriber
+from pyon.public import IonObject, OT, EventSubscriber, BaseService
 
-from pyon.ion.resource import OT
+from ion.services.process_dispatcher_service import ProcessStateGate
 
 from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
-
 from interface.objects import ProcessStateEnum, ProcessQueueingMode
-
-
-try:
-    from epu.states import InstanceState
-except ImportError:
-    pass
-
-
 
 
 class TestProcess(BaseService):

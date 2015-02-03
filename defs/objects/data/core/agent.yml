@@ -1,0 +1,62 @@
+# Describes a specific capability of an agent
+AgentCapability:
+  # Capability name
+  name: ""
+  # Capability type
+  cap_type: !enum (name=CapabilityType, values=(AGT_CMD, AGT_PAR, RES_CMD, RES_PAR, RES_IFACE, CONV_TYPE, AGT_STATES, RES_STATES, ALERT_DEFS, AGT_CMD_ARGS, AGT_STREAMS), default=AGT_CMD)
+  # Known restrictions when issuing this agent capability
+  restrictions: {}
+  # Capability schema
+  schema: {}
+
+
+# Holds a command to a resource agent
+AgentCommand:
+  # Unique identifier for this specific command
+  command_id: ""
+  # The actual command code
+  command: ""
+  # Additional positional args for the command
+  args: []
+  # Additional keyword args for the command
+  kwargs: {}
+
+
+# Holds the status of the execution of a command to a resource agent
+AgentCommandResult:
+  # Unique identifier of a previously issued command
+  command_id: ""
+  # The actual command code
+  command: ""
+  # Timestamp when the command started to execute
+  ts_execute: ""
+  # Result status of command
+  #@ContentType=int,str
+  status: ""
+  # Result value of command execution
+  #@ContentType=list,str,dict
+  result: ""
+
+
+# Defines the command and parameter schema for a resource agent representing a taskable resource.
+AgentSchema:
+  agent_schema: ""
+  resource_schema: ""
+
+
+# Describes a type of agent. Abstract base type.
+AgentDefinition: !Extends_InformationResource
+  # Released version of driver code package. NOTE: this is set instead of the driver_version
+  agent_version: ""
+  # The default settings for this agent (pubrate, etc)
+  agent_default_config: {}
+
+
+# Describes a running or scheduled agent representing a single resource. Abstract base type.
+AgentInstance: !Extends_InformationResource
+  # The type of agent deployment
+  deployment_type: ""
+  # Specific config for the agent driver, such as connection ports
+  driver_config: {}
+  # Agent process state from prior agent run
+  saved_agent_state: {}

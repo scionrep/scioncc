@@ -8,7 +8,6 @@ ResourceVisibilityEnum: !enum (values=(PUBLIC, REGISTERED, FACILITY, OWNER), def
 # _id: A unique identifier that comes with every persisted object;
 # _rev: A revision identifier that comes with every persisted object;
 # type_: The object type
-#@TypeVersion=1
 Resource:
   # Human readable long name of the resource, e.g. for display in resource lists
   name: ""
@@ -24,12 +23,14 @@ Resource:
   ts_created: ""
   # Timestamp when resource object was last updated (str in millis in UNIX epoch)
   ts_updated: ""
-  # (SYS) Holds a list of alternate IDs to this resource, e.g. for preload in the form prefix:id
+  # Holds a list of alternate IDs to this resource, e.g. for preload in the form prefix:id
   alt_ids: []
-  # (SYS) Additional attributes, e.g. from preload import
+  # Additional attributes, e.g. from preload import
   addl: {}
-  # The last version in which the object was saved (persisted)
-  persisted_version: 1
+---
+
+# Describes a resource that represents a system internal component or function. Abstract base type.
+SystemResource: !Extends_Resource
 ---
 
 # Describes a resource that exists as an electronic artifact, such as science data,
@@ -40,10 +41,6 @@ InformationResource: !Extends_Resource
 # Describes a resource that can be controlled and monitored, such as a physical device
 # or a computational process. Abstract base type.
 TaskableResource: !Extends_Resource
-  # Indicates that this resource can be controlled by messages sent to it
-  message_controllable: True
-  # Indicates that this resource has a communication port for real-time monitoring
-  monitorable: True
 ---
 
 # Describes an electronically described computational entity that can be instantiated into a taskable resource.
@@ -51,9 +48,6 @@ TaskableResource: !Extends_Resource
 ExecutableResource: !Extends_InformationResource
 ---
 
-# Describes a resource that represents a system internal component or function. Abstract base type.
-SystemResource: !Extends_InformationResource
----
 
 # Defines a type of system known resource.
 ResourceType: !Extends_InformationResource
@@ -66,9 +60,63 @@ ResourceLifeCycle: !Extends_InformationResource
   # The definition of the resource life-cycle workflow (varies by type).
   definition: {}
 
-# OBSOLETE - Used to indicate filters in find resource operations
-ResourceFilter:
-  filters: {}
+
+# Enumerates the representation type for an attachment. Possible values are:
+# ASCII: the content is ASCII, e.g. JSON or BASE64 encoded by the application;
+# BLOB: the content is a binary;
+# OBJECT: the content is an arbitrary object, such as a dict, list;
+# REFERENCE: the content is a reference document and requires a parser to be ingested
+AttachmentType: !enum (values=(ASCII, BLOB, OBJECT, REFERENCE), default=ASCII)
+
+
+# Abstract base type for objects holding additional information about attachments, specific by type.
+AbstractAttachmentContext:
+---
+
+# Represents separate information attached to a resource, such as a PDF or image file.
+Attachment: !Extends_InformationResource
+  # System representation type of attachment
+  attachment_type: !AttachmentType
+  # Content type of attachment (PDF document, PNG image, etc); expressed as standard MIME types
+  content_type: ""
+  # Unused for holding the actual data
+  content: ""
+  # (SYS) Associated object (resource) ID, for easier indexing
+  object_id: ""
+  # The identity of the creator of the document. For documents imported from external sources,
+  # this is not the same as the creator of this resource.
+  created_by: ""
+  # The identity of someone who has modified of the document. For documents imported from external sources,
+  # this modification may have happened outside of the system
+  modified_by: ""
+  # Keywords indicating the type of attachment (e.g. user manual, log)
+  #@ContentType=str
+  keywords: []
+  # Size of the attachment content, in bytes
+  attachment_size: 0
+  # Provides additional attributes depending on the type of attachment.
+  context: !AbstractAttachmentContext
+
+# Holds information about the definition of a custom attribute
+CustomAttribute:
+  # Name of the attribute
+  name: ""
+  # Type of the attribute. Codelist: str, int, float, bool, list, dict
+  type: ""
+  # Description for the attribute
+  description: ""
+  # Default value for the attribute
+  default: ""
+  # Units applied to the attribute value (if applicable)
+  units: ""
+
+
+# Represents a named set of resources. These may or may not be of the same type, and may or may not be ordered.
+Collection: !Extends_InformationResource
+  # The resources in this collection
+  resources: []
+  # Additional search filter or options
+  options: {}
 ---
 
 # Enumerates the availability of a computed attribute's value.
@@ -120,44 +168,6 @@ BaseComputedAttributes:
 # The base type for computed attribute objects.
 # IMPORTANT!!! NOTHING IN HERE SHOULD REFERENCE LOCAL FUNCTIONS SINCE THIS IS USED ACROSS SERVICES
 ComputedAttributes: !Extends_BaseComputedAttributes
-  # A list of Event objects (or subtypes) for current resource, max 100, descending order, most recent first
-  #@Method=user_notification.get_recent_events
-  recent_events: !ComputedListValue
-  # Describes the service request to retrieve recent events
-  #@ServiceRequest=user_notification.get_recent_events
-  recent_events_request: !ServiceRequest
-  # A list of NotificationRequest objects, for the current user, where origin equals current resource id
-  #@Method=user_notification.get_subscriptions_attribute
-  user_notification_requests:  !ComputedListValue
-  # Describes the service request to retrieve user notification requests
-  #@ServiceRequest=user_notification.get_subscriptions_attribute
-  user_notifications_request: !ServiceRequest
----
-
-# The base type for taskable computed attribute objects
-TaskableComputedAttributes: !Extends_ComputedAttributes
-  # The device's operational state
-  #@Method
-  operational_state: !ComputedStringValue
----
-
-# The base type for taskable computed attribute objects
-DeviceComputedAttributes: !Extends_TaskableComputedAttributes
-  # Communications status roll up for device as ComputedIntValue with a StatusType Value
-  communications_status_roll_up: !ComputedIntValue
-  # Data status roll up for device as ComputedIntValue with a StatusType Value
-  data_status_roll_up:           !ComputedIntValue
-  # Location status roll up for device as ComputedIntValue with a StatusType Value
-  location_status_roll_up:       !ComputedIntValue
-  # Power status roll up for device as ComputedIntValue with a StatusType Value
-  power_status_roll_up:          !ComputedIntValue
-  # Time since device was last restarted
-  #@Method
-  uptime: !ComputedStringValue
-  # UNUSED - The set of data product with the processing_level_code as the key to identify   =instrument_management.get_data_product_set
-  data_product_set: !ComputedDictValue
-  # UNUSED - A dictionary of data product contexts with the processing_level_code as the key to identify
-  data_product_parameters_set: !ComputedDictValue
 ---
 
 # A non-persistable container for a resource and its related data used by the extended resource framework
@@ -174,8 +184,6 @@ ResourceContainer:
   resource: !Resource
   # An optional dict of names and associated objects to get other associations on the fly
   ext_associations: {}
-  # Tracks the version of this class
-  type_version: 1
 ---
 
 # A derived object containing common fields for all extended resource objects

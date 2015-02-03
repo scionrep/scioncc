@@ -1,0 +1,179 @@
+# A capability container within the system, with the ability to host processes.
+CapabilityContainer: !Extends_TaskableResource
+  # Version identifier for this container type
+  version: ""
+  # Class of technology
+  technology: "Python"
+  # Exchange name of the agent representing the container
+  cc_agent: ""
+  # Log of most recent container status snapshots
+  status_log: []
+---
+
+# Defines one argument that a process can receive on startup. This does not set an instance value.
+ProcessArgument:
+  name: ""
+  type: ""
+  description: ""
+  default:
+
+
+# Enumerates the possible deployments modes for an agent.
+# Values include: PROCESS=One process per resource; SERVICE=One service per resource type
+DeploymentTypeEnum: !enum (values=(PROCESS, SERVICE, CLIENT), default=PROCESS)
+---
+
+# Enumerates possible states of container processes.
+ProcessStateEnum: !enum (values=(REQUESTED, WAITING, PENDING, RUNNING, TERMINATING, TERMINATED, FAILED, REJECTED, EXITED), default=REQUESTED)
+
+# Enumerates possible states of system services.
+ServiceStateEnum: !enum (values=(PENDING, READY, STEADY, FAILED), default=PENDING)
+
+# Abstract base type for process definition details attributes
+AbstractProcessDefinitionDetailType:
+
+# Abstract base type for process details attributes
+AbstractProcessDetailType:
+---
+
+# Specifies a type of executable process with references to executable or source code.
+ProcessDefinition: !Extends_ExecutableResource
+  # Type or process definition
+  definition_type: ""
+  # Version of the same process definition
+  version: ""
+  # The source code file in which the code is in
+  module: ""
+  # The class name within the source code module
+  class_name: ""
+  # location of the module
+  url: ""
+  # This is a list of supported arguments. Each entry is a ProcessArgument object
+  arguments: []
+  # process definition specific information  that is true for all processes of this type
+  definition: !AbstractProcessDefinitionDetailType
+---
+
+# Represents an executing computational entity in the system, executed by an Execution Engine. An instance
+# of a process definition, of type service, agent or transformation process.
+Process: !Extends_TaskableResource
+  # Human legible label
+  label: ""
+  # Indicates a specialized type of CC process
+  proctype: ""
+  #
+  process_state: !ProcessStateEnum
+  #
+  process_configuration: {}
+  #
+  process_id: ""
+  # instance specific information
+  detail: !AbstractProcessDetailType
+
+
+# Describes request scheduling a process on specific resources
+ProcessTarget:
+  execution_engine_id: ""
+  node_exclusive: ""
+  constraints: {}
+---
+
+# Describes request to schedule a process at a certain time or modality
+ProcessSchedule:
+  schedule_mode: !enum (name=ProcessScheduleMode, values=(IMMEDIATE, SCHEDULE), default=IMMEDIATE)
+  restart_mode: !enum (name=ProcessRestartMode, values=(NEVER, ALWAYS, ABNORMAL), default=NEVER)
+  queueing_mode: !enum (name=ProcessQueueingMode, values=(NEVER, ALWAYS, START_ONLY, RESTART_ONLY), default=ALWAYS)
+  schedule:
+  target: !ProcessTarget
+
+
+# Object keeping a persistent state of a process in the system, so that another process can pick
+# the the same state in case of restart, recovery or migration.
+ProcessState:
+  state:
+  ts: ""
+  process_type:
+
+
+# Represents a type of service, available for instantiation within the OOI Integrated Observatory Network.
+ServiceDefinition: !Extends_ExecutableResource
+  # The language of service specification. For future extensibility
+  definition_type: "ion_svc_yml_1"
+  # The actual service specification
+  definition: ""
+  # List of operations in this service.
+  operations: []
+  # Relative path for specific service definition, e.g. "coi"
+  namespace: ""
+
+
+# Represents an instance of a service definition, available for use within the OOI Integrated Observatory Network.
+Service: !Extends_TaskableResource
+  # The fully qualified name under which the service is available in the system
+  exchange_name: ""
+  # Current service state as ServiceStateEnum value
+  state: !ServiceStateEnum
+  # The policy pertaining to the service
+  policy: {}
+
+
+
+
+
+
+---
+# base class for all predicate types that select which containers should run a particular requested action
+ContainerManagementPredicate:
+
+# base class for all requested actions for container management
+ContainerManagementAction:
+---
+
+
+########### PREDICATE TYPES #############
+
+# indicate that the request should be run on all containers
+AllContainers: !Extends_ContainerManagementPredicate
+  #@module=pyon.container.management
+  #@class=AllContainers
+  peer:
+
+########### ACTION TYPES #############
+
+ChangeLogLevel: !Extends_ContainerManagementAction
+  logger: ""
+  level: ""
+  recursive: True
+
+
+ReportStatistics: !Extends_ContainerManagementAction
+
+
+ClearStatistics: !Extends_ContainerManagementAction
+
+
+ResetPolicyCache: !Extends_ContainerManagementAction
+
+
+TriggerGarbageCollection: !Extends_ContainerManagementAction
+
+
+TriggerContainerSnapshot: !Extends_ContainerManagementAction
+  snapshot_id: ""         # Unique identifier for a snapshot
+  include_snapshots: []   # List of special snapshots to include
+  exclude_snapshots: []   # List of special snapshots to exclude
+  take_at_time: ""        # System timestamp for time when to take the snapshot
+  clear_all: False        # If True, clear snapshots
+  persist_snapshot: True  # If True, persist snapshot, otherwise log
+  snapshot_kwargs: {}     # Arbitrary args for snapshot
+
+
+StartGeventBlock: !Extends_ContainerManagementAction
+  alarm_mode: False       # Use thread monitor mode to detect blocking instead of alarm mode
+
+
+StopGeventBlock: !Extends_ContainerManagementAction
+
+
+PrepareSystemShutdown: !Extends_ContainerManagementAction
+  mode: ""

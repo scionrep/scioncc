@@ -1,4 +1,0 @@
-# Represents persistent information about a data transform stream process. Internal resource
-Transform: !Extends_InformationResource
-  process_id: ""
-  configuration: {}

@@ -38,8 +38,6 @@ system:
 
 
 bootstrap:
-  # Launches a registration worker to register DAP datasets with PyDAP
-  use_pydap: False
 
 
 # ----------------------------------------------------------------------------------
@@ -85,35 +83,6 @@ server:
     sender: data_alerts@oceanobservatories.org
     password: ""
 
-  pydap:
-    # Python DAP server
-    type: pydap
-    host: localhost
-    port: 8001
-    data_path: RESOURCE:ext/pydap
-    datasets_xml_path: RESOURCE:ext/datasets.xml
-    # cache_limit defines the total number of datasets allowed to be cached
-    cache_limit: 2
-    # cache_expiration defines the time limit, in seconds, a dataset is allowed to remain
-    # in the cache.  
-    cache_expiration: 30
-    # Profile and log DAP requests
-    profile_enabled: False
-    # Allowable request limit in MB
-    request_limit: 200
-
-  erddap:
-    # ERDDAP DAP server and data catalog
-    type: erddap
-    host: localhost
-    port: 8081
-    # Whether ERDDAP should cache the dataset extents or update it per request
-    # recommended setting is True
-    dataset_caching: True
-    # How long ERDDAP should cache the dataset extents for (in milliseconds)
-    # recommended setting is at least 30s = 30000
-    refresh_interval: 30000
-
   localrouter:
     # In-process message router
     type: local
@@ -151,6 +120,7 @@ container:
       primary: amqp
       priviledged:
     endpoint: # TODO: move entries to here
+      rpc_conversation_enabled: False
       prefetch_count: 1                 # how many messages to prefetch from broker by default
     interceptor: # TODO: move entries to here
 
@@ -175,11 +145,6 @@ container:
       port: 5000
     trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
     user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
-
-  pydap_gateway:
-    web_server:
-      host: localhost # 0.0.0.0 binds on all
-      port: 8001
 
   containerui:
     web_server:
@@ -226,8 +191,6 @@ interceptor:
         enabled: true
         interceptor_order: [policy]
         governance_interceptors:
-          information:
-            class: pyon.core.governance.information.information_model_interceptor.InformationModelInterceptor
           policy:
             class: pyon.core.governance.policy.policy_interceptor.PolicyInterceptor
 
@@ -315,6 +278,7 @@ service:
 
 
 units: res/config/units/udunits2.xml
+
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # PLEASE DO NOT ADD NEW TOP LEVEL KEYS

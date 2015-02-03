@@ -155,12 +155,8 @@ if doc_type == "UserInfo" and isinstance(res.get('contact', None), dict):
   email = res['contact'].get('email', None)
   if email:
     special = "contact.email=%s" % email
-elif doc_type == "DataProduct" and res.get('ooi_product_name', None):
-  special = "ooi_product_name=%s" % res['ooi_product_name']
 elif doc_type == "Org" and res.get('org_governance_name', None):
   special = "org_governance_name=%s" % res['org_governance_name']
-elif doc_type == "NotificationRequest" and res.get('origin', None):
-  special = "origin=%s" % res['origin']
 elif doc_type == "UserRole" and res.get('governance_name', None):
   special = "governance_name=%s" % res['governance_name']
 

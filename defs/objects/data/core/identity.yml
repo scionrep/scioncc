@@ -1,0 +1,57 @@
+# Abstract base type for additional identity information
+IdentityDetails:
+
+# One set of user credentials from an external identity provider
+Credentials:
+  # Service that authenticates an actor
+  authentication_service: ""
+  # Service that identities the specific actor.
+  identity_provider: ""
+  # Actual credentials
+  username: ""
+  password_salt: ""
+  password_hash: ""
+
+---
+
+# A registered system identity
+ActorIdentity: !Extends_SystemResource
+  # The type of actor. One of user, agent, system, org
+  actor_type: ""
+  # Additional details object depending on actor type
+  details: !IdentityDetails
+  # Login credentials
+  #@ContentType=Credentials
+  credentials: []
+
+
+# Details for an individual registered with the system, with contact and profile information.
+UserIdentityDetails: !Extends_IdentityDetails
+  # Describes user attributes as ContactInformation object
+  contact: !ContactInformation
+  # List of user specific TokenInformation for authorization purposes
+  tokens: []
+  # Key-value properties for the user; e.g. for configuration or UI preferences
+  profile: {}
+
+
+# Enumerates the possible types of security tokens
+TokenTypeEnum: !enum (values=(ACTOR_SECRET, ACTOR_AUTH), default=ACTOR_SECRET)
+---
+
+# Holds information for a user specific authorization token
+SecurityToken:
+  # The token secret
+  token_string: ""
+  # The type of token - one of ACTOR_SECRET, ACTOR_AUTH
+  token_type: ""
+  # Timestamp (UNIX epoch) for when the token expires in UTC
+  expires : ""
+  # One of OPEN, VERIFIED, EXPIRED
+  status: ""
+  # ID of an actor identity.
+  actor_id:
+  # Email address of merge account
+  merge_email: ""
+  # Additional token attributes
+  attributes: {}

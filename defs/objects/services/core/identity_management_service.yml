@@ -1,0 +1,230 @@
+name: identity_management
+
+docstring: |
+  Stores identities of users and resources, including bindings of internal
+  identities to external identities. Also stores metadata such as a user profile.
+
+dependencies: [resource_registry]
+
+
+methods:
+  # -----------------
+  # Working with internal actor identities (users, agents etc)
+
+  create_actor_identity:
+    docstring: |
+      Persists the provided ActorIdentity object. The id string returned
+      is the internal id by which users should be represented in message
+      headers for policy enforcement, etc. 
+    in:
+      actor_identity: !ActorIdentity
+    out:
+      actor_id: ""
+    throws:
+      BadRequest: if object passed has _id or _rev attribute
+
+  update_actor_identity:
+    docstring: |
+      Updates the provided ActorIdentity object.  Throws NotFound exception if
+      an existing version of ActorIdentity is not found.  Throws Conflict if
+      the provided ActorIdentity object is not based on the latest persisted
+      version of the object.
+    in:
+      actor_identity: !ActorIdentity
+    out:
+    throws:
+      BadRequest: if object does not have _id or _rev attribute
+      NotFound: object with specified id does not exist
+      Conflict: object not based on latest persisted object version
+
+  read_actor_identity:
+    docstring: |
+      Returns the ActorIdentity object for the specified user id.
+      Throws exception if id does not match any persisted ActorIdentity
+      objects.
+    in:
+      actor_id: ""
+    out:
+      actor_identity: !ActorIdentity
+    throws:
+      NotFound: object with specified id does not exist
+
+  delete_actor_identity:
+    docstring: |
+      For now, permanently deletes ActorIdentity object with the specified
+      id. Throws exception if id does not match any persisted ActorIdentity.
+    in:
+      actor_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  find_actor_identity_by_name:
+    docstring: |
+      Return the ActorIdentity object whose name attribute matches the passed value.
+    in:
+      name: ""
+    out:
+      user_info: !ActorIdentity
+    throws:
+      NotFound: failed to find ActorIdentity
+      Inconsistent: Multiple ActorIdentity objects matched name
+
+
+  # -----------------
+  # Working with external identities and identity providers
+
+  register_credentials:
+    docstring: |
+      Adds Credentials object to actor with actor_id.
+    in:
+      actor_id: ""
+      credentials: !Credentials
+    out:
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: ActorIdentity object does not exist
+
+  unregister_credentials:
+    docstring: |
+      Removes credentials with given username from actor with actor_id.
+    in:
+      actor_id: ""
+      credentials_name: ""
+    out:
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: if Credentials  do not exist
+
+  find_actor_identity_by_username:
+    docstring: |
+      Returns actor_id for actor with given credentials
+    in:
+      username: ""
+    out:
+      actor_id: ""
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: if no actor found
+
+  set_actor_credentials:
+    docstring: |
+      Sets username, password credentials for given actor.
+    in:
+      actor_id: ""
+      username: ""
+      password: ""
+    out:
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: if actor not found
+
+  set_user_password:
+    docstring: |
+      Sets password credentials for actor with given username.
+    in:
+      username: ""
+      password: ""
+    out:
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: if actor not found
+
+  check_actor_credentials:
+    docstring: |
+      Checks username, password credentials for given actor.
+    in:
+      username: ""
+      password: ""
+    out:
+      actor_id: ""
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: if actor not found
+
+
+  # -----------------
+  # Working with user profiles
+
+  define_identity_details:
+    docstring: |
+      Sets identity details, e.g. user info, for actor with actor_id.
+    in:
+      actor_id: ""
+      identity_details: !IdentityDetails
+    out:
+    throws:
+      BadRequest: if object passed has _id or _rev attribute
+      NotFound: ActorIdentity object does not exist
+
+  read_identity_details:
+    docstring: |
+      Reads identity details for actor with actor_id.
+    in:
+      actor_id: ""
+    out:
+      identity_details: !IdentityDetails
+    throws:
+      NotFound: if actor does not exist
+
+
+  # -----------------
+  # Tokens
+
+  create_authentication_token:
+    docstring: |
+      Create an authentication token for provided actor id with a given start time and validity.
+      start_time defaults to current time if empty and uses a system timestamp.
+      validity is in seconds and must be set.
+    in:
+      actor_id: ""
+      start_time: ""
+      validity: 0
+    out:
+      token_string: ""
+    throws:
+      BadRequest: Illegal parameter type of value
+      NotFound: Object not found
+
+  read_authentication_token:
+    docstring: |
+      Returns the token object for given actor authentication token string.
+    in:
+      token_string: ""
+    out:
+      token: !SecurityToken
+    throws:
+      BadRequest: Illegal parameter type of value
+      NotFound: Token string not found
+
+  update_authentication_token:
+    docstring: |
+      Updates the given token.
+    in:
+      token: !SecurityToken
+    out:
+    throws:
+      BadRequest: Illegal parameter type of value
+      NotFound: Token not found
+
+  invalidate_authentication_token:
+    docstring: |
+      Invalidates an authentication token, but leaves it in place for auditing purposes.
+    in:
+      token_string: ""
+    out:
+    throws:
+      BadRequest: Illegal parameter type of value
+      NotFound: Token string not found
+
+  check_authentication_token:
+    docstring: |
+      Checks given token and returns a dict with actor id if valid.
+    in:
+      token_string: ""
+    out:
+      token_info: {}
+    throws:
+      BadRequest: Illegal parameter type of value
+      NotFound: Token string not found
+      Unauthorized: Token not valid anymore or otherwise

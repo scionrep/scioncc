@@ -1,0 +1,138 @@
+# A domain of authority that provides the context within which policy applies to registered
+# member individuals and resources.
+Org: !Extends_SystemResource
+  # A permanent human readable identifier for the Org.
+  org_governance_name: ""
+  # Specializes the type of Org as OrgTypeEnum value
+  org_type: ""
+  # Identifies the institution that operates the Org/Facility
+  institution: !Institution
+  # A URL for the Org
+  url: ""
+  # A list of ContactInformation entities that serves as a contact point
+  #@ContentType=ContactInformation
+  contacts: []
+---
+
+# Enumerates possible proposal originator roles
+ProposalOriginatorEnum: !enum (values=(CONSUMER, PROVIDER, BROKER), default=CONSUMER)
+
+# Enumerates possible status status values for  the proposal
+ProposalStatusEnum: !enum (values=(INITIAL, COUNTER, ACCEPTED, REJECTED, GRANTED), default=INITIAL)
+---
+
+# Object representing a current proposal for a service agreement. The proposal may contain several items of
+# different type, or can be a composite of service agreement proposals.
+ServiceAgreementProposal:
+  # What negotiation resource is this part of
+  negotiation_id: ""
+  # Role of the originator as ProposalOriginatorEnum value
+  originator: !ProposalOriginatorEnum
+  # Who will be the consumer of this proposal - such as an actor id
+  consumer: ""
+  # Who will be the provider of this proposal - such as an org id
+  provider: ""
+  # Optional identifier if proposal is brokered by third party
+  broker: ""
+  # Keeps track of the sequence of proposals within a negotiation
+  sequence_num: 0
+  # Status of the proposal as ProposalStatusEnum value
+  proposal_status: !ProposalStatusEnum
+  # Expiration that will be used with resultant Commitment if accepted - 0 is unlimited
+  expiration: "0"
+  # Optional description of proposal - if set in initial proposal will be copied to Negotiation description
+  description: ""
+  # Optional collection of additional conditions - not used in R2
+  conditions: {}
+  # Optional collection of additional clauses - not used in R2
+  clauses: {}
+---
+
+# Enumerates the possible types of Negotiation.
+NegotiationTypeEnum: !enum (values=(REQUEST, INVITATION, BROKERED), default=REQUEST)
+
+
+# Enumerates the status values for a Negotiation.
+NegotiationStatusEnum: !enum (values=(OPEN, ACCEPTED, REJECTED), default=OPEN)
+---
+
+# Describes an interaction between multiple system participants with the intent of negotiating
+# a mutual contract with commitments for each participant.
+Negotiation: !Extends_InformationResource
+  # Specific variant of negotiation as NegotiationTypeEnum value
+  negotiation_type: !NegotiationTypeEnum
+  # Current status of negotiation as NegotiationStatusEnum value.
+  negotiation_status: !NegotiationStatusEnum
+  # Describes a reason for a status (optional)
+  reason: ""
+  # A list of service agreement proposals (SAP) describing the sequent steps of the negotiation.
+  # The last SAP in the list is considered the most recent one.
+  #@ContentType=ServiceAgreementProposal
+  proposals: []
+---
+
+# This is a proxy object used to convey a contextualized negotiation to the UI in lieu of
+# actual Negotiation objects.
+NegotiationRequest:
+  ts_updated: ""
+  negotiation_id:
+  negotiation_type: ""
+  negotiation_status: ""
+  request_type: ""
+  originator: ""
+  description: ""
+  reason: ""
+---
+
+#Resource specific negotiation requests
+
+OrgUserNegotiationRequest: !Extends_NegotiationRequest
+  org_id: ""
+  user_id: ""
+  name: ""   # This can be set to the Org name or User name depending upon which service fulfills
+---
+
+#A subtype for all specific commitments
+AbstractBaseCommitment:
+
+---
+
+# Represents a standing obligation of one participant to another participant.
+# Commitments can be tracked and violations against commitments can be sanctioned.
+Commitment: !Extends_InformationResource
+  provider: ""
+  consumer: ""
+  expiration: "0"    #Expiration of the Commitment - 0 is unlimited
+  commitment: !AbstractBaseCommitment
+---
+
+# An internal specific commitment object for resources
+ResourceCommitment: !Extends_AbstractBaseCommitment
+  resource_id: ""
+  exclusive: False
+
+# Reports the status of shared and exclusive commitments for a resource
+ResourceCommitmentStatus:
+  shared: False
+  exclusive: False
+---
+
+
+# Describes a proposal for enrolling a user in an Org/facility.
+EnrollmentProposal: !Extends_ServiceAgreementProposal
+
+
+# Describes a proposal for granting a user a specific role in an Org/facility.
+RequestRoleProposal: !Extends_ServiceAgreementProposal
+  #@EventData
+  role_name: ""
+
+
+# Describes a proposal for acquiring a resource by a user within an Org/facility.
+AcquireResourceProposal: !Extends_ServiceAgreementProposal
+  #@EventData
+  resource_id: ""
+---
+
+# Describes a proposal for acquiring a resource exclusively by a user within an Org/facility.
+AcquireResourceExclusiveProposal: !Extends_AcquireResourceProposal

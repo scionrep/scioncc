@@ -10,7 +10,3 @@ Naming conventions:
 - Service names: lower_case_underscores
 - Service operations: lower_case_underscores
 - Service operation arguments: lower_case_underscores
-
-Authoring conventions:
-- https://confluence.oceanobservatories.org/display/CIDev/R2+Service+Implementation+Guide
-- https://confluence.oceanobservatories.org/display/CIDev/R2+Resource+Development+Guide

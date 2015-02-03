@@ -15,7 +15,6 @@ from ion.services.resource_management_service import ResourceManagementService
 from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 
 from interface.services.core.iresource_management_service import ResourceManagementServiceClient, ResourceManagementServiceProcessClient
-from interface.services.core.iobject_management_service import ObjectManagementServiceClient
 
 
 @attr('UNIT', group='coi')
@@ -127,7 +126,7 @@ class TestResourceManagementService(IonIntegrationTestCase):
         self._start_container()
         self.container.start_rel_from_url('res/deploy/r2deploy.yml')
         self.rms = ResourceManagementServiceClient()
-        self.oms = ObjectManagementServiceClient()
+        self.oms = None
 
     def test_resource_type(self):
         object_definition = '''

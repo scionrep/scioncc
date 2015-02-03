@@ -1,9 +1,4 @@
 # Base type for all events in the system
-#
-# See Events and Notification hierarchy here:
-#   https://confluence.oceanobservatories.org/display/syseng/CIAD+DM+SV+Events+and+Notifications
-#
-#@TypeVersion=1
 Event:
   origin: ""        # the origin of the event (content specific to subtype). Mostly a resource id
   origin_type: ""   # the type of origin (e.g. resource type, etc) or empty
@@ -12,7 +7,6 @@ Event:
   base_types: []    # List of event super types
   sub_type: ""      # A specialization of the event_type expressed by this object type (or empty)
   actor_id: ""      # The actor ID requesting the action causing the event
-  persisted_version: 1 # The last version in which the event instance was saved (persisted)
 ---
 
 # Object containing additional computed information about one Event
@@ -23,10 +17,6 @@ EventComputedAttributes:
   event_summary: ""       # A summary str describing event based on type and core attributes
   special_attributes: ""  # A str with additional event attributes in printable form
   event_attributes_formatted: ""  # A str with event attributes in pretty printed form with newlines
-
-ComputedEventListValue: !Extends_ComputedListValue
-  computed_list: []    # List of EventComputedAttributes in same order than list of events
-
 ---
 
 # ------------------------------------------------------------------------------------
@@ -66,26 +56,6 @@ ResourceOperatorEvent: !Extends_ResourceEvent
 # Event created when a user reports an issue, contains a generated guid in the
 # description that should line up with the email.
 ResourceIssueReportedEvent: !Extends_ResourceEvent
-
----
-# DataSource Events
-ExternalDataSourceEvent: !Extends_ResourceEvent
-
-ExternalDataSourceStatusEnum: !enum (values=(ONLINE, OFFLINE), default=OFFLINE)
-
----
-
-ExternalDatasetAddedEvent: !Extends_ExternalDataSourceEvent
-  dataset_information: {}
-
-ExternalDatasetRemovedEvent: !Extends_ExternalDataSourceEvent
-  dataset_information: {}
-
-ExternalDatasetChangedEvent: !Extends_ExternalDataSourceEvent
-  dataset_information: {} # Not really sure what this will be...
-
-ExternalDataSourceStatusEvent: !Extends_ExternalDataSourceEvent
-  status: !ExternalDataSourceStatusEnum
 
 
 # ------------------------------------------------------------------------------------
@@ -175,74 +145,6 @@ PlatformEvent: !Extends_DeviceEvent
 
 ---
 
-TelemetryStatusType: !enum (values=(AVAILABLE, UNAVAILABLE), default=UNAVAILABLE)
-
----
-
-PlatformTelemetryEvent: !Extends_PlatformEvent
-  status: !TelemetryStatusType
-
-PublicPlatformTelemetryEvent: !Extends_PlatformEvent
-  status: !TelemetryStatusType
-
-RemoteCommandTransmittedEvent: !Extends_PlatformEvent
-  queue_size: 0
-
-RemoteCommandResult: !Extends_Event
-  command: ""
-
----
-PlatformAlarmEvent: !Extends_PlatformEvent
-  external_alarm_type: ""   # initially this will be the so called "ref_id" in the RSN case
-  external_timestamp: ""    # as reported from the RSN via OMS
-
-DeviceCommsType: !enum (values=(DATA_DELIVERY_INTERRUPTION, OK), default=OK)
----
-# To be used by transforms monitoring the health of data producers to report the status of the producers
-DeviceCommsEvent: !Extends_Event
-  state: !DeviceCommsType
-  time_stamp: 0
-  lapse_interval_seconds: 0
----
-
-
-# To be used by transforms monitoring the health of data producers to report the status of the producers
-DeviceStatusEvent: !Extends_DeviceEvent
-  status: !DeviceStatusType
-  values: []
-  time_stamps: []
-  valid_values: []
-
----
-
-OMSDeviceStatusEvent: !Extends_DeviceStatusEvent
-  status_details: {}
-
----
-
-DeviceAggregateStatusEvent: !Extends_DeviceStatusEvent
-  status_name: !AggregateStatusType
-  prev_status: !DeviceStatusType
-  roll_up_status: False
-
-# ------------------------------------------------------------------------------------
-# Mission events.
-# Events about the status of mission plan execution
-# ------------------------------------------------------------------------------------
-
-DeviceMissionEvent: !Extends_DeviceEvent
-  mission_id: ""  # the resource id of the mission
-
-MissionExecutionStatus: !enum (values=(OK, ABORTED, KILLED, FAILED), default=OK)
-
----
-
-MissionLifecycleEvent: !Extends_DeviceMissionEvent
-  # sub_type: STARTED, STOPPED
-  # origin: device id (platform resource id)
-  mission_thread_id: ""   # If not empty, ID of particular mission thread
-  execution_status: !MissionExecutionStatus
-
 
 # ------------------------------------------------------------------------------------
 # Information Content Events
@@ -277,70 +179,6 @@ InformationContentAccessedEvent: !Extends_InformationContentEvent
   # Additional information about access
   access_params: {}
 
-
-
-# ------------------------------------------------------------------------------------
-# Data Process Events
-# Events about data processes and data process definitions
-#
-# origin: set to the data process id
-# origin_type: the type of resource
-# ------------------------------------------------------------------------------------
-
-# Base type of events related to data processes
-DataProcessEvent: !Extends_Event
-    # The origin is a data process (resource) id
-
-DataProcessStatusType: !enum (values=(NORMAL, ERROR, OFFLINE), default=NORMAL)
-
----
-
-
-# To be used by transforms monitoring the health of data producers to report the status of the producers
-DataProcessStatusEvent: !Extends_DataProcessEvent
-  status: !DataProcessStatusType
-  values: []
-
-
-
-
-
-# ------------------------------------------------------------------------------------
-#                                  Infrastructure Level Events
-# ------------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------------
-# Exchange Event
-# Events about Exchange Spaces and their communicating members
-# ------------------------------------------------------------------------------------
-
-
-RemoteQueueModifiedEvent: !Extends_PlatformEvent
-  queue_size: 0
-
-
-# ------------------------------------------------------------------------------------
-# Ingestion Event
-# Events about Ingestion of streams into datasets
-# ------------------------------------------------------------------------------------
-IngestionEvent: !Extends_ResourceModifiedEvent
-  # origin: dataset id
-  stream_id: ""
-  status: 0
----
-
-GranuleIngestedEvent: !Extends_IngestionEvent
-  ingest_attributes: {}
-
-GranuleIngestionErrorEvent: !Extends_IngestionEvent
-  error_msg: ""
-
-
-DatasetIngestionConfigurationEvent: !Extends_ResourceModifiedEvent
-  type: !DatasetIngestionTypeEnum
-  configuration: {}
-  deleted: False # Temporary - until we have resource life cycle events
-  resource_id: ""
 
 
 # ------------------------------------------------------------------------------------
@@ -484,11 +322,6 @@ SchedulerEvent: !Extends_Event
 ReloadUserInfoEvent: !Extends_Event
   notification_id: ""
 
-
-# ------------------------------------------------------------------------------------
-#                                  ION Events
-# ------------------------------------------------------------------------------------
-
 ContainerManagementRequest: !Extends_Event
   predicate: !ContainerManagementPredicate
   action: !ContainerManagementAction
@@ -496,111 +329,6 @@ ContainerManagementRequest: !Extends_Event
 ContainerManagementResult: !Extends_Event
   action: !ContainerManagementAction
   outcome: ""
-
-
-# ------------------------------------------------------------------------------------
-# !!! UNCATEGORIZED !!!! Events
-# ------------------------------------------------------------------------------------
-
-
-StreamAlertType: !enum (values=(WARNING, ALARM, ALL_CLEAR), default=ALL_CLEAR)
-
 ---
 
-DeviceStatusAlertEvent: !Extends_DeviceStatusEvent
-  name: ''
-  stream_name: ''
-  value_id: ''
-
----
-
-# Used by DM UNS
-ExampleDetectableEvent: !Extends_Event
-  voltage: 0
-  telemetry: 0
-  temperature: 0
-
-# output event from detection process
-DetectionEvent: !Extends_Event
-  message: ""             # Message field for this detection event
-  condition: ""           # Concatenate the filter and make it a message
-  original_origin: ""     # The origin from the event that was detected by the filter
-  original_type: ""       # The type of the event that was detected by the filter
-
-
----
-
-# Seems to be needed/used only by transforms when an error is encountered
-ExceptionEvent: !Extends_Event
-  exception_type: ""
-  exception_message: ""
-
----
-
-IngestionOverflow: !Extends_Event
-  process_id: ""
-
----
-# event to be published for exceptions
-ExceptionEvent: !Extends_Event
-  exception_type: ""
-  message: ""
----
-
-DatasetModified: !Extends_InformationContentModifiedEvent
-  # The new dataset extents
-  extents:    0
-  # The slice of the dataset modificationsc
-  window:     []
-
-ExternalReferencesUpdatedEvent: !Extends_InformationContentModifiedEvent
-  reference_keys: []
-
-
----
-
-DatasetCalibrationEvent: !Extends_DatasetModified
-  calibrations: []
-
----
-
-#  Events published in the context of data processing
-DataProcessingEvent: !Extends_Event
-
----
-
-# Events published in a Quality Control context
-DataQCEvent: !Extends_DataProcessingEvent
-
----
-
-# Published when:
-#   - QC Lookup tables are changed
-#   - User driven QC re-evaluation
-#   - System is re-deployed with new QC algorithms
-# The QC Processor should re-evaluate applicable QCs for data products associated
-# with the reference designator
-# origin is the reference designator
-ResetQCEvent: !Extends_DataQCEvent
-  # origin is the reference_designator
-
-# Published when:
-#   - QC Processing detects a failure in the vector of parameter values
-ParameterQCEvent: !Extends_DataQCEvent
-  # Origin is the dataset
-  qc_parameter:   ""
-  temporal_values: []
-  configuration:  {}
-
----
-# Events generated in the context of NotificationRequest handling
-NotificationEvent: !Extends_Event
-
----
-
-# Event generated when a NotificationRequest has resulted in message(s) being sent
-NotificationSentEvent: !Extends_NotificationEvent
-  user_id: ""
-  notification_id: ""
-  notification_max: 0
-
+AgProRemoteEvent: !Extends_Event

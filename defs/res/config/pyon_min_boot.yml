@@ -34,9 +34,6 @@ container:
       couchdb:
         base: pyon.datastore.couchdb.base_store.CouchDataStore
         full: pyon.datastore.couchdb.datastore.CouchPyonDataStore
-      couchbase:
-        base: pyon.datastore.couchbase.base_store.CouchbaseDataStore
-        full: pyon.datastore.couchbase.datastore.CouchbasePyonDataStore
       postgresql:
         base: pyon.datastore.postgresql.base_store.PostgresDataStore
         full: pyon.datastore.postgresql.datastore.PostgresPyonDataStore
