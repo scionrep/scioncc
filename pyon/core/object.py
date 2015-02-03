@@ -11,7 +11,7 @@ from collections import OrderedDict, Mapping, Iterable
 from pyon.util.log import log
 from pyon.core.exception import BadRequest
 
-BUILT_IN_ATTRS = {'_id', '_rev', 'type_', 'blame_', 'persisted_version'}
+BUILT_IN_ATTRS = {'_id', '_rev', 'type_', 'blame_'}
 
 class IonObjectBase(object):
 
@@ -431,12 +431,6 @@ class IonObjectSerializer(IonObjectSerializationBase):
                 if not 'type_' in res:
                     res['type_'] = obj._get_type()
 
-                # update persisted_version if serializing for persistence
-                if update_version and 'TypeVersion' in obj._class_info['decorators']:
-
-                    # convert TypeVersion in decorator from string to int
-                    # because the object_model_generator converts TypeVersion to string
-                    res['persisted_version'] = obj._class_info['decorators']['TypeVersion']
                 return res
 
             return obj

@@ -15,7 +15,7 @@ from pyon.core.bootstrap import IonObject
 from pyon.ion.resource import PRED, RT
 from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, SUPERUSER_ROLE, GovernanceHeaderValues
 from pyon.core.governance import find_roles_by_actor, get_actor_header, get_system_actor_header, get_role_message_headers, get_valid_resource_commitments
-from interface.services.examples.hello.ihello_service  import HelloServiceProcessClient
+from interface.services.examples.ihello_service  import HelloServiceProcessClient
 from pyon.util.context import LocalContextMixin
 
 class UnitTestService(BaseService):

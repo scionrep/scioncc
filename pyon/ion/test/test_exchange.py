@@ -29,7 +29,7 @@ from pyon.util.containers import DotDict
 
 from examples.service.hello_service import HelloService
 
-from interface.services.examples.hello.ihello_service import HelloServiceClient
+from interface.services.examples.ihello_service import HelloServiceClient
 
 def _make_exchange_cfg(**kwargs):
     return DotDict(CFG.exchange, exchange_brokers=kwargs)

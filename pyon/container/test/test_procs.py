@@ -9,12 +9,11 @@ from couchdb.http import ResourceNotFound
 from gevent.event import AsyncResult, Event
 import gevent
 
-from pyon.agent.simple_agent import SimpleResourceAgent
+from pyon.agent.agent import ResourceAgent
 from pyon.container.procs import ProcManager
 from pyon.core.exception import BadRequest, NotFound
 from pyon.ion.endpoint import ProcessRPCServer
 from pyon.ion.process import IonProcessError
-from pyon.ion.conversation import ConversationRPCServer
 from pyon.net.transport import NameTrio, TransportError
 from pyon.public import PRED, CCAP, IonObject
 from pyon.ion.service import BaseService
@@ -55,7 +54,7 @@ class BadProcess(BaseService):
     def fail_target(self, *args, **kwargs):
         raise Exception("Blow up to test failure chain")
 
-class SampleAgent(SimpleResourceAgent):
+class SampleAgent(ResourceAgent):
     dependencies = []
 
 class TestRPCServer(ProcessRPCServer):
@@ -302,13 +301,6 @@ class TestProcManager(PyonTestCase):
         ep = self.pm._create_listening_endpoint(process=sentinel.process)
 
         self.assertIsInstance(ep, ProcessRPCServer)
-
-    def test__create_listening_endpoint_without_cfg_and_conv(self):
-        self.patch_cfg('pyon.container.procs.CFG', container=dict(messaging=dict(endpoint=dict(proc_listening_type=None, rpc_conversation_enabled=True))))
-
-        ep = self.pm._create_listening_endpoint(process=sentinel.process)
-
-        self.assertIsInstance(ep, ConversationRPCServer)
 
     def test_failed_process(self):
         self.pm.start()

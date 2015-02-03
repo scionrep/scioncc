@@ -5,13 +5,12 @@ __author__ = 'Michael Meisinger'
 from unittest import SkipTest
 from nose.plugins.attrib import attr
 
-from pyon.agent.simple_agent import SimpleResourceAgent
-from pyon.agent.agent import ResourceAgentClient
+from pyon.agent.agent import ResourceAgentClient, ResourceAgent
 from pyon.public import IonObject
 from pyon.util.int_test import IonIntegrationTestCase
 
 
-class SampleAgent(SimpleResourceAgent):
+class SampleAgent(ResourceAgent):
     dependencies = []
 
 @attr('INT')

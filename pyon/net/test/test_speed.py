@@ -5,7 +5,7 @@ __author__ = 'Dave Foster <dfoster@asascience.com>'
 
 
 from pyon.util.int_test import IonIntegrationTestCase
-from interface.services.examples.hello.ihello_service import HelloServiceClient
+from interface.services.examples.ihello_service import HelloServiceClient
 from nose.plugins.attrib import attr
 import time
 import sys
