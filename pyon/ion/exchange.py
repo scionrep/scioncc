@@ -23,7 +23,6 @@ import socket
 from interface.objects import ExchangeName as ResExchangeName
 from interface.objects import ExchangeSpace as ResExchangeSpace
 from interface.objects import ExchangePoint as ResExchangePoint
-from interface.services.core.iexchange_management_service import ExchangeManagementServiceProcessClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 
@@ -50,7 +49,6 @@ class ExchangeManager(object):
         self.container = container
 
         self._rr_client = None
-        self._ems_client = None
 
         # Define the callables that can be added to Container public API
         # @TODO: remove
@@ -213,20 +211,6 @@ class ExchangeManager(object):
         #self.default_xs.delete()
 
     @property
-    def ems_client(self):
-        """
-        Lazy-initializing EMS client for internal use.
-        """
-        if self._ems_client is None:
-            # specify our own to_name here so we don't get auto-behavior - tricky chicken/egg
-            to_name          = "exchange_management"
-            xn               = self.create_xn_service(to_name, use_ems=False)
-
-            self._ems_client = ExchangeManagementServiceProcessClient(process=self.container, to_name=xn)
-
-        return self._ems_client
-
-    @property
     def default_node(self):
         """
         Returns the default node connection.
@@ -303,23 +287,6 @@ class ExchangeManager(object):
         self._xs_cache[name] = xs_objs[0]
         return xs_objs[0]
 
-
-    def _ems_available(self):
-        """
-        Returns True if the EMS is (likely) available and the auto_register CFG entry is True.
-
-        @TODO: make a property
-        """
-        if CFG.get_safe('container.exchange.auto_register', False) and self.use_ems:
-            # ok now make sure it's in the directory
-            exchange_service = get_service_registry().is_service_available('exchange_management')
-            if exchange_service:
-                return True
-
-        return False
-
-
-
     def _bootstrap_default_org(self):
         """
         Finds an Org resource to be used by create_xs.
@@ -358,7 +325,7 @@ class ExchangeManager(object):
         # create object if we don't have one
         rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=ION_ROOT_XS, id_only=True)
         if not len(rids):
-            xso                         = ResExchangeSpace(name = ION_ROOT_XS)
+            xso = ResExchangeSpace(name = ION_ROOT_XS)
 
             # @TODO: we have a bug in the CC, need to skirt around the event publisher capability which shouldn't be there
             reset = False
@@ -366,7 +333,7 @@ class ExchangeManager(object):
                 self.container._capabilities.remove(self.container.CCAP.EVENT_PUBLISHER)
                 reset = True
 
-            rid, _                      = self._rr.create(xso)
+            rid, _ = self._rr.create(xso)
 
             # @TODO remove this
             if reset:
@@ -480,19 +447,7 @@ class ExchangeManager(object):
                            durable=durable,
                            auto_delete=auto_delete)
 
-        if use_ems and self._ems_available():
-            log.debug("Using EMS to create_xs")
-            org_id = self._bootstrap_default_org()
-            if org_id is None:
-                raise ExchangeManagerError("Could not find org, refusing to create_xs")
-
-            # create a RR object
-            xso = ResExchangeSpace(name=name)
-
-            xso_id = self.ems_client.create_exchange_space(xso, org_id, headers=self._build_security_headers())
-
-            log.debug("Created RR XS object, id: %s", xso_id)
-        elif declare:
+        if declare:
             # declare default but only if we're not making default!
             if self.default_xs is not None and name != ION_ROOT_XS:
                 self._ensure_default_declared()
@@ -514,17 +469,10 @@ class ExchangeManager(object):
                                           # so delete in the safest way possible
                                           # @TODO: does this mean we need to sync xs_by_name and friends in the datastore?
 
-        if use_ems and self._ems_available():
-            log.debug("Using EMS to delete_xs")
-            xso = self._get_xs_obj(name)
-
-            self.ems_client.delete_exchange_space(xso._id, headers=self._build_security_headers())
-            del self._xs_cache[name]
-        else:
-            try:
-                xs.delete()
-            except TransportError as ex:
-                log.warn("Could not delete XS (%s): %s", name, ex)
+        try:
+            xs.delete()
+        except TransportError as ex:
+            log.warn("Could not delete XS (%s): %s", name, ex)
 
     def create_xp(self, name, xs=None, use_ems=True, declare=True, **kwargs):
         log.debug("ExchangeManager.create_xp: %s", name)
@@ -547,13 +495,7 @@ class ExchangeManager(object):
         # is the exchange object for the XS available?
         xso = self._get_xs_obj(xs._exchange)        # @TODO: _exchange is wrong
 
-        if use_ems and self._ems_available() and xso is not None:
-            log.debug("Using EMS to create_xp")
-            # create an RR object
-            xpo = ResExchangePoint(name=name, topology_type=xp._xptype)
-
-            xpo_id = self.ems_client.create_exchange_point(xpo, xso._id, headers=self._build_security_headers())
-        elif declare:
+        if declare:
             self._ensure_default_declared()
             xp.declare()
 
@@ -567,21 +509,10 @@ class ExchangeManager(object):
                                          # so delete in the safest way possible
                                          # @TODO: does this mean we need to sync xs_by_name and friends in the datastore?
 
-        if use_ems and self._ems_available():
-            log.debug("Using EMS to delete_xp")
-            # find the XP object via RR
-            xpo_ids = self._rr.find_resources(RT.ExchangePoint, name=name, id_only=True)
-            if not (len(xpo_ids) and len(xpo_ids[0]) == 1):
-                log.warn("Could not find XP in RR with name of %s", name)
-
-            xpo_id = xpo_ids[0][0]
-
-            self.ems_client.delete_exchange_point(xpo_id, headers=self._build_security_headers())
-        else:
-            try:
-                xp.delete()
-            except TransportError as ex:
-                log.warn("Could not delete XP (%s): %s", name, ex)
+        try:
+            xp.delete()
+        except TransportError as ex:
+            log.warn("Could not delete XP (%s): %s", name, ex)
 
     def _create_xn(self, xn_type, name, xs=None, use_ems=True, declare=True, **kwargs):
         xs = xs or self.default_xs
@@ -626,12 +557,7 @@ class ExchangeManager(object):
 
         xso = self._get_xs_obj(xs._exchange)
 
-        if use_ems and self._ems_available() and xso is not None:
-            log.debug("Using EMS to create_xn")
-            xno = ResExchangeName(name=name, xn_type=xn.xn_type)
-
-            self.ems_client.declare_exchange_name(xno, xso._id, headers=self._build_security_headers())     # @TODO: exchange is wrong
-        elif declare:
+        if declare:
             self._ensure_default_declared()
             xn.declare()
 
@@ -689,21 +615,10 @@ class ExchangeManager(object):
                                          # so delete in the safest way possible
                                          # @TODO: does this mean we need to sync xs_by_name and friends in the datastore?
 
-        if use_ems and self._ems_available():
-            log.debug("Using EMS to delete_xn")
-            # find the XN object via RR?
-            xno_ids = self._rr.find_resources(RT.ExchangeName, name=name, id_only=True)
-            if not (len(xno_ids) and len(xno_ids[0]) == 1):
-                log.warn("Could not find XN in RR with name of %s", name)
-
-            xno_id = xno_ids[0][0]
-
-            self.ems_client.undeclare_exchange_name(xno_id, headers=self._build_security_headers())        # "canonical name" currently understood to be RR id
-        else:
-            try:
-                xn.delete()
-            except TransportError as ex:
-                log.warn("Could not delete XN (%s): %s", name, ex)
+        try:
+            xn.delete()
+        except TransportError as ex:
+            log.warn("Could not delete XN (%s): %s", name, ex)
 
     def _ensure_default_declared(self):
         """
@@ -959,7 +874,7 @@ class ExchangeManager(object):
         node = self._priv_nodes.get(ION_DEFAULT_BROKER, self.default_node)
         host = node.client.parameters.host
 
-        url = "http://%s:%s/api/%s" % (host, CFG.get_safe("container.exchange.management.port", "55672"), "/".join(feats))
+        url = "http://%s:%s/api/%s" % (host, CFG.get_safe("container.exchange.management.port", "15672"), "/".join(feats))
 
         return url
 
@@ -989,35 +904,31 @@ class ExchangeManager(object):
         """
         log.debug("Calling rabbit API management (%s): %s", method, url)
 
-        if use_ems and self._ems_available():
-            log.debug("Directing call to EMS")
-            content = self.ems_client.call_management(url, method, headers=self._build_security_headers())
-        else:
-            meth = getattr(requests, method)
+        meth = getattr(requests, method)
 
-            try:
-                username = CFG.get_safe("container.exchange.management.username", "guest")
-                password = CFG.get_safe("container.exchange.management.password", "guest")
+        try:
+            username = CFG.get_safe("container.exchange.management.username", "guest")
+            password = CFG.get_safe("container.exchange.management.password", "guest")
 
-                with gevent.timeout.Timeout(10):
-                    r = meth(url, auth=(username, password), data=data)
-                r.raise_for_status()
+            with gevent.timeout.Timeout(10):
+                r = meth(url, auth=(username, password), data=data)
+            r.raise_for_status()
 
-                if not r.content == "":
-                    content = json.loads(r.content)
-                else:
-                    content = None
+            if not r.content == "":
+                content = json.loads(r.content)
+            else:
+                content = None
 
-            except gevent.timeout.Timeout as ex:
-                raise Timeout(str(ex))
-            except requests.exceptions.Timeout as ex:
-                raise Timeout(str(ex))
-            except (requests.exceptions.ConnectionError, socket.error) as ex:
-                raise ServiceUnavailable(str(ex))
-            except requests.exceptions.RequestException as ex:
-                # the generic base exception all requests' exceptions inherit from, raise our
-                # general server error too.
-                raise ServerError(str(ex))
+        except gevent.timeout.Timeout as ex:
+            raise Timeout(str(ex))
+        except requests.exceptions.Timeout as ex:
+            raise Timeout(str(ex))
+        except (requests.exceptions.ConnectionError, socket.error) as ex:
+            raise ServiceUnavailable(str(ex))
+        except requests.exceptions.RequestException as ex:
+            # the generic base exception all requests' exceptions inherit from, raise our
+            # general server error too.
+            raise ServerError(str(ex))
 
         return content
 

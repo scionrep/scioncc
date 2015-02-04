@@ -58,6 +58,7 @@ class TestExchangeManager(PyonTestCase):
         self.container = Mock()
         self.ex_manager = ExchangeManager(self.container)
         self.ex_manager.get_transport = Mock()
+        self.ex_manager.container.resource_registry.find_resources = Mock(return_value=[["id"], ["foo"]])
 
     def test_verify_service(self, mockmessaging):
         PyonTestCase.test_verify_service(self)
@@ -411,6 +412,7 @@ class TestExchangeObjects(PyonTestCase):
         self.ex_manager = ExchangeManager(Mock())
         self.pt = Mock(spec=BaseTransport)
         self.ex_manager.get_transport = Mock(return_value=self.pt)
+        self.ex_manager.container.resource_registry.find_resources = Mock(return_value=[["id"], ["foo"]])
 
         # set up some nodes
         self.ex_manager._nodes = {'primary': Mock()}
@@ -898,7 +900,7 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
         def cleanup_broker():
             # @Dave: This is maybe too brute force and there is maybe a better pattern...
             connect_str = "-q -H %s -P %s -u %s -p %s -V %s" % (CFG.get_safe('server.amqp_priv.host', CFG.get_safe('server.amqp.host', 'localhost')),
-                                                                   CFG.get_safe('container.exchange.management.port', '55672'),
+                                                                   CFG.get_safe('container.exchange.management.port', '15672'),
                                                                    CFG.get_safe('container.exchange.management.username', 'guest'),
                                                                    CFG.get_safe('container.exchange.management.password', 'guest'),
                                                                    '/')
@@ -981,8 +983,6 @@ class TestManagementAPI(PyonTestCase):
         self.ex_manager._priv_nodes = MagicMock()
         self.ex_manager._priv_nodes.get.return_value.client.parameters.host = "testhost" # stringifies so don't use sentinel
 
-        self.ex_manager._ems_client = Mock()
-
     def test__get_management_url(self):
         url = self.ex_manager._get_management_url()
 
@@ -1016,13 +1016,6 @@ class TestManagementAPI(PyonTestCase):
 
         reqmock.scoop.assert_called_once_with(sentinel.url, auth=('user', 'pass'), data=None)
 
-    def test__make_management_call_delegates_to_ems(self):
-        self.ex_manager._ems_available = Mock(return_value=True)
-
-        content = self.ex_manager._make_management_call(sentinel.url, method=sentinel.anymeth)
-
-        self.ex_manager._ems_client.call_management.assert_called_once_with(sentinel.url, sentinel.anymeth, headers=None)
-
     def test__make_management_call_raises_exceptions(self):
         rmock = Mock()
         rmock.return_value.raise_for_status.side_effect = requests.exceptions.Timeout
@@ -1055,7 +1048,6 @@ class TestManagementAPI(PyonTestCase):
 
 @attr('INT', group='exchange')
 @patch.dict('pyon.ion.exchange.CFG', {'container':{'exchange':{'auto_register': False}}})
-@unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
 class TestManagementAPIInt(IonIntegrationTestCase):
 
     def setUp(self):

@@ -118,11 +118,10 @@ container:
   messaging:
     server:
       primary: amqp
-      priviledged:
+      privileged:
     endpoint: # TODO: move entries to here
       rpc_conversation_enabled: False
       prefetch_count: 1                 # how many messages to prefetch from broker by default
-    interceptor: # TODO: move entries to here
 
   processes:
     exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
@@ -241,40 +240,13 @@ process:
     persist_blacklist:
     - event_type: TimerEvent
     - event_type: SchedulerEvent
-    - event_type: DatasetModified
 
 
 # ----------------------------------------------------------------------------------
 # The "service" root entry
 service:
-  instrument_management:
-    driver_release_host: "sddevrepo.oceanobservatories.org"
-    driver_release_directory: "/var/www/html/releases"
-    driver_release_wwwprefix: "http://sddevrepo.oceanobservatories.org/releases"
-                              #no trailing slash require
-
-  data_process_management:
-    process_release_host: "sddevrepo.oceanobservatories.org"
-    process_release_directory: "/var/www/html/releases"
-    process_release_wwwprefix: "http://sddevrepo.oceanobservatories.org/releases"
-                              #no trailing slash
-
-  directory:
-    default_uispecs_url: "http://userexperience.oceanobservatories.org/database-exports/Stable"
-
-  ingestion:
-    ignore_gaps: false
-
   discovery:
     max_search_results: 250
-
-  qc_processing:
-    # Run every N hours
-    run_interval: 1
-
-  user_notification:
-    max_events_limit: 2000
-    max_daily_notifications: 100
 
 
 units: res/config/units/udunits2.xml

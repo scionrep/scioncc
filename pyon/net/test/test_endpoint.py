@@ -755,66 +755,6 @@ Routing method for next test, raises an IonException.
         e = RPCResponseEndpointUnit(interceptors={})
         self.assertEquals(e._get_sample_name(), "unknown-rpc-server")
 
-    @patch('pyon.net.endpoint.time.time', Mock(return_value=1))
-    def test__build_sample(self):
-        e = RPCResponseEndpointUnit(interceptors={})
-
-        heads = {'conv-id': sentinel.conv_id,
-                 'ts': '1',
-                 'op': 'remove_femur',
-                 'sender': 'sender',
-                 'receiver': 'getter'}
-        resp_heads = {'sender-service': 'theservice'}
-
-        samp = e._build_sample(sentinel.name, 200, "Ok", "msg", heads, "response", resp_heads, sentinel.qlen)
-
-        self.assertEquals(samp, {
-            'app_name' : get_sys_name(),
-            'op' : 'remove_femur',
-            'attrs' : {'ql':sentinel.qlen, 'pid':sentinel.name},
-            'status_descr' : "Ok",
-            'status' : '0',
-            'req_bytes' : len('msg'),
-            'resp_bytes': len('response'),
-            'uS' : 999000, # it's in microseconds!
-            'initiator' : 'sender',
-            'target' : 'theservice'
-        })
-
-    def test__sample_request(self):
-        e = RPCResponseEndpointUnit(interceptors={})
-
-        e._build_sample = Mock(return_value={'test':sentinel.test})
-        e.channel = Mock()
-        e.channel.get_stats = Mock(return_value=(3, 0))
-        e.channel._recv_queue.qsize = Mock(return_value=3)
-
-        e._sample_request(sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers)
-
-        e._build_sample.assert_called_once_with(ANY, sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers, 6)
-
-
-    @patch('pyon.net.endpoint.log')
-    def test__sample_request_no_sample(self, mocklog):
-        e = RPCResponseEndpointUnit(interceptors={})
-
-        e._get_sample_name = Mock()
-
-        e._sample_request(sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers)
-
-        self.assertEquals(mocklog.debug.call_count, 1)
-        self.assertIn("not to sample", mocklog.debug.call_args[0][0])
-
-    @patch('pyon.net.endpoint.log')
-    def test__sample_request_exception(self, mocklog):
-
-        e = RPCResponseEndpointUnit(interceptors={})
-
-        e._build_sample = Mock(side_effect=TestError)
-
-        e._sample_request(sentinel.status, sentinel.status_descr, sentinel.msg, sentinel.headers, sentinel.response, sentinel.response_headers)
-
-        mocklog.exception.assert_called_once_with("Could not sample, ignoring")
 
 @attr('UNIT')
 class TestRPCServer(PyonTestCase, RecvMockMixin):
