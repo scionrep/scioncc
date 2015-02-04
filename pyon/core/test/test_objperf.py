@@ -23,7 +23,7 @@ value_pool = ''.join(random.choice(allowed_chars) for x in xrange(POOL_SIZE))
 
 
 def create_test_object(depth=3, breadth=10, do_dict=True, do_list=True, do_ion=False, uvals=False, ukeys=False,
-                       restype="DataProduct", obj_validate=None):
+                       restype="Resource", obj_validate=None):
 
     def get_value(min_len=5, max_len=10, uni=False):
         rand_pos = random.randint(0, POOL_SIZE-max_len)

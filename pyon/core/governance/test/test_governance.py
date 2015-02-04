@@ -93,12 +93,10 @@ class GovernanceUnitTest(PyonTestCase):
 
     def test_initialize_from_config(self):
 
-        intlist = {'conversation', 'information', 'policy'}
+        intlist = {'policy'}
         config = {'interceptor_order': intlist,
                   'governance_interceptors':
-                  {'conversation': {'class': 'pyon.core.governance.conversation.conversation_monitor_interceptor.ConversationMonitorInterceptor'},
-                   'information': {'class': 'pyon.core.governance.information.information_model_interceptor.InformationModelInterceptor'},
-                   'policy': {'class': 'pyon.core.governance.policy.policy_interceptor.PolicyInterceptor'}}}
+                  {'policy': {'class': 'pyon.core.governance.policy.policy_interceptor.PolicyInterceptor'}}}
 
         self.governance_controller.initialize_from_config(config)
 

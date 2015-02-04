@@ -46,8 +46,8 @@ class ObjectTest(IonIntegrationTestCase):
         obj.abstract_val = taskable_resource
         self.assertRaises(AttributeError, obj._validate)
         
-        user_info = self.registry.new('UserInfo')
-        user_info.contact.first_name = "Fooy"
+        user_info = self.registry.new('ActorIdentity')
+        user_info.name = "Fooy"
         obj.abstract_val = user_info
         obj._validate
 

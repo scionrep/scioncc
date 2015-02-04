@@ -16,7 +16,7 @@ from pyon.util.log import log
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.util.unit_test import IonUnitTestCase
 
-from interface.services.isample_service import SampleServiceClient
+from interface.services.examples.isample_service import SampleServiceClient
 
 @attr('UNIT', group='datastore')
 class TestState(IonUnitTestCase):
