@@ -5,7 +5,6 @@ __author__ = 'Michael Meisinger'
 from unittest import SkipTest
 from mock import Mock, patch, ANY, sentinel, call
 from nose.plugins.attrib import attr
-from couchdb.http import ResourceNotFound
 from gevent.event import AsyncResult, Event
 import gevent
 
@@ -81,13 +80,6 @@ class TestProcManager(PyonTestCase):
 
         self.container.resource_registry.create_association.assert_called_once_with(sentinel.oid, PRED.hasResource, sentinel.rid)
 
-#    @patch('pyon.datastore.couchdb.couchdb_datastore.CouchDB_DataStore._stats')
-#    def test_stop(self, statsmock):
-#        self.pm.start()
-#
-#        self.pm.stop()
-#
-#        self.assertEquals(statsmock.get_stats.call_count, 2)
 
     def test__cleanup_method(self):
         ep = Mock()
@@ -111,7 +103,6 @@ class TestProcManager(PyonTestCase):
 
         self.assertEquals(mocklog.warn.call_count, 1)
 
-#    @patch('pyon.datastore.couchdb.couchdb_datastore.CouchDB_DataStore._stats', Mock())
     @patch('pyon.container.procs.log')
     def test_stop_with_error(self, mocklog):
         self.pm.start()
@@ -248,7 +239,6 @@ class TestProcManager(PyonTestCase):
         pmock._proc_svc_id = sentinel.psvcid
 
         self.container.resource_registry.delete.side_effect = NotFound
-        self.container.resource_registry.find_objects.side_effect = ResourceNotFound
 
         self.pm.procs[sentinel.pid] = pmock
         self.pm.procs_by_name['1'] = pmock
@@ -296,7 +286,7 @@ class TestProcManager(PyonTestCase):
         self.assertIsInstance(ep, TestRPCServer)
 
     def test__create_listening_endpoint_without_cfg_and_no_conv(self):
-        self.patch_cfg('pyon.container.procs.CFG', container=dict(messaging=dict(endpoint=dict(proc_listening_type=None, rpc_conversation_enabled=False))))
+        self.patch_cfg('pyon.container.procs.CFG', container=dict(messaging=dict(endpoint=dict(proc_listening_type=None))))
 
         ep = self.pm._create_listening_endpoint(process=sentinel.process)
 

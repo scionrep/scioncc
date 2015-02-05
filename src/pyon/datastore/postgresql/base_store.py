@@ -186,7 +186,7 @@ class PostgresDataStore(DataStore):
     # Couch database operations
 
     def _get_datastore_name(self, datastore_name=None):
-        # HACK: Allow datastore names prefixed by sysname scope for couch compatibility
+        # HACK: Allow datastore names prefixed by sysname scope for compatibility
         if self.scope and datastore_name and datastore_name.startswith(self.scope):
             datastore_name = datastore_name[len(self.scope) + 1:]
 

@@ -13,7 +13,6 @@ from pyon.util.unit_test import IonUnitTestCase
 from pyon.core.bootstrap import IonObject, CFG, get_sys_name
 from pyon.core.exception import BadRequest, NotFound, Conflict
 from pyon.datastore.datastore import DataStore
-from pyon.datastore.couchdb.datastore import CouchPyonDataStore
 from pyon.util.containers import get_ion_ts
 from pyon.ion.identifier import create_unique_resource_id, create_unique_association_id
 from pyon.ion.resource import RT, PRED, LCS, AS, lcstate, create_access_args
@@ -55,10 +54,8 @@ class TestDataStoreUnitTest(IonUnitTestCase):
 class TestDataStores(IonIntegrationTestCase):
 
     def setUp(self):
-        self.server_type = CFG.get_safe("container.datastore.default_server", "couchdb")
-        if self.server_type.startswith("couch"):
-            self.ds_class = CouchPyonDataStore
-        elif self.server_type == "postgresql":
+        self.server_type = CFG.get_safe("container.datastore.default_server", "postgresql")
+        if self.server_type == "postgresql":
             self.ds_class = PostgresPyonDataStore
         # We're running outside of a container - configure the tracer
         CallTracer.configure(CFG.get_safe("container.tracer", {}))

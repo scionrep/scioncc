@@ -99,7 +99,7 @@ class SFlowManager(object):
                                 'mem_max': res.ru_maxrss * 1024,
                                 'fd_open': 0,   # @TODO do we care?
                                 'fd_max': 0,    # @TODO ""
-                                'conn_open': 0, # @TODO couch/rabbit connection summary somehow
+                                'conn_open': 0, # @TODO db/rabbit connection summary somehow
                                 'conn_max': 0
                             },
                             'app_workers':{

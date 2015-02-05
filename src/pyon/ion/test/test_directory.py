@@ -27,8 +27,6 @@ class TestDirectory(IonUnitTestCase):
         #self.addCleanup(directory.dir_store.delete_datastore)
 
         objs = directory.dir_store.list_objects()
-        if CFG.get_safe("container.datastore.default_server", "couchdb").startswith("couch"):
-            self.assert_("_design/directory" in objs)
 
         root = directory.lookup("/DIR")
         self.assert_(root is not None)

@@ -314,7 +314,7 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
 
         data_product_obj = convert_unicode(response.json['data'][GATEWAY_RESPONSE])
 
-        #Verify the the name and description fields containing unicode characters match all the way through couch and the messaging
+        #Verify the the name and description fields containing unicode characters match all the way through db and the messaging
         self.assertEqual(data_product_obj['name'], convert_unicode(DATA_PRODUCT_NAME))
         self.assertEqual(data_product_obj['description'], convert_unicode(DATA_PRODUCT_DESCRIPTION))
 
@@ -392,7 +392,7 @@ class TestServiceGatewayServiceInt(IonIntegrationTestCase):
 
         policy_obj = convert_unicode(response.json['data'][GATEWAY_RESPONSE])
 
-        #Verify the the name and description fields containing unicode characters match all the way through couch and the messaging
+        #Verify the the name and description fields containing unicode characters match all the way through db and the messaging
         self.assertEqual(policy_obj['name'], convert_unicode(POLICY_NAME))
         self.assertEqual(policy_obj['description'], convert_unicode(POLICY_DESCRIPTION))
         self.assertEqual(policy_obj['policy_type']['policy_rule'], convert_unicode(POLICY_RULE))

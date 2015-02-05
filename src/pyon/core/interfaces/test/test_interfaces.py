@@ -7,7 +7,7 @@ from nose.plugins.attrib import attr
 
 from pyon.core import config, bootstrap
 from pyon.core.interfaces.interfaces import InterfaceAdmin
-from pyon.datastore import clear_couch_util
+from pyon.datastore import clear_db_util
 from pyon.ion.directory_standalone import DirectoryStandalone
 from pyon.ion.resregistry_standalone import ResourceRegistryStandalone
 

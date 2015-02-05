@@ -803,7 +803,7 @@ class OrgManagementService(BaseOrgManagementService):
         role_list,_ = self.clients.resource_registry.find_objects(actor, PRED.hasRole, RT.UserRole)
 
         # Iterate the list of roles associated with user and filter by the org_id. TODO - replace this when
-        # better indexing/views are available in couch
+        # better indexing/views are available
         ret_list = []
         for role in role_list:
             if role.org_governance_name == org.org_governance_name:

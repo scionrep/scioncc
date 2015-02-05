@@ -1,5 +1,4 @@
-This directory contains a PostgreSQL datastore implementation for the Pyon container.
-See https://confluence.oceanobservatories.org/display/CIDev/Postgres+Datastore
+This directory contains a PostgreSQL datastore implementation for the SciON container.
 
 REQUIREMENTS/COMPATIBILITY:
 - PostgreSQL 9.2.0 or higher
@@ -15,10 +14,10 @@ BASIC FUNCTIONALITY:
 
 ISSUES/MISSING FEATURES:
 - Check connection DSN credentials to validate correct config for both users
-- ts_created/ts_updated bigint
+- ts_created/ts_updated better as bigint
 - Connection reset when database restarted
 - support descending order for all finds
-- drop database timeout (concurrent users exist) does not raise exception in clear_couch
+- drop database timeout (concurrent users exist) does not raise exception in clear_db
 - Make geospatial handling more modular, less hardcoded
 - find_associations return retired associations
 - trigger vacuum analyze
@@ -28,7 +27,7 @@ FUTURE FEATURES:
 - deleted column for resources (instead of using the lcstate==DELETED)
 - More advanced order by queries
 - Replace string concatenation when constructing long statements
-- clear_couch_util ugly and misnamed. Should also use the code in the datastore class
+- clear_db_util should also use the code in the datastore class
 - Referential integrity support
 - Investigate distributed transactions (XA)
 - history support by copying into separate history table

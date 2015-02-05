@@ -117,7 +117,7 @@ class ProcessStateGate(EventSubscriber):
 
 class ProcessDispatcherService(BaseProcessDispatcherService):
     #   local container mode - spawn directly in the local container
-    #       without going through any external CEI functionality. This is
+    #       without going through any external functionality. This is
     #       the default mode.
 
     def on_init(self):
@@ -306,7 +306,7 @@ class PDLocalBackend(object):
 
         self._spawn_greenlets = set()
 
-        # use the container RR instance -- talks directly to couchdb
+        # use the container RR instance -- talks directly to db
         self.rr = container.resource_registry
 
     def initialize(self):

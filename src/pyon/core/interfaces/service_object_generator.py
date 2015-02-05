@@ -264,10 +264,6 @@ class ServiceObjectGenerator:
 
         set_config()
 
-        rpv_convos_enabled = CFG.get_safe('container.messaging.endpoint.rpc_conversation_enabled', False)
-        print 'RPC conversations enabled: %s' % rpv_convos_enabled
-
-
         def enum_constructor(loader, node):
             val_str = str(node.value)
             val_str = val_str[1:-1].strip()
@@ -520,7 +516,7 @@ class ServiceObjectGenerator:
 
         for svc in sorted_services:
             svc_name, raw_def = svc
-            self.generate_service(raw_def['interface_file'], raw_def, client_defs, opts, rpv_convos_enabled)
+            self.generate_service(raw_def['interface_file'], raw_def, client_defs, opts)
             count += 1
 
         if count > 0 and not opts.dryrun:
@@ -717,7 +713,7 @@ class ServiceObjectGenerator:
             res.append(cls)
         return res
 
-    def generate_service(self, interface_file, svc_def, client_defs, opts, rpv_convos_enabled):
+    def generate_service(self, interface_file, svc_def, client_defs, opts):
         """
         Generates a single service/client/interface definition.
 

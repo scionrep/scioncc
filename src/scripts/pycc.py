@@ -170,9 +170,9 @@ def main(opts, *args, **kwargs):
 
         # Delete sysname datastores if option "force_clean" is set
         if opts.force_clean:
-            from pyon.datastore import clear_couch_util
+            from pyon.datastore import clear_db_util
             print "pycc: force_clean=True. DROP DATASTORES for sysname=%s" % bootstrap.get_sys_name()
-            clear_couch_util.clear_couch(bootstrap_config, prefix=bootstrap.get_sys_name(), sysname=bootstrap.get_sys_name())
+            clear_db_util.clear_db(bootstrap_config, prefix=bootstrap.get_sys_name(), sysname=bootstrap.get_sys_name())
             pyon_config.container.filesystem.force_clean=True
 
         from pyon.core.interfaces.interfaces import InterfaceAdmin

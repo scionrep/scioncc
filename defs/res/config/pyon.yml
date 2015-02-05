@@ -98,20 +98,16 @@ container:
   datastore:
     default_server: postgresql  # Which server connection (and type) to use as primary datastore
     server_types:               # Definition of the known server types and how to start them
-      couchdb:
-        base: pyon.datastore.couchdb.base_store.CouchDataStore
-        full: pyon.datastore.couchdb.datastore.CouchPyonDataStore
       postgresql:
         base: pyon.datastore.postgresql.base_store.PostgresDataStore
         full: pyon.datastore.postgresql.datastore.PostgresPyonDataStore
 
   exchange:
-    # @TODO rename to delegate or similar, used for management api calls too
     auto_register: True
     names:
-      durable: False    # Declare exchanges and queues as durable
+      durable: False         # Declare exchanges and queues as durable to survive broker restart
     management:
-      port: 15672       # Note: RabbitMQ management before 3.x versions was on port 55672
+      port: 15672            # Note: RabbitMQ management before 3.x versions was on port 55672
       username: guest
       password: guest
 
@@ -119,16 +115,15 @@ container:
     server:
       primary: amqp
       privileged:
-    endpoint: # TODO: move entries to here
-      rpc_conversation_enabled: False
-      prefetch_count: 1                 # how many messages to prefetch from broker by default
+    endpoint:
+      prefetch_count: 1      # how many messages to prefetch from broker by default
 
   processes:
     exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
     log_exceptions: False    # Whether all RPC call invocation exceptions should be logged
 
   objects:
-    validate: # TODO: move entries to here
+    validate:
       setattr: False
 
   org_boundary: False  # If True, then check against policies related to the Org below; else do not.
@@ -144,6 +139,8 @@ container:
       port: 5000
     trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
     user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
+    service_blacklist: []    # Names of services not accessible via the gateway
+    service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible
 
   containerui:
     web_server:
@@ -155,7 +152,7 @@ container:
     enabled: False        # Enable the database class and message tracer in container
     max_entries: 10000    # Length of trace buffer
 
-      
+
 # TODO: Rename to "container". See there.
 cc:
   timeout:
@@ -217,7 +214,7 @@ exchange:
   exchange_brokers:
     system_broker:
       server: amqp
-      description: Main exchange broker (RabbitMQ 2.7.x AMQP 0.9.1)
+      description: Main exchange broker (RabbitMQ 3.x AMQP 0.9.1)
       join_xs: [ioncore]
       join_xp: []
 
@@ -226,10 +223,6 @@ exchange:
     ion_rpc: ioncore
     science_data: ioncore.science_data
     events: ioncore.events
-
-#core_stream_types:
-#    - "BlogStreamType"
-#    - "ScienceStreamType"
 
 
 # ----------------------------------------------------------------------------------

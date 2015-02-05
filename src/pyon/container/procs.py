@@ -8,7 +8,6 @@ from copy import deepcopy
 import time
 import re
 
-from couchdb.http import ResourceNotFound
 from gevent.coros import RLock
 
 from pyon.agent.agent import ResourceAgent
@@ -899,12 +898,8 @@ class ProcManager(object):
             if self.container.has_capability(self.container.CCAP.RESOURCE_REGISTRY):
                 # Check if this is the last process for this service and do auto delete service resources here
                 svcproc_list = []
-                try:
-                    svcproc_list, _ = self.container.resource_registry.find_objects(process_instance._proc_svc_id,
-                        "hasProcess", "Process", id_only=True)
-                except ResourceNotFound:
-                    # if it's already gone, it's already gone!
-                    pass
+                svcproc_list, _ = self.container.resource_registry.find_objects(process_instance._proc_svc_id,
+                    "hasProcess", "Process", id_only=True)
 
                 if not svcproc_list:
                     try:

@@ -95,15 +95,8 @@ class DatastoreFactory(object):
 
     @classmethod
     def get_datastore_class(cls, server_cfg, variant=None):
-        server_type = server_cfg.get('type', 'couchdb')
-        if server_type == 'couchdb':
-            if variant == cls.DS_BASE:
-                store_cls = "pyon.datastore.couchdb.base_store.CouchDataStore"
-            else:
-                store_cls = "pyon.datastore.couchdb.datastore.CouchPyonDataStore"
-        elif server_type == 'couchbase':
-            store_cls = "pyon.datastore.couchbase.base_store.CouchbaseDataStore"
-        elif server_type == 'postgresql':
+        server_type = server_cfg.get('type', 'postgresql')
+        if server_type == 'postgresql':
             store_cls = "pyon.datastore.postgresql.base_store.PostgresDataStore"
         else:
             raise BadRequest("Unknown datastore server type: %s" % server_type)
@@ -132,16 +125,5 @@ class DatastoreFactory(object):
                 #     default_database='postgres',
                 #     database='ion',
                 #     connection_pool_max=5)
-        else:
-            # HACK for CEI system start compliance:
-            # If couchdb password is set and current is empty, use couchdb password instead
-            couch_cfg = get_safe(config, "server.couchdb", None)
-            if couch_cfg and get_safe(couch_cfg, "password") and not get_safe(server_cfg, "password"):
-                server_cfg["admin_username"] = couch_cfg["username"]
-                server_cfg["admin_password"] = couch_cfg["password"]
-                server_cfg["password"] = couch_cfg["password"]
-                if get_safe(couch_cfg, "host") == "couchdb.dev.oceanobservatories.org":
-                    server_cfg["host"] = "pg-dev02.oceanobservatories.org"
-                log.warn("Substituted username/password using couchdb. New config: %s", server_cfg)
 
         return server_cfg

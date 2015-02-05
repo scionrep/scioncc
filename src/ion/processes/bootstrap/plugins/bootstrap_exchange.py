@@ -25,7 +25,7 @@ class BootstrapExchange(BootstrapPlugin):
         EMS calls.
         """
         # Get ION Org
-        root_org_name = config.get_safe('system.root_org' , "ION")
+        root_org_name = config.get_safe('system.root_org', "ION")
         org_ids, _ = process.container.resource_registry.find_resources(restype=RT.Org, name=root_org_name, id_only=True)
         if not org_ids or len(org_ids) > 1:
             raise StandardError("Could not determine root Org")

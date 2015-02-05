@@ -28,9 +28,6 @@ class EventPersister(StandaloneProcess):
         if self._complex_blacklist:
             log.warn("EventPersister does not yet support complex blacklist expressions: %s", self._complex_blacklist)
 
-        # Time in between view refreshs
-        self.refresh_interval = float(self.CFG.get_safe("process.event_persister.refresh_interval", 60.0))
-
         # Holds received events FIFO in syncronized queue
         self.event_queue = Queue()
 
@@ -65,10 +62,6 @@ class EventPersister(StandaloneProcess):
         # Persister thread
         self._persist_greenlet = spawn(self._persister_loop, self.persist_interval)
         log.debug('EventPersister persist greenlet started in "%s" (interval %s)', self.__class__.__name__, self.persist_interval)
-
-        # View trigger thread
-        self._refresh_greenlet = spawn(self._refresher_loop, self.refresh_interval)
-        log.debug('EventPersister view refresher greenlet started in "%s" (interval %s)', self.__class__.__name__, self.refresh_interval)
 
         # Event subscription
         self.event_sub = EventSubscriber(pattern=EventSubscriber.ALL_EVENTS,
@@ -166,16 +159,6 @@ class EventPersister(StandaloneProcess):
     def _log_events(self, events):
         events_str = pprint.pformat([event.__dict__ for event in events]) if events else ""
         log.warn("EVENTS:\n%s", events_str)
-
-    def _refresher_loop(self, refresh_interval):
-        log.debug('Starting event view refresher thread with refresh_interval=%s', refresh_interval)
-
-        # Event.wait returns False on timeout (and True when set in on_quit), so we use this to both exit cleanly and do our timeout in a loop
-        while not self._terminate_persist.wait(timeout=refresh_interval):
-            try:
-                self.container.event_repository.find_events(limit=1)
-            except Exception as ex:
-                log.exception("Failed to refresh events views")
 
 
 class EventProcessor(object):

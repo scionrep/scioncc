@@ -1,4 +1,4 @@
-""" create minimal-length, increasing IDs for couchdb """
+""" create minimal-length, increasing IDs """
 from threading import Lock
 from uuid import uuid4
 from time import time
@@ -16,7 +16,7 @@ class RandomIDFactory(IDFactory):
 
 
 class SaltedTimeIDFactory(IDFactory):
-    """ generator for minimal-length, increasing ID values for couchdb
+    """ generator for minimal-length, increasing ID values
 
         ID is base64-encoded sequence of bits [ 42-bit time + random salt ]
 

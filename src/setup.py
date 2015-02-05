@@ -48,7 +48,7 @@ setup(  name='scioncc',
                 'control_cc=scripts.control_cc:main',
                 'generate_interfaces=scripts.generate_interfaces:main',
                 'store_interfaces=scripts.store_interfaces:main',
-                'clear_db=pyon.datastore.clear_couch_util:main',
+                'clear_db=pyon.datastore.clear_db_util:main',
                 ]
             },
         dependency_links=[],
@@ -83,7 +83,6 @@ setup(  name='scioncc',
             'mock==0.8',
             'webtest==2.0.17',         # For service gateway test
             # Check if all these are needed
-            'couchdb==0.10',
             'graypy==0.2.11',          # For utilities
             'ntplib==0.3.2',
             'xlrd==0.9.3',
