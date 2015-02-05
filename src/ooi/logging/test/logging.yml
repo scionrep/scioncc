@@ -1,0 +1,66 @@
+###
+# logging configuration file for unit tests
+#
+# do not change without testing that it doesn't break any of the unit tests in this project!
+#
+version: 1
+
+formatters:
+  default:
+    format: '%(asctime)s %(levelname)-8s %(threadName)s %(name)-15s:%(lineno)d %(message)s'
+  stack:
+    (): 'ooi.logging.format.StackFormatter'
+    format: '%(asctime)s %(levelname)-8s %(threadName)s %(name)-15s:%(lineno)d %(message)s'
+  raw:
+    (): 'ooi.logging.format.RawRecordFormatter'
+
+handlers:
+  stack:
+    class: logging.handlers.RotatingFileHandler
+    formatter: stack
+    level: DEBUG
+    filename: /tmp/unittest-stack.log
+  block:
+    class: ooi.logging.handler.BlockIOFileHandler
+    formatter: default
+    level: DEBUG
+    filename: /tmp/unittest-block.log
+  raw:
+    class: logging.handlers.RotatingFileHandler
+    formatter: raw
+    level: DEBUG
+    filename: /tmp/unittest-raw.log
+  replay:
+    class: logging.handlers.RotatingFileHandler
+    formatter: stack
+    level: DEBUG
+    filename: /tmp/unittest-replay.log
+
+context:
+  static:
+    engine: transform
+  thread-local:
+    conversation-id: rpc
+
+root:
+  handlers: [stack]
+  level: INFO
+
+loggers:
+  ooi.poller:
+    level: DEBUG
+  stack:
+    handlers: [stack]
+    level: INFO
+  block:
+    handlers: [block]
+    level: INFO
+  raw:
+    handlers: [raw]
+    level: INFO
+  replay:
+    handlers: [replay]
+    level: DEBUG
+  list:
+    handlers: [replay, raw]
+    level: DEBUG

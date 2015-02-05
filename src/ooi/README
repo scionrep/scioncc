@@ -1,0 +1,14 @@
+Share utilities across OOI projects.
+
+See https://github.com/ooici/utilities
+
+    version='2013.06.11',
+    author='Jonathan Newbrough',
+    author_email='jonathan.newbrough@gyregroup.com',
+
+Note: these classes may have NO dependencies on any other OOI projects.
+Non-project eggs are ok, BUT keep in mind that making this project depend on an egg
+means making EVERY other project will depend on this egg too.
+
+Current dependencies are pyyaml and graypy.
+

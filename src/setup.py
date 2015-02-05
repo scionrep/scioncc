@@ -15,7 +15,7 @@ def read(fname):
 if sys.platform == 'darwin':
     os.environ['C_INCLUDE_PATH'] = '/usr/local/include'
 
-version = '0.0.1-dev'
+version = '0.0.1.dev0'
 
 setup(  name = 'scioncc',
         version = version,
@@ -51,18 +51,18 @@ setup(  name = 'scioncc',
                 ]
             },
         dependency_links = [
-            'https://github.com/ooici/utilities/tarball/v2013.06.11#egg=utilities-2013.06.11',
         ],
         test_suite = 'pyon',
         package_data = {'': ['*.xml']},
         install_requires = [
             'setuptools',
-            'utilities',
+            'pyyaml==3.10',
+            'graypy==0.2.11',      # For utilities
             'greenlet==0.4.5',
             'gevent==1.0.1',
             'simplejson==3.6.5',
             'msgpack-python==0.1.13',  # TBD: Check if this specific version is needed
-            'pika==0.9.5',         # Messaging stack is tested and working with issues of this version
+            'pika==0.9.5',             # Messaging stack is tested and working with issues of this version
             'httplib2==0.9',
             'pyzmq==2.2.0',
             'gevent_zeromq==0.2.5',
@@ -71,10 +71,10 @@ setup(  name = 'scioncc',
             'psycopg2==2.5.4',
             'python-daemon==1.6',
             'M2Crypto==0.22.3',
-            'nose==1.1.2',         # TBD: Check if this specific version is needed
-            'ipython==0.13.0',     # TBD: Check if this specific version is needed
+            'nose==1.1.2',
+            'ipython==0.13.0',
             'readline==6.2.4.1',
-            'mock==0.8',           # TBD: Check if this specific version is needed
+            'mock==0.8',
             'ndg-xacml==0.5.1',
             'requests==2.4.3',
             'psutil==2.1.3',
