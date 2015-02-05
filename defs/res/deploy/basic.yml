@@ -23,6 +23,7 @@ apps:
   - name: resource_registry
     processapp: [resource_registry, ion.services.resource_registry_service, ResourceRegistryService]
     bootlevel: 5
+    replicas: 1
 
   - name: system_management
     processapp: [system_management, ion.services.system_management_service, SystemManagementService]

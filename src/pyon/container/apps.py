@@ -5,6 +5,8 @@
 __author__ = 'Michael Meisinger'
 
 from copy import deepcopy
+
+from pyon.core.bootstrap import CFG
 from pyon.core.exception import ContainerAppError, ConfigNotFound
 from pyon.util.config import Config
 from pyon.util.containers import DotDict, named_any, dict_merge
@@ -21,6 +23,7 @@ class AppManager(object):
 
     def start(self):
         log.debug("AppManager starting ...")
+        self.max_proc_replicas = int(CFG.get_safe("container.processes.max_replicas", 0))
 
     def stop(self):
         log.debug("AppManager stopping ...")
@@ -76,7 +79,20 @@ class AppManager(object):
                     if config:
                         dict_merge(rel_cfg, config, inplace=True)
 
-                self.container.spawn_process(name, module, cls, rel_cfg)
+                if 'replicas' in rel_app_cfg:
+                    proc_replicas = int(rel_app_cfg["replicas"])
+                    if self.max_proc_replicas > 0:
+                        if proc_replicas > self.max_proc_replicas:
+                            log.info("Limiting number of proc replicas to %s from %s", self.max_proc_replicas, proc_replicas)
+                        proc_replicas = min(proc_replicas, self.max_proc_replicas)
+                    if proc_replicas < 1 or proc_replicas > 100:
+                        log.warn("Invalid number of process replicas: %s", proc_replicas)
+                        proc_replicas = 1
+                    for i in xrange(proc_replicas):
+                        proc_name = "%s.%s" % (name, i)
+                        self.container.spawn_process(proc_name, module, cls, rel_cfg)
+                else:
+                    self.container.spawn_process(name, module, cls, rel_cfg)
                 self.apps.append(DotDict(type="application", name=name, processapp=rel_app_cfg.processapp))
 
             else:

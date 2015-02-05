@@ -121,6 +121,7 @@ container:
   processes:
     exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
     log_exceptions: False    # Whether all RPC call invocation exceptions should be logged
+    max_replicas: 0          # Limit the number of process replicas to start per container (0 is unlimited)
 
   objects:
     validate:

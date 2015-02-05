@@ -41,8 +41,6 @@ class EventPersister(StandaloneProcess):
         # bookkeeping for greenlet
         self._persist_greenlet = None
         self._terminate_persist = Event() # when set, exits the persister greenlet
-        self._refresh_greenlet = None
-        self._terminate_refresh = Event() # when set, exits the refresher greenlet
 
         # The event subscriber
         self.event_sub = None
@@ -76,11 +74,9 @@ class EventPersister(StandaloneProcess):
 
         # tell the trigger greenlet we're done
         self._terminate_persist.set()
-        self._terminate_refresh.set()
 
         # wait on the greenlets to finish cleanly
         self._persist_greenlet.join(timeout=5)
-        self._refresh_greenlet.join(timeout=5)
 
     def _on_event(self, event, *args, **kwargs):
         self.event_queue.put(event)
