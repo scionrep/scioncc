@@ -3,7 +3,7 @@
 set -e
 set -x
 
-# Updage packages
+# Update packages
 sudo apt-get update
 
 # Basic package dependencies
@@ -73,4 +73,3 @@ sudo apt-get install -y postgis
 sudo apt-get install -y postgresql-9.3-postgis-2.1
 sudo apt-get install -y postgresql-server-dev-9.3
 sudo apt-get install -y postgresql-plpython-9.3
-

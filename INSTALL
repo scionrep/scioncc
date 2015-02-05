@@ -29,9 +29,6 @@ Python packages and environment management:
     > easy_install --upgrade virtualenvwrapper
     Note: This require Mac's XCode with installed command line tools
 
-See here for a basic development environment setup. Some steps are redundant or not necessary:
-    https://confluence.oceanobservatories.org/display/CIDev/New+Developer+Tutorial
-
 
 Linux (Ubuntu) Prerequisites
 ============================
@@ -48,6 +45,7 @@ Common Installation
 
 Setup a virtualenv to run the SciON capability container:
     > mkvirtualenv --no-site-packages scion
+    > pip install setuptools --upgrade
 
 Install numpy to the virtualenv
     > pip install numpy==1.7.1
