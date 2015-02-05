@@ -40,6 +40,7 @@ defs/objects/   interface definitions for objects and service
 defs/res/       deployment and configuration files
 interface/      (generated) service clients, stubs and object base classes
 logs/           (generated) contains log files produced by the container
+misc/           make and install libraries and documentation
 obj/            (symlink) to defs/objects
 res/            (symlink) to defs/res
 src/            project source code and packages root (also contains setup.py)
