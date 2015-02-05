@@ -5,10 +5,10 @@
     </description>
 
     <!-- load python specific ant tasks from jar file -->
-    <taskdef resource="pyAntTasks.properties" classpath="scripts/lib/pyAntTasks-1.3.3.jar"/>
+    <taskdef resource="pyAntTasks.properties" classpath="src/scripts/lib/pyAntTasks-1.3.3.jar"/>
 
     <!-- set global properties for this build -->
-    <property name="src" location="pyon"/>
+    <property name="src" location="src"/>
     <property name="build" location="build"/>
     <property name="dist"  location="dist"/>
 
@@ -28,22 +28,19 @@
         <py-compile dir="pyon" pythonpath="${src}" optimize="0"/>
         <py-compile dir="putil" pythonpath="${src}" optimize="0"/>
         <py-compile dir="ion" pythonpath="${src}" optimize="0"/>
+        <py-compile dir="ooi" pythonpath="${src}" optimize="0"/>
         <py-compile dir="scripts" pythonpath="${src}" optimize="0"/>
         <py-compile dir="examples" pythonpath="${src}" optimize="0"/>
     </target>
 
     <target name="clean" description="clean up">
         <delete>
-            <fileset dir="pyon" includes="**/*.pyc"/>
-            <fileset dir="putil" includes="**/*.pyc"/>
-            <fileset dir="ion" includes="**/*.pyc"/>
-            <fileset dir="scripts" includes="**/*.pyc"/>
-            <fileset dir="examples" includes="**/*.pyc"/>
+            <fileset dir="${src}" includes="**/*.pyc"/>
         </delete>
         <delete dir="interface"/>
         <delete dir="${build}"/>
         <delete dir="${dist}"/>
-        <delete dir="scioncc.egg-info"/>
+        <delete dir="${src}/scioncc.egg-info"/>
         <!--<antcall target="remeggs"/>-->
     </target>
 

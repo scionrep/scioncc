@@ -20,7 +20,7 @@ version = '0.0.1-dev'
 setup(  name = 'scioncc',
         version = version,
         description = 'Scientific Observatory Network Capability Container',
-        long_description = read('README'),
+        long_description = read('../README'),
         url = 'www.github.com/scionrep/scioncc',
         download_url = 'https://github.com/scionrep/scioncc/releases',
         license = 'BSD',
@@ -39,8 +39,8 @@ setup(  name = 'scioncc',
                        'Topic :: Scientific/Engineering',
                        'Topic :: Software Development',
                        'Topic :: Software Development :: Libraries :: Application Frameworks'],
-        packages = find_packages(),   # or ('src')
-        #package_dir = {'': ''},       # or '': 'src'
+        packages = find_packages(''),   # or ('src')
+        #package_dir = {'': 'src'},       # or '': 'src'
         entry_points = {
             'console_scripts' : [
                 'pycc=scripts.pycc:entry',
