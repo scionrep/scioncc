@@ -35,12 +35,13 @@ class BootstrapOrg(BootstrapPlugin):
         self.org_id = org_ms_client.create_org(org)
 
         # Instantiate initial set of User Roles for this Org
-        SUPERUSER_ROLE = UserRole(governance_name=SUPERUSER_ROLE, name='ION Manager', description='ION Manager')
-        org_ms_client.add_user_role(self.org_id, SUPERUSER_ROLE)
-        org_ms_client.grant_role(self.org_id, system_actor_id, SUPERUSER_ROLE )
+        superuser_role = UserRole(governance_name=SUPERUSER_ROLE, name='Superuser role',
+                                  description='Has all permissions system wide')
+        org_ms_client.add_user_role(self.org_id, superuser_role)
+        org_ms_client.grant_role(self.org_id, system_actor_id, SUPERUSER_ROLE)
 
         # Make the ION system agent a manager for the ION Org
-        org_ms_client.grant_role(self.org_id, system_actor_id, MODERATOR_ROLE )
+        org_ms_client.grant_role(self.org_id, system_actor_id, MODERATOR_ROLE)
 
         # Create root ExchangeSpace
         xs = ExchangeSpace(name=ION_ROOT_XS, description="ION service XS")
