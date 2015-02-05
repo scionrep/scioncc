@@ -89,7 +89,7 @@ class AppManager(object):
                         log.warn("Invalid number of process replicas: %s", proc_replicas)
                         proc_replicas = 1
                     for i in xrange(proc_replicas):
-                        proc_name = "%s.%s" % (name, i)
+                        proc_name = "%s.%s" % (name, i) if i else name
                         self.container.spawn_process(proc_name, module, cls, rel_cfg)
                 else:
                     self.container.spawn_process(name, module, cls, rel_cfg)

@@ -233,11 +233,11 @@ class ProcManager(object):
                 log.info('Terminating immediate process: %s', process_instance.id)
                 self.terminate_process(process_instance.id)
 
-                # terminate process also triggers TERMINATING/TERMINATED
+                # Terminate process also triggers TERMINATING/TERMINATED
                 self._call_proc_state_changed(process_instance, ProcessStateEnum.EXITED)
 
             else:
-                #Update local policies for the new process
+                # Update local policies for the new process
                 if self.container.has_capability(self.container.CCAP.GOVERNANCE_CONTROLLER):
                     self.container.governance_controller.update_container_policies(process_instance, safe_mode=True)
 
@@ -376,7 +376,7 @@ class ProcManager(object):
         Creates a listening endpoint for spawning processes.
 
         This method exists to be able to override the type created via configuration.
-        In most cases it will create a ConversationRPCServer.
+        In most cases it will create a ProcessRPCServer.
         """
         eptypestr = CFG.get_safe('container.messaging.endpoint.proc_listening_type', None)
         if eptypestr is not None:
