@@ -63,6 +63,7 @@ class EndpointUnit(object):
     def __init__(self, endpoint=None, interceptors=None):
         self._endpoint = endpoint
         self.interceptors = interceptors
+        self._unique_name = uuid.uuid4().hex    # MM: For use as send/desitination name (in part. RPC queues)
 
     @property
     def interceptors(self):
@@ -139,7 +140,8 @@ class EndpointUnit(object):
         @param  kwargs      Passed through to _send.
         """
         _msg, _header = self._build_msg(msg, headers)
-        if headers: _header.update(headers)
+        if headers:
+            _header.update(headers)
         return self._send(_msg, _header, **kwargs)
 
     def _send(self, msg, headers=None, **kwargs):
@@ -842,6 +844,7 @@ class RequestEndpointUnit(BidirectionalEndpointUnit):
                     log.warn("Discarding unknown message, likely from a previous timed out request (conv-id: %s, seq: %s, perf: %s)", nh.get('conv-id', "no conv id"), nh.get('conv-seq', 'no conv seq'), nh.get('performative', 'None'))
 
     def _send(self, msg, headers=None, **kwargs):
+        """Handles an RPC send with response timeout"""
 
         # could have a specified timeout in kwargs
         if 'timeout' in kwargs and kwargs['timeout'] is not None:
@@ -851,7 +854,10 @@ class RequestEndpointUnit(BidirectionalEndpointUnit):
 
         # we have a timeout, update reply-by header
         headers['reply-by'] = str(int(headers['ts']) + int(timeout * 1000))
-        self.channel.setup_listener(NameTrio(self.channel._send_name.exchange)) # anon queue
+        # TODO: Set a better name for RPC response queue with system prefix
+        ep_name = NameTrio(self.channel._send_name.exchange)
+        #ep_name = NameTrio(self.channel._send_name.exchange, self._unique_name)
+        self.channel.setup_listener(ep_name)  # anon queue
         # call base send, and get back the headers it ended up building and sending
         # we extract the conv-id so we can tell the listener what is valid.
         _, sent_headers = BidirectionalEndpointUnit._send(self, msg, headers=headers)
