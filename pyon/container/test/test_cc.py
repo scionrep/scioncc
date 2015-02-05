@@ -93,20 +93,3 @@ class TestContainerCapabilities(IonIntegrationTestCase):
             self.assertEqual(CFG.get_safe("container.messaging.server.primary"), "amqp")
         finally:
             CFG.container.profile = old_profile
-
-    def test_gumstix(self):
-        from pyon.container.cc import CFG
-        old_profile = CFG.container.profile
-        CFG.container.profile = "gumstix"
-        try:
-            self._start_container()
-            self.assertIn(CCAP.RESOURCE_REGISTRY, self.container._capabilities)
-            self.assertEquals(self.container._cap_instances[CCAP.RESOURCE_REGISTRY] .__class__.__name__, "EmbeddedResourceRegistryCapability")
-            self.assertNotIn(CCAP.EVENT_REPOSITORY, self.container._capabilities)
-            self.assertNotIn(CCAP.GOVERNANCE_CONTROLLER, self.container._capabilities)
-            self.assertLess(len(self.container._capabilities), 15)
-            # This checks the config override
-            # @TODO cannot check this here because container was not started with pycc.py
-            #self.assertEqual(CFG.get_safe("container.messaging.server.primary"), "localrouter")
-        finally:
-            CFG.container.profile = old_profile

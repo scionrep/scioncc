@@ -65,8 +65,7 @@ class PyonTestCase(unittest.TestCase):
         return thing
 
     def _file_sys_clean(self):
-        if os.environ.get('CEI_LAUNCH_TEST', None) is None:
-            FileSystem._clean(CFG)
+        FileSystem._clean(CFG)
 
 
 

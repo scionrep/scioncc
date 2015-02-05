@@ -69,29 +69,15 @@ class IonIntegrationTestCase(unittest.TestCase):
 
         bootstrap.testing_fast = True
 
-        if os.environ.get('CEI_LAUNCH_TEST', None):
-            # Let's force clean again.  The static initializer is causing
-            # issues
-            #self._force_clean()
-            self._patch_out_start_rel()
-            from pyon.datastore.datastore_admin import DatastoreAdmin
-            from pyon.datastore.datastore_common import DatastoreFactory
-            da = DatastoreAdmin(config=CFG)
-            da.load_datastore('res/dd')
-            # Turn off file system cleaning
-            # The child container should NOT clean out the parent's filesystem,
-            # they should share like good containers sometimes do
-            CFG.container.file_system.force_clean = False
-        else:
-            # We cannot live without pre-initialized datastores and resource objects
-            pre_initialize_ion()
+        # We cannot live without pre-initialized datastores and resource objects
+        pre_initialize_ion()
 
-            # hack to force_clean on filesystem
-            try:
-                CFG['container']['filesystem']['force_clean'] = True
-            except KeyError:
-                CFG['container']['filesystem'] = {}
-                CFG['container']['filesystem']['force_clean'] = True
+        # hack to force_clean on filesystem
+        try:
+            CFG['container']['filesystem']['force_clean'] = True
+        except KeyError:
+            CFG['container']['filesystem'] = {}
+            CFG['container']['filesystem']['force_clean'] = True
 
         self.container = None
         self.addCleanup(self._stop_container)
@@ -183,8 +169,7 @@ class IonIntegrationTestCase(unittest.TestCase):
         finally:
             datastore.close()
 
-        if os.environ.get('CEI_LAUNCH_TEST', None) is None:
-            FileSystem._clean(CFG)
+        FileSystem._clean(CFG)
 
 
     def patch_cfg(self, cfg_obj_or_str, *args, **kwargs):
