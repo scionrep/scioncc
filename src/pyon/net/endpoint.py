@@ -338,7 +338,7 @@ class BaseEndpoint(object):
         if not isinstance(name, NameTrio):
             name = NameTrio(".".join([bootstrap.get_sys_name(),
                                       'ion.xs',     # @TODO: remove
-                                      CFG.get_safe('exchange.core_xps.ion_rpc', 'ioncore')]),
+                                      CFG.get_safe('exchange.core_xps.system_rpc', 'system')]),
                             name)   # if name is a tuple it takes precedence
             #log.debug("MAKINGNAMETRIO %s\n%s", name, ''.join(traceback.format_list(traceback.extract_stack()[-10:-1])))
 

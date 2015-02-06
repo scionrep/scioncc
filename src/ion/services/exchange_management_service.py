@@ -33,7 +33,6 @@ class ExchangeManagementService(BaseExchangeManagementService):
         exchange_space_id, _ = self.rr.create(exchange_space)
         self.rr.create_association(org_id, PRED.hasExchangeSpace, exchange_space_id)
 
-        # TODO: Anything different if exchange_space.name == "ioncore"?
         self.container.ex_manager.create_xs(exchange_space.name)
         
         return exchange_space_id
@@ -231,6 +230,30 @@ class ExchangeManagementService(BaseExchangeManagementService):
         exchange_broker_obj = self._validate_resource_id("exchange_broker_id", exchange_broker_id, RT.ExchangeBroker)
 
         self.rr.delete(exchange_broker_id)
+
+    def add_exchange_space_to_exchange_broker(self, exchange_space_id='', exchange_broker_id=''):
+        """Adds an exchange space to an exchange broker.
+        """
+        exchange_space_obj = self._validate_resource_id("exchange_space_id", exchange_space_id, RT.ExchangeSpace)
+        exchange_broker_obj = self._validate_resource_id("exchange_broker_id", exchange_broker_id, RT.ExchangeBroker)
+
+        assocs = self.rr.find_associations(exchange_space_id, PRED.hasExchangeBroker, exchange_broker_id, id_only=True)
+        if assocs:
+            raise BadRequest("ExchangeSpace already present on ExchangeBroker")
+
+        self.rr.create_association(exchange_space_id, PRED.hasExchangeBroker, exchange_broker_id)
+
+    def remove_exchange_space_from_exchange_broker(self, exchange_space_id='', exchange_broker_id=''):
+        """Removes an exchange space from an exchange broker.
+        """
+        exchange_space_obj = self._validate_resource_id("exchange_space_id", exchange_space_id, RT.ExchangeSpace)
+        exchange_broker_obj = self._validate_resource_id("exchange_broker_id", exchange_broker_id, RT.ExchangeBroker)
+
+        assocs = self.rr.find_associations(exchange_space_id, PRED.hasExchangeBroker, exchange_broker_id, id_only=True)
+        if not assocs:
+            raise BadRequest("ExchangeSpace not present on ExchangeBroker")
+        for assoc in assocs:
+            self.rr.delete_association(assoc)
 
     # -------------------------------------------------------------------------
     # Misc

@@ -146,6 +146,24 @@ methods:
     throws:
       NotFound: object with specified id does not exist
 
+  add_exchange_space_to_exchange_broker:
+    docstring: Adds an exchange space to an exchange broker.
+    in:
+      exchange_space_id: ""
+      exchange_broker_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  remove_exchange_space_from_exchange_broker:
+    docstring: Removes an exchange space from an exchange broker.
+    in:
+      exchange_space_id: ""
+      exchange_broker_id: ""
+    out:
+    throws:
+      NotFound: object with specified id does not exist
+
   # -----------------
 
   call_management:

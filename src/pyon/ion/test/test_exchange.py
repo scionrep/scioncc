@@ -258,7 +258,7 @@ class TestExchangeManager(PyonTestCase):
         mockmessaging.make_node.return_value = (Mock(), Mock())     # node, ioloop
         self.ex_manager.start()
 
-        one, _ = self.ex_manager._get_node_for_xs('ioncore')
+        one, _ = self.ex_manager._get_node_for_xs('system')
         self.assertEquals(one, 'primary')
 
         two, _ = self.ex_manager._get_node_for_xs('keen')
@@ -281,7 +281,7 @@ class TestExchangeManager(PyonTestCase):
         mockmessaging.make_node.return_value = (Mock(), Mock())     # node, ioloop
         self.ex_manager.start()
 
-        one, _ = self.ex_manager._get_node_for_xp('data', 'ioncore')
+        one, _ = self.ex_manager._get_node_for_xp('data', 'system')
         self.assertEquals(one, 'primary')
 
         two, _ = self.ex_manager._get_node_for_xp('data', 'keen')    # maybe not intuitive?

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Bootstrap process for exchange"""
+"""Bootstrap actopms for exchange"""
 
 __author__ = 'Dave Foster <dfoster@asascience.com>, Michael Meisinger'
 
@@ -24,16 +24,15 @@ class BootstrapExchange(BootstrapPlugin):
         Bootstraps initial objects in the system from configuration (pyon.yml) via
         EMS calls.
         """
-        # Get ION Org
-        root_org_name = config.get_safe('system.root_org', "ION")
-        org_ids, _ = process.container.resource_registry.find_resources(restype=RT.Org, name=root_org_name, id_only=True)
-        if not org_ids or len(org_ids) > 1:
-            raise StandardError("Could not determine root Org")
-
-        org_id = org_ids[0]
-
+        rr = process.container.resource_registry
         ems_client = ExchangeManagementServiceProcessClient(process=process)
 
+        # Get ION Org
+        root_org_name = config.get_safe('system.root_org', "ION")
+        org_ids, _ = rr.find_resources(restype=RT.Org, name=root_org_name, id_only=True)
+        if not org_ids or len(org_ids) > 1:
+            raise StandardError("Could not determine root Org")
+        org_id = org_ids[0]
 
         # Create XSs and XPs resource objects
         xs_by_name = {}   # Name to resource ID mapping for ExchangeSpace
@@ -46,8 +45,6 @@ class BootstrapExchange(BootstrapPlugin):
             log.info("ExchangeSpace %s, id %s", xsname, xso_id)
 
             for xpname, xpopts in xsdict.get("exchange_points", {}).iteritems():
-
-                # Translation for types. CFG currently has it as "topic_tree" and Pyon uses "ttree"
                 xpo = ResExchangePoint(name=xpname, description=xpopts.get("description", ""),
                                        topology_type=xpopts.get('type', 'ttree'))
                 xpo_id = ems_client.create_exchange_point(xpo, xso_id)
@@ -58,23 +55,16 @@ class BootstrapExchange(BootstrapPlugin):
         for brokername, bdict in config.get_safe("exchange.exchange_brokers", {}).iteritems():
             xbo = ResExchangeBroker(name=brokername, description=bdict.get("description", ""))
             xbo_id = ems_client.create_exchange_broker(xbo)
-
             log.info("\tExchangeBroker %s, id %s", brokername, xbo_id)
 
-            for xs_name in bdict.get("join_xs", []):
+            for xs_name in bdict.get("join_xs", None) or []:
                 if xs_name in xs_by_name:
                     xs_id = xs_by_name[xs_name]
-                    # directly associate broker with XS
-                    # @TODO: should EMS provide this?
-                    # first find out if the assoc exists already
-                    assocs = process.container.resource_registry.find_associations(xso_id, PRED.hasExchangeBroker, id_only=True)
-                    if len(assocs) > 0:
-                        continue
-                    process.container.resource_registry.create_association(xso_id, PRED.hasExchangeBroker, xbo_id)
+                    ems_client.add_exchange_space_to_exchange_broker(xs_id, xbo_id)
                 else:
                     log.warn("ExchangeSpace %s unknown. Broker %s cannot join", xs_name, brokername)
 
-            for xp_name in bdict.get("join_xp", []):
+            for xp_name in bdict.get("join_xp", None) or []:
                 pass
 
     def on_restart(self, process, config, **kwargs):
@@ -88,24 +78,25 @@ class BootstrapExchange(BootstrapPlugin):
         - Purges all service queues as long as no consumers are attached, or can be
           overridden with force=True on pycc command line
         """
-        ex_manager         = process.container.ex_manager
+        rr = process.container.resource_registry
+        ex_manager = process.container.ex_manager
         sys_name = get_sys_name()
 
         # get list of queues from broker with full props that have to do with our sysname
         all_queues = ex_manager._list_queues()
-        queues = {q['name']:q for q in all_queues if q['name'].startswith(sys_name)}
+        queues = {q['name']: q for q in all_queues if q['name'].startswith(sys_name)}
 
         # get list of exchanges from broker with full props
         all_exchanges = ex_manager._list_exchanges()
-        exchanges = {e['name']:e for e in all_exchanges if e['name'].startswith(sys_name)}
+        exchanges = {e['name']: e for e in all_exchanges if e['name'].startswith(sys_name)}
 
         # now get list of XOs from RR
-        xs_objs, _ = process.container.resource_registry.find_resources(RT.ExchangeSpace)
-        xp_objs, _ = process.container.resource_registry.find_resources(RT.ExchangePoint)
-        xn_objs, _ = process.container.resource_registry.find_resources(RT.ExchangeName)
+        xs_objs, _ = rr.find_resources(RT.ExchangeSpace)
+        xp_objs, _ = rr.find_resources(RT.ExchangePoint)
+        xn_objs, _ = rr.find_resources(RT.ExchangeName)
 
         xs_by_xp = {}
-        assocs = process.container.resource_registry.find_associations(predicate=PRED.hasExchangePoint, id_only=False)
+        assocs = rr.find_associations(predicate=PRED.hasExchangePoint, id_only=False)
         for assoc in assocs:
             if assoc.st == RT.ExchangeSpace and assoc.ot == RT.ExchangePoint:
                 xs_by_xp[assoc.o] = assoc.s
@@ -171,7 +162,7 @@ class BootstrapExchange(BootstrapPlugin):
                 continue
             """
 
-            exchange_space_list, assoc_list = process.container.resource_registry.find_subjects(RT.ExchangeSpace, PRED.hasExchangeName, rrxn._id)
+            exchange_space_list, assoc_list = rr.find_subjects(RT.ExchangeSpace, PRED.hasExchangeName, rrxn._id)
             if not len(exchange_space_list) == 1:
                 raise StandardError("Association from ExchangeSpace to ExchangeName %s does not exist" % rrxn._id)
 
@@ -186,7 +177,7 @@ class BootstrapExchange(BootstrapPlugin):
                 log.warn("BootstrapExchange restart: RR XN %s, type %s NOT FOUND in queues", xn.queue, xn.xn_type)
 
         # get list of service name possibilities
-        svc_objs, _ = process.container.resource_registry.find_resources(RT.ServiceDefinition)
+        svc_objs, _ = rr.find_resources(RT.ServiceDefinition)
         svc_names = [s.name for s in svc_objs]
 
         # PROCESS QUEUES + SERVICE QUEUES- not yet represented by resource

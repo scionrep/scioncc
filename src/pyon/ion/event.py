@@ -24,7 +24,7 @@ from interface.objects import Event
 
 
 # @TODO: configurable
-EVENTS_XP = "ioncore.events"
+EVENTS_XP = "system.events"
 EVENTS_XP_TYPE = "topic"
 
 #The event will be ignored if older than this time period
@@ -32,7 +32,7 @@ VALID_EVENT_TIME_PERIOD = 365 * 24 * 60 * 60 * 1000   # one year
 
 def get_events_exchange_point():
     # match with default output of XOs
-    return ".".join([bootstrap.get_sys_name(), 'ion.xs.ioncore.xp', EVENTS_XP])
+    return ".".join([bootstrap.get_sys_name(), 'ion.xs.system.xp', EVENTS_XP])
 
 class EventError(IonException):
     status_code = 500

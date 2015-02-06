@@ -202,10 +202,10 @@ interceptor:
 exchange:
   exchange_spaces:
     # define the names and structure of exchange spaces and exchange points
-    ioncore:
+    system:
       description: The system root exchange space
       exchange_points:
-        science_data:
+        data:
           type: ttree
           description: System default exchange point for data streams
         events:
@@ -215,15 +215,15 @@ exchange:
   exchange_brokers:
     system_broker:
       server: amqp
-      description: Main exchange broker (RabbitMQ 3.x AMQP 0.9.1)
-      join_xs: [ioncore]
+      description: Primary exchange broker (RabbitMQ 3.x, AMQP 0.9.1)
+      join_xs: [system]
       join_xp: []
 
   core_xps:
     # used as defaults by pyon.ion.endpoint and PubSub Mgmt Service
-    ion_rpc: ioncore
-    science_data: ioncore.science_data
-    events: ioncore.events
+    system_rpc: system
+    data_streams: system.data
+    events: system.events
 
 
 # ----------------------------------------------------------------------------------

@@ -27,7 +27,7 @@ from interface.services.core.iresource_registry_service import ResourceRegistryS
 
 
 ION_URN_PREFIX     = "urn:ionx"
-ION_ROOT_XS        = "ioncore"
+ION_ROOT_XS        = "system"
 ION_DEFAULT_BROKER = "system_broker"
 
 
@@ -582,7 +582,7 @@ class ExchangeManager(object):
         # get event xp for the xs if not set
         if not xp:
             # pull from configuration
-            eventxp = CFG.get_safe('exchange.core_xps.events', 'ioncore.events')
+            eventxp = CFG.get_safe('exchange.core_xps.events', 'system.events')
             xp = self.create_xp(eventxp)
 
         node      = xp.node
@@ -935,7 +935,7 @@ class ExchangeManager(object):
 
 class ExchangeSpace(XOTransport, NameTrio):
 
-    ION_DEFAULT_XS = "ioncore"
+    ION_DEFAULT_XS = "system"
 
     def __init__(self, exchange_manager, privileged_transport, node, exchange, exchange_type='topic', durable=False, auto_delete=True):
         XOTransport.__init__(self,

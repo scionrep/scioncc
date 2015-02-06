@@ -16,7 +16,7 @@ id = cc.spawn_process('binder', 'examples.stream.stream_binder', 'StreamBinder',
 # To do the bind using the pycc shell
 from examples.stream.stream_binder import BindingChannel
 from pyon.core import bootstrap
-XP = '.'.join([bootstrap.sys_name,'science_data'])
+XP = '.'.join([bootstrap.sys_name, 'data'])
 
 channel = cc.node.channel(BindingChannel)
 channel.setup_listener((XP, 'consumer_input_queue'), binding='glider_data')
@@ -50,7 +50,7 @@ class StreamBinder(SimpleProcess):
         binding = self.CFG.get('args',{}).get('binding',None)
 
         # Create scoped exchange name
-        XP = '.'.join([bootstrap.get_sys_name(),'science_data'])
+        XP = '.'.join([bootstrap.get_sys_name(), 'data'])
 
         self.channel = self.container.node.channel(BindingChannel)
         self.channel.setup_listener(NameTrio(XP,queue_name),binding=binding)
