@@ -2,151 +2,97 @@
 
 __author__ = 'Michael Meisinger'
 
-from pyon.public import CFG, IonObject, log, RT, PRED
+from pyon.public import CFG, IonObject, log, RT, PRED, Conflict, Inconsistent, NotFound, BadRequest
+#from pyon.ion.exchange import ExchangeSpace, ExchangeName, ExchangePoint
 
 from interface.services.core.iexchange_management_service import BaseExchangeManagementService
-from pyon.core.exception import Conflict, Inconsistent, NotFound, BadRequest
-from pyon.util.log import log
-#from pyon.ion.exchange import ExchangeSpace, ExchangeName, ExchangePoint
-from pyon.ion import exchange
+
 
 class ExchangeManagementService(BaseExchangeManagementService):
-
     """
-    The Exchange Management Service is the service that manages the Exchange and its associated resources, such as Exchange Spaces, Names, Points and Brokers.
-
+    The Exchange Management Service is the service that manages the Exchange and its associated
+    resources, such as ExchangeSpaces, Names, Points and Brokers.
     """
-    typemap = { 'XN_SERVICE':'service', 'XN_PROCESS':'process', 'XN_QUEUE':'queue' }
+    EX_TYPE_MAP = {'XN_SERVICE': 'service',
+                   'XN_PROCESS': 'process',
+                   'XN_QUEUE': 'queue'}
 
     def create_exchange_space(self, exchange_space=None, org_id=''):
         """Creates an Exchange Space distributed resource from the parameter exchange_space object.
-
-        @param exchange_space    ExchangeSpace
-        @param org_id    str
-        @retval exchange_space_id    str
-        @throws BadRequest    if object passed has _id or _rev attribute
         """
-        log.debug("create_exchange_space(%s, org_id=%s)" % (exchange_space, org_id))
-        self.assert_condition(exchange_space and org_id, "Arguments not set")
+        log.debug("create_exchange_space(%s, org_id=%s)", exchange_space, org_id)
+        org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
+        self._validate_resource_obj("exchange_space", exchange_space, RT.ExchangeSpace)
 
-        #First make sure that Org with the org_id exists, otherwise bail
-        org = self.container.resource_registry.read(org_id)
-        if not org:
-            raise NotFound("Org %s does not exist" % org_id)
-
-        xss, assocs = self.container.resource_registry.find_objects(subject=org_id, predicate=PRED.hasExchangeSpace, id_only=False)
-        for xs in xss:
+        xs_objs, _ = self.container.resource_registry.find_objects(subject=org_id, predicate=PRED.hasExchangeSpace, id_only=False)
+        for xs in xs_objs:
             if xs.name == exchange_space.name:
                 return xs._id
 
-        exchange_space_id,rev = self.container.resource_registry.create(exchange_space)
-
+        exchange_space_id, _ = self.container.resource_registry.create(exchange_space)
         self.container.resource_registry.create_association(org_id, PRED.hasExchangeSpace, exchange_space_id)
 
-        # Now do the work
-
 #        if exchange_space.name == "ioncore":
-#            # Bottom turtle initialization
-#            # @TODO: what's different here
-#            self.container.ex_manager.create_xs(exchange_space.name)
-#        else:
-        self.container.ex_manager.create_xs(exchange_space.name, use_ems=False)
+#            # Bottom turtle initialization - what's different here?
+
+        self.container.ex_manager.create_xs(exchange_space.name)
         
         return exchange_space_id
 
     def update_exchange_space(self, exchange_space=None):
         """Updates an existing Exchange Space resource with data passed in as a parameter.
-
-        @param exchange_space    ExchangeSpace
-        @throws BadRequest    if object does not have _id or _rev attribute
-        @throws NotFound    object with specified id does not exist
-        @throws Conflict    object not based on latest persisted object version
         """
+        self._validate_resource_obj("exchange_space", exchange_space, RT.ExchangeSpace)
+
         self.container.resource_registry.update(exchange_space)
 
     def read_exchange_space(self, exchange_space_id=''):
         """Returns an Exchange Space resource for the provided exchange space id.
-
-        @param exchange_space_id    str
-        @retval exchange_space    ExchangeSpace
-        @throws NotFound    object with specified id does not exist
         """
-        exchange_space = self.container.resource_registry.read(exchange_space_id)
-        if not exchange_space:
-            raise NotFound("Exchange Space %s does not exist" % exchange_space_id)
-        return exchange_space
+        exchange_space_obj = self._validate_resource_id("exchange_space_id", exchange_space_id, RT.ExchangeSpace)
 
+        return exchange_space_obj
 
     def delete_exchange_space(self, exchange_space_id=''):
         """Deletes an existing exchange space resource for the provided id.
-
-        @param exchange_space_id    str
-        @throws NotFound    object with specified id does not exist
         """
-        exchange_space = self.container.resource_registry.read(exchange_space_id)
-        if not exchange_space:
-            raise NotFound("Exchange Space %s does not exist" % exchange_space_id)
-
-        # remove association between itself and org
-        _, assocs = self.container.resource_registry.find_subjects(RT.Org, PRED.hasExchangeSpace, exchange_space_id, id_only=True)
-        for assoc in assocs:
-            self.container.resource_registry.delete_association(assoc._id)
-
-        # delete assocs to XNs
-        _, assocs = self.container.resource_registry.find_objects(exchange_space_id, PRED.hasExchangeName, id_only=True)
-        for assoc in assocs:
-            self.container.resource_registry.delete_association(assoc._id)
-
-        # delete assocs to XPs
-        _, assocs = self.container.resource_registry.find_objects(exchange_space_id, PRED.hasExchangePoint, id_only=True)
-        for assoc in assocs:
-            self.container.resource_registry.delete_association(assoc._id)
-
-        # delete assocs to XBs
-        _, assocs = self.container.resource_registry.find_objects(exchange_space_id, PRED.hasExchangeBroker, id_only=True)
-        for assoc in assocs:
-            self.container.resource_registry.delete_association(assoc._id)
+        exchange_space_obj = self._validate_resource_id("exchange_space_id", exchange_space_id, RT.ExchangeSpace)
 
         # delete XS now
         self.container.resource_registry.delete(exchange_space_id)
 
         # call container API to delete
-        xs = self.container.ex_manager.create_xs(exchange_space.name, use_ems=False, declare=False)
-        self.container.ex_manager.delete_xs(xs, use_ems=False)
+        xs = self.container.ex_manager.create_xs(exchange_space_obj.name, declare=False)
+        self.container.ex_manager.delete_xs(xs)
 
     def find_exchange_spaces(self, filters=None):
         """Returns a list of Exchange Space resources for the given Resource Filter.
-
-        @param filters    ResourceFilter
-        @retval exchange_space_list    []
         """
         raise NotImplementedError()
 
-
     def declare_exchange_name(self, exchange_name=None, exchange_space_id=''):
         """Create an Exchange Name resource resource
-
-        @param exchange_name    ExchangeName
-        @param exchange_space_id    str
-        @retval canonical_name    str
-        @throws BadRequest    if object passed has _id or _rev attribute
         """
-        # get xntype and translate @TODO should we just consolidate these to be the same?
-        if not exchange_name.xn_type in self.typemap:
+        self._validate_resource_obj("exchange_name", exchange_name, RT.ExchangeName)
+        exchange_space_obj = self._validate_resource_id("exchange_space_id", exchange_space_id, RT.ExchangeSpace)
+
+        # get xntype and translate
+        # @TODO should we just consolidate these to be the same?
+        if exchange_name.xn_type not in self.EX_TYPE_MAP:
             raise BadRequest("Unknown exchange name type: %s" % exchange_name.xn_type)
 
-        xns, assocs = self.container.resource_registry.find_objects(subject=exchange_space_id, predicate=PRED.hasExchangeName, id_only=False)
+        xns, _ = self.container.resource_registry.find_objects(exchange_space_id, PRED.hasExchangeName, id_only=False)
         exchange_name_id = None
         for xn in xns:
             if xn.name == exchange_name.name and xn.xn_type == exchange_name.xn_type:
                 exchange_name_id = xn._id
 
 
-        xntype = self.typemap[exchange_name.xn_type]
+        xntype = self.EX_TYPE_MAP[exchange_name.xn_type]
 
-        exchange_space          = self.read_exchange_space(exchange_space_id)
+        exchange_space = self.read_exchange_space(exchange_space_id)
         if not exchange_name_id:
-            exchange_name_id,rev    = self.container.resource_registry.create(exchange_name)
+            exchange_name_id, _ = self.container.resource_registry.create(exchange_name)
 
             aid = self.container.resource_registry.create_association(exchange_space_id, PRED.hasExchangeName, exchange_name_id)
 
@@ -188,26 +134,18 @@ class ExchangeManagementService(BaseExchangeManagementService):
         self.container.resource_registry.delete(exchange_name_id)
 
         # call container API
-        xntype = self.typemap[exchange_name.xn_type]
+        xntype = self.EX_TYPE_MAP[exchange_name.xn_type]
         xs = self.container.ex_manager.create_xs(exchange_space.name, use_ems=False, declare=False)
         xn = self.container.ex_manager._create_xn(xntype, exchange_name.name, xs, use_ems=False, declare=False)
         self.container.ex_manager.delete_xn(xn, use_ems=False)
 
     def find_exchange_names(self, filters=None):
         """Returns a list of exchange name resources for the given resource filter.
-
-        @param filters    ResourceFilter
-        @retval exchange_name_list    []
         """
         raise NotImplementedError()
 
     def create_exchange_point(self, exchange_point=None, exchange_space_id=''):
         """Create an exchange point resource within the exchange space provided by the id.
-
-        @param exchange_point    ExchangePoint
-        @param exchange_space_id    str
-        @retval exchange_point_id    str
-        @throws BadRequest    if object passed has _id or _rev attribute
         """
 
         xs_xps, assocs = self.container.resource_registry.find_objects(subject=exchange_space_id, predicate=PRED.hasExchangePoint, id_only=False)

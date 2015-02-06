@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-
-__author__ = 'Stephen P. Henrie'
+__author__ = 'Stephen P. Henrie, Michael Meisiger'
 
 from nose.plugins.attrib import attr
 
@@ -13,6 +12,7 @@ from pyon.public import PRED, RT, BadRequest, NotFound
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 from interface.objects import Org, UserRole
+
 
 @attr('INT', group='coi')
 class TestOrgManagementServiceInt(IonIntegrationTestCase):

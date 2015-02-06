@@ -1,277 +1,24 @@
 #!/usr/bin/env python
-from pyon.util.log import log
 
 __author__ = 'Stephen P. Henrie, Dave Foster <dfoster@asascience.com>'
 
-
-from pyon.core import exception
-from pyon.ion import exchange
-from interface.objects import ExchangeSpace, ExchangePoint, ExchangeName
+import os
 from mock import Mock, patch, sentinel
+from nose.plugins.attrib import attr
+
 from pyon.util.unit_test import PyonTestCase
 from pyon.util.int_test import IonIntegrationTestCase
-from nose.plugins.attrib import attr
-from pyon.net.transport import BaseTransport
-from pyon.util.containers import DotDict
 
-import unittest
+from pyon.ion import exchange
+from pyon.net.transport import BaseTransport
+from pyon.public import PRED, RT, CFG, log, BadRequest, Conflict, Inconsistent, NotFound
+from pyon.util.containers import DotDict
+from ion.services.exchange_management_service import ExchangeManagementService
+
+from interface.objects import ExchangeSpace, ExchangePoint, ExchangeName
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 from interface.services.core.iexchange_management_service import ExchangeManagementServiceClient
 
-from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound
-from pyon.public import PRED, RT, CFG
-from ion.services.exchange_management_service import ExchangeManagementService
-import os
-from pyon.util.log import log
-
-
-@attr('UNIT', group='coi')
-class TestExchangeManagementService(PyonTestCase):
-
-    def setUp(self):
-
-        self.container = Mock()
-
-        mock_clients = self._create_service_mock('exchange_management')
-
-        self.exchange_management_service = ExchangeManagementService()
-        self.exchange_management_service.clients = mock_clients
-
-        self.exchange_management_service.container = self.container
-
-        # Rename to save some typing
-        self.mock_create = self.container.resource_registry.create
-        self.mock_read = self.container.resource_registry.read
-        self.mock_update = self.container.resource_registry.update
-        self.mock_delete = self.container.resource_registry.delete
-        self.mock_create_association = self.container.resource_registry.create_association
-        self.mock_delete_association = self.container.resource_registry.delete_association
-        self.mock_find_objects = self.container.resource_registry.find_objects
-        self.mock_find_resources = self.container.resource_registry.find_resources
-        self.mock_find_subjects = self.container.resource_registry.find_subjects
-
-        # Exchange Space
-        self.exchange_space = Mock()
-        self.exchange_space.name = "Foo"
-        self.exchange_space._id = sentinel.xsid
-
-        # Exchange Name
-        self.exchange_name = Mock()
-        self.exchange_name.name = "Hawken"
-        self.exchange_name._id = sentinel.xnid
-        self.exchange_name.xn_type = 'XN_QUEUE'
-
-        # Exchange Point
-        self.exchange_point = Mock()
-        self.exchange_point.name = "greedo"
-        self.exchange_point._id = sentinel.xpid
-
-        # Exchange broker
-        self.exchange_broker = Mock()
-        self.exchange_broker.name = "hansolo"
-        self.exchange_broker._id = sentinel.xbid
-
-        # fixup for direct RR access
-        self.container.resource_registry.create.return_value = (sentinel.id, sentinel.rev)
-        self.container.resource_registry.find_subjects.return_value = ([sentinel.id], [])
-        self.container.resource_registry.find_objects.return_value = ([sentinel.id], [])
-        self.container.resource_registry.find_resources.return_value = ([sentinel.id], [])
-
-    def test_create_exchange_space(self):
-        self.mock_create.return_value = ['111', 1]
-
-        #TODO - Need to mock an org to pass in an valid Org_id
-
-        exchange_space_id = self.exchange_management_service.create_exchange_space(self.exchange_space, "1233")
-
-        assert exchange_space_id == '111'
-        self.mock_create.assert_called_once_with(self.exchange_space)
-
-    def test_xs_create_bad_params(self):
-        self.assertRaises(exception.BadRequest, self.exchange_management_service.create_exchange_space)
-        self.assertRaises(exception.BadRequest, self.exchange_management_service.create_exchange_space, exchange_space=sentinel.ex_space)
-        self.assertRaises(exception.BadRequest, self.exchange_management_service.create_exchange_space, org_id=sentinel.org_id)
-
-    def test_read_and_update_exchange_space(self):
-        self.mock_read.return_value = self.exchange_space
-
-        exchange_space = self.exchange_management_service.read_exchange_space('111')
-
-        assert exchange_space is self.mock_read.return_value
-        self.mock_read.assert_called_once_with('111')
-
-        exchange_space.name = 'Bar'
-
-        self.mock_update.return_value = ['111', 2]
-
-        self.exchange_management_service.update_exchange_space(exchange_space)
-
-        self.mock_update.assert_called_once_with(exchange_space)
-
-    def test_delete_exchange_space(self):
-        self.mock_read.return_value = self.exchange_space
-        self.mock_find_subjects.return_value = (None, [])
-        self.mock_find_objects.return_value = (None, [])
-
-        self.exchange_management_service.delete_exchange_space('111')
-
-        self.mock_read.assert_called_once_with('111')
-        self.mock_delete.assert_called_once_with('111')
-
-    def test_read_exchange_space_not_found(self):
-        self.mock_read.return_value = None
-
-        # TEST: Execute the service operation call
-        with self.assertRaises(NotFound) as cm:
-            self.exchange_management_service.read_exchange_space('bad')
-
-        ex = cm.exception
-        self.assertEqual(ex.message, 'Exchange Space bad does not exist')
-        self.mock_read.assert_called_once_with('bad')
-
-    def test_delete_exchange_space_not_found(self):
-        self.mock_read.return_value = None
-
-        # TEST: Execute the service operation call
-        with self.assertRaises(NotFound) as cm:
-            self.exchange_management_service.delete_exchange_space('bad')
-
-        ex = cm.exception
-        self.assertEqual(ex.message, 'Exchange Space bad does not exist')
-        self.mock_read.assert_called_once_with('bad')
-
-    def test_create_exchange_space_is_idempotent(self):
-
-        # make sure find objects returns an XS with the same name
-        self.container.resource_registry.find_objects.return_value = ([self.exchange_space], [])
-
-        xsid = self.exchange_management_service.create_exchange_space(self.exchange_space, org_id='111')
-
-        self.assertEquals(xsid, sentinel.xsid)
-        self.assertEquals(self.mock_create.call_count, 0)       # did not get called due to short circuit
-
-    def test_find_exchange_space(self):
-        # currently unimplemented
-        self.assertRaises(NotImplementedError, self.exchange_management_service.find_exchange_spaces)
-
-    def test_declare_exchange_name(self):
-        xnid = self.exchange_management_service.declare_exchange_name(self.exchange_name)
-        self.assertEquals(xnid, sentinel.id)
-        self.mock_create.assert_called_once_with(self.exchange_name)
-
-    def test_declare_exchange_name_not_in_type_map(self):
-        self.exchange_name.xn_type = 'notinmap'
-        self.assertRaises(BadRequest, self.exchange_management_service.declare_exchange_name, self.exchange_name)
-
-    def test_declare_exchange_name_is_idempotent(self):
-        # make sure find objects returns an XN with the same name
-        self.container.resource_registry.find_objects.return_value = ([self.exchange_name], [])
-
-        xnid = self.exchange_management_service.declare_exchange_name(self.exchange_name)
-
-        self.assertEquals(xnid, sentinel.xnid)
-        self.assertEquals(self.mock_create.call_count, 0)
-
-    def test_undeclare_exchange_name(self):
-        self.exchange_management_service.declare_exchange_name(self.exchange_name)
-        self.mock_read.return_value = self.exchange_name
-
-        self.exchange_management_service.undeclare_exchange_name(sentinel.xnid)
-
-        self.mock_delete.assert_called_once_with(sentinel.xnid)
-
-    def test_undeclare_exchange_name_not_declared(self):
-        self.mock_read.return_value = None
-
-        self.assertRaises(NotFound, self.exchange_management_service.undeclare_exchange_name, sentinel.id)
-
-    def test_find_exchange_names(self):
-        # currently unimplemented
-        self.assertRaises(NotImplementedError, self.exchange_management_service.find_exchange_names)
-
-    def test_create_exchange_point(self):
-        xpid = self.exchange_management_service.create_exchange_point(self.exchange_point)
-        self.assertEquals(xpid, sentinel.id)
-        self.mock_create.assert_called_once_with(self.exchange_point)
-
-    def test_create_exchange_point_is_idempotent(self):
-        # make sure find objects returns an XP with the same name
-        self.container.resource_registry.find_objects.return_value = ([self.exchange_point], [])
-
-        xpid = self.exchange_management_service.create_exchange_point(self.exchange_point)
-
-        self.assertEquals(xpid, sentinel.xpid)
-        self.assertEquals(self.mock_create.call_count, 0)
-
-    def test_update_exchange_point(self):
-        self.exchange_management_service.update_exchange_point(self.exchange_point)
-        self.mock_update.assert_called_once_with(self.exchange_point)
-
-    def test_read_exchange_point(self):
-        xp = self.exchange_management_service.read_exchange_point(sentinel.xpid)
-
-        self.assertEquals(xp, self.mock_read.return_value)
-
-    def test_read_exchange_point_not_declared(self):
-        self.mock_read.return_value = None
-
-        self.assertRaises(NotFound, self.exchange_management_service.read_exchange_point, sentinel.xpid)
-
-    def test_delete_exchange_point(self):
-        self.exchange_management_service.delete_exchange_point(sentinel.xpid)
-
-        self.mock_delete.assert_called_once_with(sentinel.xpid)
-
-    def test_delete_exchange_point_not_declared(self):
-        self.mock_read.return_value = None
-
-        self.assertRaises(NotFound, self.exchange_management_service.delete_exchange_point, sentinel.xpid)
-
-    def test_find_exchange_points(self):
-        # currently unimplemented
-        self.assertRaises(NotImplementedError, self.exchange_management_service.find_exchange_points)
-
-    def test_create_exchange_broker(self):
-        xbid = self.exchange_management_service.create_exchange_broker(self.exchange_broker)
-        self.assertEquals(xbid, sentinel.id)
-        self.mock_create.assert_called_once_with(self.exchange_broker)
-
-    def test_create_exchange_broker_is_idempotent(self):
-        # make sure find objects returns an XB with the same name
-        self.container.resource_registry.find_resources.return_value = ([self.exchange_broker], [])
-
-        xbid = self.exchange_management_service.create_exchange_broker(self.exchange_broker)
-
-        self.assertEquals(xbid, sentinel.xbid)
-        self.assertEquals(self.mock_create.call_count, 0)
-
-    def test_update_exchange_broker(self):
-        self.exchange_management_service.update_exchange_broker(self.exchange_broker)
-        self.mock_update.assert_called_once_with(self.exchange_broker)
-
-    def test_read_exchange_broker(self):
-        self.exchange_management_service.read_exchange_broker(sentinel.xbid)
-        self.mock_read.assert_called_once_with(sentinel.xbid)
-
-    def test_read_exchange_broker_not_declared(self):
-        self.mock_read.return_value = None
-        self.assertRaises(NotFound, self.exchange_management_service.read_exchange_broker, sentinel.xbid)
-
-    def test_delete_exchange_broker(self):
-        self.exchange_management_service.delete_exchange_broker(sentinel.xbid)
-        self.mock_delete.assert_called_once_with(sentinel.xbid)
-
-    def test_delete_exchange_broker_not_declared(self):
-        self.mock_read.return_value = None
-        self.assertRaises(NotFound, self.exchange_management_service.delete_exchange_broker, sentinel.xbid)
-
-    def test_find_exchange_broker(self):
-        # currently unimplemented
-        self.assertRaises(NotImplementedError, self.exchange_management_service.find_exchange_broker)
-
-    def test_call_management(self):
-        self.exchange_management_service.call_management(sentinel.url, sentinel.method)
-        self.container.ex_manager._make_management_call.assert_called_once_with(sentinel.url, method=sentinel.method, use_ems=False)
 
 @attr('INT', group='coi')
 @patch.dict('pyon.ion.exchange.CFG', container=DotDict(CFG.container, exchange=DotDict(auto_register=True)))
@@ -285,9 +32,6 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
         self.rr = ResourceRegistryServiceClient()
 
         orglist, _ = self.rr.find_resources(RT.Org)
-        if len(orglist) < 1:
-            raise StandardError("No orgs found")
-
         self.org_id = orglist[0]._id
 
         # we test actual exchange interaction in pyon, so it's fine to mock the broker interaction here

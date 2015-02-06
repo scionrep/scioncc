@@ -433,7 +433,7 @@ class ExchangeManager(object):
 
         return self._get_node_for_xs(xs_name)
 
-    def create_xs(self, name, use_ems=True, exchange_type='topic', durable=False, auto_delete=True, declare=True):
+    def create_xs(self, name, use_ems=False, exchange_type='topic', durable=False, auto_delete=True, declare=True):
         log.debug("ExchangeManager.create_xs: %s", name)
 
         node_name, node = self._get_node_for_xs(name)

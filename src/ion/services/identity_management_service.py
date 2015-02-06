@@ -2,20 +2,15 @@
 
 __author__ = 'Thomas R. Lennan, Stephen Henrie, Michael Meisinger'
 
-import calendar
-from datetime import datetime
 from uuid import uuid4
 import bcrypt
 
 from pyon.core.security.authentication import Authentication
-from pyon.public import log, PRED, RT, IonObject, OT, Conflict, Inconsistent, NotFound, BadRequest, \
-    get_ion_ts_millis, Unauthorized
+from pyon.public import log, RT, OT, Inconsistent, NotFound, BadRequest, get_ion_ts_millis, Unauthorized
 
-from interface.objects import ProposalOriginatorEnum, NegotiationStatusEnum, NegotiationTypeEnum, \
-    SecurityToken, TokenTypeEnum, Credentials
+from interface.objects import SecurityToken, TokenTypeEnum, Credentials
 
 from interface.services.core.iidentity_management_service import BaseIdentityManagementService
-from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
 
 MAX_TOKEN_VALIDITY = 365*24*60*60
 
@@ -29,34 +24,8 @@ class IdentityManagementService(BaseIdentityManagementService):
     def on_init(self):
         self.authentication = Authentication()
 
-    def _validate_parameters(self, **kwargs):
-        parameter_objects = dict()
-
-        if 'actor_id' in kwargs:
-            actor_id = kwargs['actor_id']
-            if not actor_id:
-                raise BadRequest("The actor_id argument is missing")
-            actor = self.clients.resource_registry.read(actor_id)
-            if not actor:
-                raise NotFound("Actor %s does not exist" % actor)
-            if actor.type_ != RT.ActorIdentity:
-                raise BadRequest("Resource with given id is not an ActorIdentity -- SPOOFING ALERT")
-            parameter_objects['actor'] = actor
-
-        if 'actor_identity' in kwargs:
-            actor_identity = kwargs['actor_identity']
-            if not actor_identity or actor_identity.type_ != RT.ActorIdentity:
-                raise BadRequest("Invalid actor_identity")
-
-        if 'credentials' in kwargs:
-            credentials = kwargs['credentials']
-            if not credentials or credentials.type_ != OT.Credentials:
-                raise BadRequest("Invalid credentials")
-
-        return parameter_objects
-
     def create_actor_identity(self, actor_identity=None):
-        self._validate_parameters(actor_identity=actor_identity)
+        self._validate_resource_obj("actor_identity", actor_identity)
         if actor_identity.credentials:
             raise BadRequest("Cannot create actor with credentials")
         if actor_identity.details and actor_identity.details.type_ == OT.IdentityDetails:
@@ -67,7 +36,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         return actor_id
 
     def update_actor_identity(self, actor_identity=None):
-        self._validate_parameters(actor_identity=actor_identity)
+        self._validate_resource_obj("actor_identity", actor_identity)
         if not actor_identity._id:
             raise BadRequest("actor_identity argument has no id")
         old_actor = self.clients.resource_registry.read(actor_identity._id)
@@ -80,12 +49,12 @@ class IdentityManagementService(BaseIdentityManagementService):
         self.clients.resource_registry.update(actor_identity)
 
     def read_actor_identity(self, actor_id=''):
-        param_objects = self._validate_parameters(actor_id=actor_id)
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
 
-        return param_objects["actor"]
+        return actor_obj
 
     def delete_actor_identity(self, actor_id=''):
-        self._validate_parameters(actor_id=actor_id)
+        self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
 
         self.clients.resource_registry.delete(actor_id)
 
@@ -103,8 +72,8 @@ class IdentityManagementService(BaseIdentityManagementService):
     # Credentials handling
 
     def register_credentials(self, actor_id='', credentials=None):
-        param_objects = self._validate_parameters(actor_id=actor_id, credentials=credentials)
-        actor_obj = param_objects["actor"]
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
+        self._validate_arg_obj("credentials", credentials, OT.Credentials)
 
         actor_obj.credentials.append(credentials)
 
@@ -117,8 +86,7 @@ class IdentityManagementService(BaseIdentityManagementService):
     def unregister_credentials(self, actor_id='', credentials_name=''):
         if not credentials_name:
             raise BadRequest("Invalid credentials_name")
-        param_objects = self._validate_parameters(actor_id=actor_id)
-        actor_obj = param_objects["actor"]
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         found_cred = -1
         for i, cred in enumerate(actor_obj.credentials):
             if cred.username == credentials_name:
@@ -146,8 +114,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         if not username:
             raise BadRequest("Invalid username")
         self._check_pwd_policy(password)
-        param_objects = self._validate_parameters(actor_id=actor_id)
-        actor_obj = param_objects["actor"]
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         cred_obj = None
         for cred in actor_obj.credentials:
             if cred.username == username:

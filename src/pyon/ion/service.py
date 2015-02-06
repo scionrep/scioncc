@@ -11,6 +11,8 @@ from pyon.util.log import log
 from pyon.util.containers import named_any, itersubclasses
 from pyon.util.context import LocalContextMixin
 
+from interface.objects import Resource, IonObjectBase
+
 
 class BaseClients(object):
     """
@@ -108,6 +110,46 @@ class BaseService(LocalContextMixin):
     def assert_condition(self, condition, errorstr):
         if not condition:
             raise BadRequest(errorstr)
+
+    def _validate_resource_id(self, arg_name, resource_id, res_type=None, optional=False):
+        """
+        Check that the given argument is a resource id, by retrieving the resource from the
+        resource registry. Additionally checks type and returns the result object
+        """
+        if optional and not resource_id:
+            return
+        if not resource_id:
+            raise BadRequest("The argument '%s' is missing" % arg_name)
+        resource_obj = self.clients.resource_registry.read(resource_id)
+        if res_type and resource_obj.type_ != res_type:
+            raise BadRequest("Resource with given id is not a %s -- SPOOFING ALERT" % res_type)
+        return resource_obj
+
+    def _validate_resource_obj(self, arg_name, resource_obj, res_type=None, optional=False):
+        """
+        Check that the given argument exists and is a resource object of given type
+        """
+        if optional and resource_obj is None:
+            return
+        if not resource_obj:
+            raise BadRequest("The argument '%s' is missing" % arg_name)
+        if not isinstance(resource_obj, Resource):
+            raise BadRequest("The argument '%s' is not a resource" % arg_name)
+        if res_type and resource_obj.type_ != res_type:
+            raise BadRequest("Resource with given id is not a %s -- SPOOFING ALERT" % res_type)
+
+    def _validate_arg_obj(self, arg_name, arg_obj, obj_type=None, optional=False):
+        """
+        Check that the given argument exists and is an object of given type
+        """
+        if optional and arg_obj is None:
+            return
+        if not arg_obj:
+            raise BadRequest("The argument '%s' is missing" % arg_name)
+        if not isinstance(arg_obj, IonObjectBase):
+            raise BadRequest("The argument '%s' is not an object" % arg_name)
+        if obj_type and arg_obj.type_ != obj_type:
+            raise BadRequest("Object with given id is not a %s -- SPOOFING ALERT" % obj_type)
 
     def __str__(self):
         proc_name = 'Unknown proc_name' if self._proc_name is None else self._proc_name
