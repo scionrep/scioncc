@@ -422,7 +422,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
             (IonObject(RT.DataProduct, name="DP4c", visibility=ResourceVisibilityEnum.OWNER, availability=AS.AVAILABLE), ),
         ]
         assocs = [
-            ("Org1", PRED.hasMembership, "AI2"),
+            ("Org1", PRED.hasMember, "AI2"),
             ("Org1", PRED.hasResource, "ID3a"),
             ("Org1", PRED.hasResource, "ID3b"),
             ("Org1", PRED.hasResource, "ID3c"),

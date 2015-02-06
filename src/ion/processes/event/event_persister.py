@@ -161,4 +161,4 @@ class EventProcessor(object):
     """Callback interface for event processors"""
 
     def process_events(self, event_list):
-        raise NotImplemented("Must override")
+        raise NotImplementedError("Must override")

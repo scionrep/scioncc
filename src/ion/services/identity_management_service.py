@@ -22,31 +22,27 @@ class IdentityManagementService(BaseIdentityManagementService):
     """
 
     def on_init(self):
+        self.rr = self.clients.resource_registry
         self.authentication = Authentication()
 
     def create_actor_identity(self, actor_identity=None):
-        self._validate_resource_obj("actor_identity", actor_identity)
+        self._validate_resource_obj("actor_identity", actor_identity, RT.ActorIdentity, checks="noid,name")
         if actor_identity.credentials:
             raise BadRequest("Cannot create actor with credentials")
         if actor_identity.details and actor_identity.details.type_ == OT.IdentityDetails:
             actor_identity.details = None
 
-        actor_id, _ = self.clients.resource_registry.create(actor_identity)
+        actor_id, _ = self.rr.create(actor_identity)
 
         return actor_id
 
     def update_actor_identity(self, actor_identity=None):
-        self._validate_resource_obj("actor_identity", actor_identity)
-        if not actor_identity._id:
-            raise BadRequest("actor_identity argument has no id")
-        old_actor = self.clients.resource_registry.read(actor_identity._id)
-        if old_actor.type_ != RT.ActorIdentity:
-            raise BadRequest("Updated ActorIdentity invalid id and type -- SPOOFING ALERT")
+        old_actor = self._validate_resource_obj("actor_identity", actor_identity, RT.ActorIdentity, checks="id,name")
 
         # Prevent security risk because contained credentials may be manipulated
         actor_identity.credentials = old_actor.credentials
 
-        self.clients.resource_registry.update(actor_identity)
+        self.rr.update(actor_identity)
 
     def read_actor_identity(self, actor_id=''):
         actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
@@ -56,12 +52,12 @@ class IdentityManagementService(BaseIdentityManagementService):
     def delete_actor_identity(self, actor_id=''):
         self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
 
-        self.clients.resource_registry.delete(actor_id)
+        self.rr.delete(actor_id)
 
     def find_actor_identity_by_name(self, name=''):
         """Return the ActorIdentity object whose name attribute matches the passed value.
         """
-        objects, _ = self.clients.resource_registry.find_resources(RT.ActorIdentity, None, name, id_only=False)
+        objects, _ = self.rr.find_resources(RT.ActorIdentity, None, name, id_only=False)
         if not objects:
             raise NotFound("ActorIdentity with name %s does not exist" % name)
         if len(objects) > 1:
@@ -81,12 +77,12 @@ class IdentityManagementService(BaseIdentityManagementService):
             actor_obj.alt_ids.append("UNAME:" + credentials.username)
 
         # Lower level RR call to avoid credentials clearing
-        self.clients.resource_registry.update(actor_obj)
+        self.rr.update(actor_obj)
 
     def unregister_credentials(self, actor_id='', credentials_name=''):
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         if not credentials_name:
             raise BadRequest("Invalid credentials_name")
-        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         found_cred = -1
         for i, cred in enumerate(actor_obj.credentials):
             if cred.username == credentials_name:
@@ -100,12 +96,12 @@ class IdentityManagementService(BaseIdentityManagementService):
         actor_obj.alt_ids.remove("UNAME:" + credentials_name)
 
         # Lower level RR call to avoid credentials clearing
-        self.clients.resource_registry.update(actor_obj)
+        self.rr.update(actor_obj)
 
     def find_actor_identity_by_username(self, username=''):
         if not username:
             raise BadRequest("Invalid username")
-        res_ids, _ = self.clients.resource_registry.find_resources_ext(alt_id_ns="UNAME", alt_id=username, id_only=True)
+        res_ids, _ = self.rr.find_resources_ext(alt_id_ns="UNAME", alt_id=username, id_only=True)
         if not res_ids:
             raise NotFound("No actor found with username")
         return res_ids[0]
@@ -129,7 +125,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         self._generate_password_hash(cred_obj, password)
 
         # Lower level RR call to avoid credentials clearing
-        self.clients.resource_registry.update(actor_obj)
+        self.rr.update(actor_obj)
 
     def set_user_password(self, username='', password=''):
         if not username:
@@ -147,7 +143,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         self._generate_password_hash(cred_obj, password)
 
         # Lower level RR call to avoid credentials clearing
-        self.clients.resource_registry.update(actor_obj)
+        self.rr.update(actor_obj)
 
     def _generate_password_hash(self, cred_obj, password):
         if not cred_obj or cred_obj.type_ != OT.Credentials:
@@ -187,7 +183,7 @@ class IdentityManagementService(BaseIdentityManagementService):
     # Identity details (user profile) handling
 
     def define_identity_details(self, actor_id='', identity_details=None):
-        actor_obj = self.read_actor_identity(actor_id)
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         if not identity_details:
             raise BadRequest("Invalid argument identity_details")
         if actor_obj.details:
@@ -220,7 +216,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         """
         if not actor_id:
             raise BadRequest("Must provide argument: actor_id")
-        actor_obj = self.clients.resource_registry.read(actor_id)
+        actor_obj = self.rr.read(actor_id)
         if actor_obj.type_ != RT.ActorIdentity:
             raise BadRequest("Illegal type for argument actor_id")
         if type(validity) not in (int, long):
@@ -308,5 +304,5 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def _get_actor_authentication_tokens(self, actor_id):
         actor_tokens = []
-        raise NotImplemented("TODO")
+        raise NotImplementedError("TODO")
         return actor_tokens

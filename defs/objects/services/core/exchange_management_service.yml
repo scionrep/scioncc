@@ -146,6 +146,8 @@ methods:
     throws:
       NotFound: object with specified id does not exist
 
+  # -----------------
+
   call_management:
     docstring: Makes a call to the RabbitMQ Management HTTP API
     in:

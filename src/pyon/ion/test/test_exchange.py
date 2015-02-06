@@ -834,7 +834,7 @@ class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
         # test to see if we have access to management URL!
         url = self.container.ex_manager._get_management_url('overview')
         try:
-            self.container.ex_manager._make_management_call(url, use_ems=False)
+            self.container.ex_manager._make_management_call(url)
         except exception.IonException as ex:
             raise unittest.SkipTest("Cannot find management API: %s" % str(ex))
 
@@ -948,7 +948,6 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
         try:
             url = self.container.ex_manager._get_management_url("queues", "%2f", xq.queue, "get")
             res = self.container.ex_manager._make_management_call(url,
-                                                                  use_ems=False,
                                                                   method='post',
                                                                   data=json.dumps({'count':1, 'requeue':True,'encoding':'auto'}))
 
@@ -1019,7 +1018,7 @@ class TestManagementAPI(PyonTestCase):
         rmock.return_value.raise_for_status.side_effect = requests.exceptions.Timeout
 
         with patch('pyon.ion.exchange.requests.get', rmock):
-            self.assertRaises(exception.Timeout, self.ex_manager._make_management_call, sentinel.url, use_ems=False)
+            self.assertRaises(exception.Timeout, self.ex_manager._make_management_call, sentinel.url)
 
     def test_list_queues_does_filtering(self):
         self.ex_manager._list_queues = Mock(return_value=[{'name':'a_1'}, {'name':'a_2'}, {'name':'b_1'}, {'name':'b_2'}])
@@ -1060,7 +1059,7 @@ class TestManagementAPIInt(IonIntegrationTestCase):
         # test to see if we have access to management URL!
         url = self.container.ex_manager._get_management_url('overview')
         try:
-            self.container.ex_manager._make_management_call(url, use_ems=False)
+            self.container.ex_manager._make_management_call(url)
         except exception.IonException as ex:
             raise unittest.SkipTest("Cannot find management API: %s" % str(ex))
 

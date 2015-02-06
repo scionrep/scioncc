@@ -4,17 +4,19 @@ ExchangeSpace: !Extends_InformationResource
 
 # RCommunicating participant within an Exchange Space.
 ExchangeName: !Extends_InformationResource
-  xn_type: "entity"
+  # Type of exchange name. One of XN_SERVICE, XN_PROCESS, XN_QUEUE
+  xn_type: ""
 
 
 # A message router within an Exchange Space.
 ExchangePoint: !Extends_InformationResource
-  topology_type: "ttree"
+  # Type of routing scheme.
+  topology_type: ""
 
 
 # A message broker
 ExchangeBroker: !Extends_InformationResource
-  impl_type: "rabbitmq"
+  impl_type: ""
   impl_version: ""
 
 

@@ -388,7 +388,7 @@ class PostgresPyonDataStore(PostgresDataStore):
             # - Return all FACILITY if user is in same facility
             access_filter += " OR (" + tablename + ".visibility=3 AND " + tablename + ".id IN (SELECT o FROM " + assoc_tablename + \
                              " WHERE p='hasResource' AND st='Org' AND s IN (SELECT s FROM " + assoc_tablename + \
-                             " WHERE p='hasMembership' AND st='Org' AND o=%(current_actor_id)s)))"
+                             " WHERE p='hasMember' AND st='Org' AND o=%(current_actor_id)s)))"
         else:
             # Anonymous access
             # All public resources

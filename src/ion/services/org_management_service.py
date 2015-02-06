@@ -55,6 +55,7 @@ class OrgManagementService(BaseOrgManagementService):
     and commitment repository
     """
     def on_init(self):
+        self.rr = self.clients.resource_registry
         self.event_pub = EventPublisher(process=self)
         self.negotiation_handler = Negotiation(self, negotiation_rules, self.event_pub)
 
@@ -84,15 +85,8 @@ class OrgManagementService(BaseOrgManagementService):
         """Creates an Org based on the provided object. The id string returned
         is the internal id by which Org will be identified in the data store.
         """
-        if not org:
-            raise BadRequest("The org argument is missing")
-        if not org.name:
-            raise BadRequest("Invalid Org name")
-
         # Only allow one root ION Org in the system
-        res_list, _ = self.clients.resource_registry.find_resources(restype=RT.Org, name=org.name)
-        if len(res_list) > 0:
-            raise BadRequest('Org named %s already exists' % org.name)
+        self._validate_resource_obj("org", org, RT.Org, checks="noid,name,unique")
 
         # If this governance identifier is not set, then set to a safe version of the org name.
         if not org.org_governance_name:
@@ -100,7 +94,7 @@ class OrgManagementService(BaseOrgManagementService):
         if not is_basic_identifier(org.org_governance_name):
             raise BadRequest("The Org org_governance_name '%s' contains invalid characters" % org.org_governance_name)
 
-        org_id, _ = self.clients.resource_registry.create(org)
+        org_id, _ = self.rr.create(org)
 
         # Instantiate a Directory for this Org
         directory = Directory(orgname=org.name)
@@ -127,17 +121,11 @@ class OrgManagementService(BaseOrgManagementService):
     def update_org(self, org=None):
         """Updates the Org based on provided object.
         """
-        if not org:
-            raise BadRequest("The org argument is missing")
-        if not org._id:
-            raise BadRequest("Org argument has no id")
-        old_org = self.clients.resource_registry.read(org._id)
-        if old_org.type_ != RT.Org:
-            raise BadRequest("Updated Org invalid id and type -- SPOOFING ALERT")
+        old_org = self._validate_resource_obj("org", org, RT.Org, checks="id")
         if org.org_governance_name != old_org.org_governance_name:
             raise BadRequest("Cannot update Org org_governance_name")
 
-        self.clients.resource_registry.update(org)
+        self.rr.update(org)
 
     def read_org(self, org_id=''):
         """Returns the Org object for the specified id.
@@ -153,7 +141,7 @@ class OrgManagementService(BaseOrgManagementService):
         """
         self._validate_resource_id("org_id", org_id, RT.Org)
 
-        self.clients.resource_registry.delete(org_id)
+        self.rr.delete(org_id)
 
     def find_org(self, name=''):
         """Finds an Org object with the specified name. Defaults to the
@@ -164,7 +152,7 @@ class OrgManagementService(BaseOrgManagementService):
         if not name:
             name = self._get_root_org_name()
 
-        res_list, _ = self.clients.resource_registry.find_resources(restype=RT.Org, name=name)
+        res_list, _ = self.rr.find_resources(restype=RT.Org, name=name)
         if not res_list:
             raise NotFound('The Org with name %s does not exist' % name)
         return res_list[0]
@@ -188,7 +176,7 @@ class OrgManagementService(BaseOrgManagementService):
         user_role.org_governance_name = org_obj.org_governance_name
         user_role_id = self.clients.policy_management.create_role(user_role)
 
-        self.clients.resource_registry.create_association(org_obj, PRED.hasRole, user_role_id)
+        self.rr.create_association(org_obj, PRED.hasRole, user_role_id)
 
         return user_role_id
 
@@ -201,18 +189,18 @@ class OrgManagementService(BaseOrgManagementService):
         user_role = self._validate_user_role("role_name", role_name, org_id)
 
         if not force_removal:
-            alist, _ = self.clients.resource_registry.find_subjects(RT.ActorIdentity, PRED.hasRole, user_role)
+            alist, _ = self.rr.find_subjects(RT.ActorIdentity, PRED.hasRole, user_role)
             if len(alist) > 0:
                 raise BadRequest('The User Role %s cannot be removed as there are %s users associated to it' %
                                  (user_role.name, str(len(alist))))
 
         # Finally remove the association to the Org
-        aid = self.clients.resource_registry.get_association(org_obj, PRED.hasRole, user_role)
+        aid = self.rr.get_association(org_obj, PRED.hasRole, user_role)
         if not aid:
             raise NotFound("The role association between the specified Org (%s) and UserRole (%s) is not found" %
                            (org_id, user_role.name))
 
-        self.clients.resource_registry.delete_association(aid)
+        self.rr.delete_association(aid)
 
         return True
 
@@ -246,7 +234,7 @@ class OrgManagementService(BaseOrgManagementService):
         """
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
 
-        role_list, _ = self.clients.resource_registry.find_objects(org_obj, PRED.hasRole, RT.UserRole)
+        role_list, _ = self.rr.find_objects(org_obj, PRED.hasRole, RT.UserRole)
 
         return role_list
 
@@ -282,7 +270,7 @@ class OrgManagementService(BaseOrgManagementService):
         neg_id = self.negotiation_handler.update_negotiation(sap)
 
         # Get the most recent version of the Negotiation resource
-        negotiation = self.clients.resource_registry.read(neg_id)
+        negotiation = self.rr.read(neg_id)
 
         # hardcoding some rules at the moment - could be replaced by a Rules Engine
         if sap.type_ == OT.AcquireResourceExclusiveProposal:
@@ -297,7 +285,7 @@ class OrgManagementService(BaseOrgManagementService):
                 neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap, rejection_reason)
 
                 # Get the most recent version of the Negotiation resource
-                negotiation = self.clients.resource_registry.read(neg_id)
+                negotiation = self.rr.read(neg_id)
 
             else:
 
@@ -315,7 +303,7 @@ class OrgManagementService(BaseOrgManagementService):
                     neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap, rejection_reason)
 
                     # Get the most recent version of the Negotiation resource
-                    negotiation = self.clients.resource_registry.read(neg_id)
+                    negotiation = self.rr.read(neg_id)
 
                 else:
 
@@ -327,7 +315,7 @@ class OrgManagementService(BaseOrgManagementService):
                     neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap)
 
                     # Get the most recent version of the Negotiation resource
-                    negotiation = self.clients.resource_registry.read(neg_id)
+                    negotiation = self.rr.read(neg_id)
 
         # Check to see if the rules allow for auto acceptance of the negotiations -
         # where the second party is assumed to accept if the
@@ -344,7 +332,7 @@ class OrgManagementService(BaseOrgManagementService):
                 neg_id = self.negotiation_handler.update_negotiation(consumer_accept_sap)
 
                 # Get the most recent version of the Negotiation resource
-                negotiation = self.clients.resource_registry.read(neg_id)
+                negotiation = self.rr.read(neg_id)
 
             elif latest_sap.proposal_status == ProposalStatusEnum.ACCEPTED and latest_sap.originator == ProposalOriginatorEnum.CONSUMER:
                 provider_accept_sap = Negotiation.create_counter_proposal(negotiation, ProposalStatusEnum.ACCEPTED, ProposalOriginatorEnum.PROVIDER)
@@ -353,7 +341,7 @@ class OrgManagementService(BaseOrgManagementService):
                 neg_id = self.negotiation_handler.update_negotiation(provider_accept_sap)
 
                 # Get the most recent version of the Negotiation resource
-                negotiation = self.clients.resource_registry.read(neg_id)
+                negotiation = self.rr.read(neg_id)
 
         # Return the latest proposal
         return negotiation.proposals[-1]
@@ -366,7 +354,7 @@ class OrgManagementService(BaseOrgManagementService):
         """
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
 
-        neg_list, _ = self.clients.resource_registry.find_objects(org_id, PRED.hasNegotiation)
+        neg_list, _ = self.rr.find_objects(org_id, PRED.hasNegotiation)
 
         if proposal_type:
             neg_list = [neg for neg in neg_list if neg.proposals[0].type_ == proposal_type]
@@ -381,7 +369,7 @@ class OrgManagementService(BaseOrgManagementService):
         """
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
 
-        neg_list, _ = self.clients.resource_registry.find_objects(org_id, PRED.hasNegotiation)
+        neg_list, _ = self.rr.find_objects(org_id, PRED.hasNegotiation)
 
         if proposal_type:
             neg_list = [neg for neg in neg_list if neg.proposals[0].type_ == proposal_type]
@@ -399,7 +387,7 @@ class OrgManagementService(BaseOrgManagementService):
         """
         actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
 
-        neg_list, _ = self.clients.resource_registry.find_objects(actor_obj, PRED.hasNegotiation)
+        neg_list, _ = self.rr.find_objects(actor_obj, PRED.hasNegotiation)
 
         if org_id:
             org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
@@ -427,7 +415,7 @@ class OrgManagementService(BaseOrgManagementService):
         if org_obj.name == self._get_root_org_name():
             raise BadRequest("A request to enroll in the root ION Org is not allowed")
 
-        aid = self.clients.resource_registry.create_association(org_obj, PRED.hasMembership, actor_obj)
+        aid = self.rr.create_association(org_obj, PRED.hasMember, actor_obj)
         if not aid:
             return False
 
@@ -455,11 +443,11 @@ class OrgManagementService(BaseOrgManagementService):
             self._delete_role_association(org_obj, actor_obj, user_role)
 
         # Finally remove the association to the Org
-        aid = self.clients.resource_registry.get_association(org_obj, PRED.hasMembership, actor_obj)
+        aid = self.rr.get_association(org_obj, PRED.hasMember, actor_obj)
         if not aid:
             raise NotFound("The membership association between the specified actor and Org is not found")
 
-        self.clients.resource_registry.delete_association(aid)
+        self.rr.delete_association(aid)
 
         self.event_pub.publish_event(event_type=OT.OrgMembershipCancelledEvent, origin=org_obj._id, origin_type='Org',
             description='The member has cancelled enrollment in the Org', actor_id=actor_obj._id, org_name=org_obj.name )
@@ -473,7 +461,7 @@ class OrgManagementService(BaseOrgManagementService):
             raise BadRequest("The actor_id argument is missing")
 
         try:
-            user = self.clients.resource_registry.read(actor_id)
+            user = self.rr.read(actor_id)
             return True
         except Exception as e:
             log.error('is_registered: %s for actor_id:%s' %  (e.message, actor_id))
@@ -492,7 +480,7 @@ class OrgManagementService(BaseOrgManagementService):
             return True
 
         try:
-            aid = self.clients.resource_registry.get_association(org_obj, PRED.hasMembership, actor_obj)
+            aid = self.rr.get_association(org_obj, PRED.hasMember, actor_obj)
         except NotFound:
             return False
 
@@ -506,9 +494,9 @@ class OrgManagementService(BaseOrgManagementService):
 
         # Membership into the Root ION Org is implied as part of registration
         if org_obj.name == self._get_root_org_name():
-            user_list, _ = self.clients.resource_registry.find_resources(RT.ActorIdentity)
+            user_list, _ = self.rr.find_resources(RT.ActorIdentity)
         else:
-            user_list, _ = self.clients.resource_registry.find_objects(org_obj, PRED.hasMembership, RT.ActorIdentity)
+            user_list, _ = self.rr.find_objects(org_obj, PRED.hasMember, RT.ActorIdentity)
 
         return user_list
 
@@ -518,7 +506,7 @@ class OrgManagementService(BaseOrgManagementService):
         """
         actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
 
-        org_list, _ = self.clients.resource_registry.find_subjects(RT.Org, PRED.hasMembership, actor_obj)
+        org_list, _ = self.rr.find_subjects(RT.Org, PRED.hasMember, actor_obj)
 
         # Membership into the Root ION Org is implied as part of registration
         ion_org = self.find_org()
@@ -546,7 +534,7 @@ class OrgManagementService(BaseOrgManagementService):
         return ret
 
     def _add_role_association(self, org, actor, user_role):
-        aid = self.clients.resource_registry.create_association(actor, PRED.hasRole, user_role)
+        aid = self.rr.create_association(actor, PRED.hasRole, user_role)
         if not aid:
             return False
 
@@ -557,11 +545,11 @@ class OrgManagementService(BaseOrgManagementService):
         return True
 
     def _delete_role_association(self, org, actor, user_role):
-        aid = self.clients.resource_registry.get_association(actor, PRED.hasRole, user_role)
+        aid = self.rr.get_association(actor, PRED.hasRole, user_role)
         if not aid:
             raise NotFound("The association between the specified ActorIdentity %s and User Role %s was not found" % (actor._id, user_role._id))
 
-        self.clients.resource_registry.delete_association(aid)
+        self.rr.delete_association(aid)
 
         self.event_pub.publish_event(event_type=OT.UserRoleRevokedEvent, origin=org._id, origin_type='Org', sub_type=user_role.governance_name,
             description='Revoked the %s role' % user_role.name,
@@ -603,7 +591,7 @@ class OrgManagementService(BaseOrgManagementService):
         if actor is None:
             raise BadRequest("The actor argument is missing")
 
-        role_list, _ = self.clients.resource_registry.find_objects(actor, PRED.hasRole, RT.UserRole)
+        role_list, _ = self.rr.find_objects(actor, PRED.hasRole, RT.UserRole)
 
         # Iterate the list of roles associated with user and filter by the org_id.
         # TODO - replace this when better query is available
@@ -661,7 +649,7 @@ class OrgManagementService(BaseOrgManagementService):
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
         resource_obj = self._validate_resource_id("resource_id", resource_id)
 
-        aid = self.clients.resource_registry.create_association(org_obj, PRED.hasResource, resource_obj)
+        aid = self.rr.create_association(org_obj, PRED.hasResource, resource_obj)
         if not aid:
             return False
 
@@ -679,11 +667,11 @@ class OrgManagementService(BaseOrgManagementService):
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
         resource_obj = self._validate_resource_id("resource_id", resource_id)
 
-        aid = self.clients.resource_registry.get_association(org_obj, PRED.hasResource, resource_obj)
+        aid = self.rr.get_association(org_obj, PRED.hasResource, resource_obj)
         if not aid:
             raise NotFound("The shared association between the specified resource and Org is not found")
 
-        self.clients.resource_registry.delete_association(aid)
+        self.rr.delete_association(aid)
 
         self.event_pub.publish_event(event_type=OT.ResourceUnsharedEvent, origin=org_obj._id, origin_type='Org',
                                      sub_type=resource_obj.type_,
@@ -699,7 +687,7 @@ class OrgManagementService(BaseOrgManagementService):
             raise BadRequest("The resource_id argument is missing")
 
         try:
-            res_list, _ = self.clients.resource_registry.find_objects(org_id, PRED.hasResource)
+            res_list, _ = self.rr.find_objects(org_id, PRED.hasResource)
 
             if res_list:
                 for res in res_list:
@@ -726,7 +714,7 @@ class OrgManagementService(BaseOrgManagementService):
         commitment_id = self.create_resource_commitment(sap.provider, sap.consumer, sap.resource_id, exclusive, int(sap.expiration))
 
         # Create association between the Commitment and the Negotiation objects
-        self.clients.resource_registry.create_association(sap.negotiation_id, PRED.hasContract, commitment_id)
+        self.rr.create_association(sap.negotiation_id, PRED.hasContract, commitment_id)
 
         return commitment_id
 
@@ -743,14 +731,14 @@ class OrgManagementService(BaseOrgManagementService):
         commitment = IonObject(RT.Commitment, name='', provider=org_id, consumer=actor_id, commitment=res_commitment,
              description='Resource Commitment', expiration=str(expiration))
 
-        commitment_id, commitment_rev = self.clients.resource_registry.create(commitment)
+        commitment_id, commitment_rev = self.rr.create(commitment)
         commitment._id = commitment_id
         commitment._rev = commitment_rev
 
         # Creating associations to all related objects
-        self.clients.resource_registry.create_association(org_id, PRED.hasCommitment, commitment_id)
-        self.clients.resource_registry.create_association(actor_id, PRED.hasCommitment, commitment_id)
-        self.clients.resource_registry.create_association(resource_id, PRED.hasCommitment, commitment_id)
+        self.rr.create_association(org_id, PRED.hasCommitment, commitment_id)
+        self.rr.create_association(actor_id, PRED.hasCommitment, commitment_id)
+        self.rr.create_association(resource_id, PRED.hasCommitment, commitment_id)
 
         self.event_pub.publish_event(event_type=OT.ResourceCommitmentCreatedEvent, origin=org_id, origin_type='Org', sub_type=resource_obj.type_,
             description='The resource has been committed by the Org', resource_id=resource_id, org_name=org_obj.name,
@@ -764,9 +752,9 @@ class OrgManagementService(BaseOrgManagementService):
         if not commitment_id:
             raise BadRequest("The commitment_id argument is missing")
 
-        self.clients.resource_registry.lcs_delete(commitment_id)
+        self.rr.lcs_delete(commitment_id)
 
-        commitment = self.clients.resource_registry.read(commitment_id)
+        commitment = self.rr.read(commitment_id)
 
         self.event_pub.publish_event(event_type=OT.ResourceCommitmentReleasedEvent, origin=commitment.provider, origin_type='Org', sub_type='',
             description='The resource has been uncommitted by the Org', resource_id=commitment.commitment.resource_id,
@@ -784,7 +772,7 @@ class OrgManagementService(BaseOrgManagementService):
 
         try:
             cur_time = int(get_ion_ts())
-            commitments, _ = self.clients.resource_registry.find_objects(resource_id, PRED.hasCommitment, RT.Commitment)
+            commitments, _ = self.rr.find_objects(resource_id, PRED.hasCommitment, RT.Commitment)
             if commitments:
                 for com in commitments:
                     # If the expiration is not 0 make sure it has not expired
@@ -807,7 +795,7 @@ class OrgManagementService(BaseOrgManagementService):
 
         try:
             cur_time = int(get_ion_ts())
-            commitments,_ = self.clients.resource_registry.find_objects(resource_id,PRED.hasCommitment, RT.Commitment)
+            commitments,_ = self.rr.find_objects(resource_id,PRED.hasCommitment, RT.Commitment)
             if commitments:
                 for com in commitments:
                     # If the expiration is not 0 make sure it has not expired
@@ -821,7 +809,7 @@ class OrgManagementService(BaseOrgManagementService):
         return False
 
     def is_in_org(self, container):
-        container_list, _ = self.clients.resource_registry.find_subjects(RT.Org, PRED.hasResource, container)
+        container_list, _ = self.rr.find_subjects(RT.Org, PRED.hasResource, container)
         if container_list:
             return True
 
@@ -835,10 +823,10 @@ class OrgManagementService(BaseOrgManagementService):
 
         # Containers in the Root ION Org are implied
         if org_obj.org_governance_name == self._get_root_org_name():
-            container_list, _ = self.clients.resource_registry.find_resources(RT.CapabilityContainer)
+            container_list, _ = self.rr.find_resources(RT.CapabilityContainer)
             container_list[:] = [container for container in container_list if not self.is_in_org(container)]
         else:
-            container_list, _ = self.clients.resource_registry.find_objects(org_obj, PRED.hasResource, RT.CapabilityContainer)
+            container_list, _ = self.rr.find_objects(org_obj, PRED.hasResource, RT.CapabilityContainer)
 
         return container_list
 
@@ -850,7 +838,7 @@ class OrgManagementService(BaseOrgManagementService):
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
         affiliate_org_obj = self._validate_resource_id("affiliate_org_id", affiliate_org_id, RT.Org)
 
-        aid = self.clients.resource_registry.create_association(org_obj, PRED.affiliatedWith, affiliate_org_obj)
+        aid = self.rr.create_association(org_obj, PRED.hasAffiliation, affiliate_org_obj)
         if not aid:
             return False
 
@@ -863,11 +851,11 @@ class OrgManagementService(BaseOrgManagementService):
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
         affiliate_org_obj = self._validate_resource_id("affiliate_org_id", affiliate_org_id, RT.Org)
 
-        aid = self.clients.resource_registry.get_association(org_obj, PRED.affiliatedWith, affiliate_org_obj)
+        aid = self.rr.get_association(org_obj, PRED.hasAffiliation, affiliate_org_obj)
         if not aid:
             raise NotFound("The affiliation association between the specified Orgs is not found")
 
-        self.clients.resource_registry.delete_association(aid)
+        self.rr.delete_association(aid)
         return True
 
     # Local helper functions are below - do not remove them

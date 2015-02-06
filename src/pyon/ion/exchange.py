@@ -85,9 +85,6 @@ class ExchangeManager(object):
         # they may not be created by privileged connections, as privileged connections are optional.
         self._priv_transports = {}
 
-        # public toggle switch for if EMS should be used by default
-        self.use_ems    = True
-
     def start(self):
         log.debug("ExchangeManager.start")
 
@@ -433,7 +430,7 @@ class ExchangeManager(object):
 
         return self._get_node_for_xs(xs_name)
 
-    def create_xs(self, name, use_ems=False, exchange_type='topic', durable=False, auto_delete=True, declare=True):
+    def create_xs(self, name, exchange_type='topic', durable=False, auto_delete=True, declare=True):
         log.debug("ExchangeManager.create_xs: %s", name)
 
         node_name, node = self._get_node_for_xs(name)
@@ -458,7 +455,7 @@ class ExchangeManager(object):
 
         return xs
 
-    def delete_xs(self, xs, use_ems=True):
+    def delete_xs(self, xs):
         """
         @type xs    ExchangeSpace
         """
@@ -474,7 +471,7 @@ class ExchangeManager(object):
         except TransportError as ex:
             log.warn("Could not delete XS (%s): %s", name, ex)
 
-    def create_xp(self, name, xs=None, use_ems=True, declare=True, **kwargs):
+    def create_xp(self, name, xs=None, declare=True, **kwargs):
         log.debug("ExchangeManager.create_xp: %s", name)
 
         xs              = xs or self.default_xs
@@ -501,7 +498,7 @@ class ExchangeManager(object):
 
         return xp
 
-    def delete_xp(self, xp, use_ems=True):
+    def delete_xp(self, xp):
         log.debug("ExchangeManager.delete_xp: name=%s", 'TODO')   # xp.build_xname())
 
         name = xp._exchange              # @TODO: not right
@@ -514,7 +511,7 @@ class ExchangeManager(object):
         except TransportError as ex:
             log.warn("Could not delete XP (%s): %s", name, ex)
 
-    def _create_xn(self, xn_type, name, xs=None, use_ems=True, declare=True, **kwargs):
+    def _create_xn(self, xn_type, name, xs=None, declare=True, **kwargs):
         xs = xs or self.default_xs
         log.info("ExchangeManager._create_xn: type: %s, name=%s, xs=%s, kwargs=%s", xn_type, name, xs, kwargs)
 
@@ -546,10 +543,10 @@ class ExchangeManager(object):
         else:
             raise StandardError("Unknown XN type: %s" % xn_type)
 
-        self._register_xn(name, xn, xs, use_ems=use_ems, declare=declare)
+        self._register_xn(name, xn, xs, declare=declare)
         return xn
 
-    def _register_xn(self, name, xn, xs, use_ems=True, declare=True):
+    def _register_xn(self, name, xn, xs, declare=True):
         """
         Helper method to register an XN with EMS/RR.
         """
@@ -607,7 +604,7 @@ class ExchangeManager(object):
 
         return xn
 
-    def delete_xn(self, xn, use_ems=False):
+    def delete_xn(self, xn):
         log.debug("ExchangeManager.delete_xn: name=%s", "TODO")  # xn.build_xlname())
 
         name = xn._queue                 # @TODO feels wrong
@@ -691,7 +688,7 @@ class ExchangeManager(object):
 
         return raw_exchanges
 
-    def list_queues(self, name=None, return_columns=None, use_ems=True):
+    def list_queues(self, name=None, return_columns=None):
         """
         Rabbit HTTP management API call to list names of queues on the broker.
 
@@ -701,7 +698,7 @@ class ExchangeManager(object):
 
         @param  name    If set, filters the list by only including queues with name in them.
         """
-        raw_queues = self._list_queues(return_columns=return_columns, use_ems=use_ems)
+        raw_queues = self._list_queues(return_columns=return_columns)
 
         nl = lambda x: (name is None) or (name is not None and name in x)
 
@@ -712,7 +709,7 @@ class ExchangeManager(object):
 
         return queues
 
-    def _list_queues(self, return_columns=None, use_ems=True):
+    def _list_queues(self, return_columns=None):
         """
         Rabbit HTTP management API call to list queues with full properties. Can specify an optional list of
         column names to filter the data returned from the API query.
@@ -723,7 +720,7 @@ class ExchangeManager(object):
         if isinstance(return_columns, list):
             feats += "?columns=" + ','.join(return_columns)
         url = self._get_management_url("queues", feats)
-        raw_queues = self._call_management(url, use_ems=use_ems)
+        raw_queues = self._call_management(url)
 
         return raw_queues
 
@@ -878,7 +875,7 @@ class ExchangeManager(object):
 
         return url
 
-    def _call_management(self, url, use_ems=True):
+    def _call_management(self, url):
         """
         Makes a GET HTTP request to the Rabbit HTTP management API.
 
@@ -886,9 +883,9 @@ class ExchangeManager(object):
 
         @param  url     A URL to be used, build one with _get_management_url.
         """
-        return self._make_management_call(url, use_ems=use_ems)
+        return self._make_management_call(url)
 
-    def _call_management_delete(self, url, use_ems=True):
+    def _call_management_delete(self, url):
         """
         Makes an HTTP DELETE request to the Rabbit HTTP management API.
 
@@ -896,9 +893,9 @@ class ExchangeManager(object):
 
         @param  url     A URL to be used, build one with _get_management_url.
         """
-        return self._make_management_call(url, use_ems=use_ems, method="delete")
+        return self._make_management_call(url, method="delete")
 
-    def _make_management_call(self, url, use_ems=True, method="get", data=None):
+    def _make_management_call(self, url, method="get", data=None):
         """
         Makes a call to the Rabbit HTTP management API using the passed in HTTP method.
         """

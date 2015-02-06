@@ -89,8 +89,6 @@ class BootstrapExchange(BootstrapPlugin):
           overridden with force=True on pycc command line
         """
         ex_manager         = process.container.ex_manager
-        old_use_ems        = ex_manager.use_ems
-        ex_manager.use_ems = False
         sys_name = get_sys_name()
 
         # get list of queues from broker with full props that have to do with our sysname
@@ -228,6 +226,4 @@ class BootstrapExchange(BootstrapPlugin):
             else:
                 ex_manager.purge_queue(queue)
                 log.info("Purged service queue %s of %s messages", queue, queues[queue]['messages'])
-
-        ex_manager.use_ems = old_use_ems
 

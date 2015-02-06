@@ -119,24 +119,48 @@ class BaseService(LocalContextMixin):
         if optional and not resource_id:
             return
         if not resource_id:
-            raise BadRequest("The argument '%s' is missing" % arg_name)
+            raise BadRequest("Argument '%s': missing" % arg_name)
         resource_obj = self.clients.resource_registry.read(resource_id)
         if res_type and resource_obj.type_ != res_type:
-            raise BadRequest("Resource with given id is not a %s -- SPOOFING ALERT" % res_type)
+            raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
         return resource_obj
 
-    def _validate_resource_obj(self, arg_name, resource_obj, res_type=None, optional=False):
+    def _validate_resource_obj(self, arg_name, resource_obj, res_type=None, optional=False, checks=""):
         """
-        Check that the given argument exists and is a resource object of given type
+        Check that the given argument exists and is a resource object of given type.
+        Can be None if optional==True.
+        Optional checks in comma separated string:
+        - id: resource referenced by ID is compatible and returns it.
+        - noid: object contains no id
+        - name: object has non empty name
+        - unique: name is not used yet in system for given res_type (must be set)
         """
+        checks = checks.split(",") if isinstance(checks, basestring) else checks
         if optional and resource_obj is None:
             return
         if not resource_obj:
-            raise BadRequest("The argument '%s' is missing" % arg_name)
+            raise BadRequest("Argument '%s': missing" % arg_name)
         if not isinstance(resource_obj, Resource):
-            raise BadRequest("The argument '%s' is not a resource" % arg_name)
+            raise BadRequest("Argument '%s': not a resource object" % arg_name)
+        if "noid" in checks and "_id" in resource_obj:
+            raise BadRequest("Argument '%s': resource object has an id" % arg_name)
+        if ("name" in checks or "unique" in checks) and not resource_obj.name:
+            raise BadRequest("Argument '%s': resource has invalid name" % arg_name)
+        if "unique" in checks:
+            if not res_type:
+                raise BadRequest("Must provide resource type")
+            res_list, _ = self.clients.resource_registry.find_resources(restype=res_type, name=resource_obj.name)
+            if res_list:
+                raise BadRequest("Argument '%s': resource name already exists" % arg_name)
         if res_type and resource_obj.type_ != res_type:
-            raise BadRequest("Resource with given id is not a %s -- SPOOFING ALERT" % res_type)
+            raise BadRequest("Argument '%s': resource object type is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
+        if "id" in checks:
+            if "_id" not in resource_obj:
+                raise BadRequest("Argument '%s': resource object has no id" % arg_name)
+            old_resource_obj = self.clients.resource_registry.read(resource_obj._id)
+            if res_type and old_resource_obj.type_ != res_type:
+                raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
+            return old_resource_obj
 
     def _validate_arg_obj(self, arg_name, arg_obj, obj_type=None, optional=False):
         """
@@ -145,11 +169,11 @@ class BaseService(LocalContextMixin):
         if optional and arg_obj is None:
             return
         if not arg_obj:
-            raise BadRequest("The argument '%s' is missing" % arg_name)
+            raise BadRequest("Argument '%s':  missing" % arg_name)
         if not isinstance(arg_obj, IonObjectBase):
-            raise BadRequest("The argument '%s' is not an object" % arg_name)
+            raise BadRequest("Argument '%s': not an object" % arg_name)
         if obj_type and arg_obj.type_ != obj_type:
-            raise BadRequest("Object with given id is not a %s -- SPOOFING ALERT" % obj_type)
+            raise BadRequest("Argument '%s': object type is not a '%s'" % (arg_name, obj_type))
 
     def __str__(self):
         proc_name = 'Unknown proc_name' if self._proc_name is None else self._proc_name

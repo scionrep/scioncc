@@ -5,10 +5,68 @@
 
 # All entries must have a docstring!!!
 AssociationDefinitions:
-  - predicate: hasElement
-    domain: [Collection]
+
+# Resources
+  - predicate: hasAttachment
+    domain: [Resource]
+    range: [Attachment]
+    docstring: References an Attachment for any given resource
+  - predicate: hasResource
+    domain: [Org, Collection]
     range: [Resource]
-    docstring: References one of a collection of resources
+    docstring: References a resource belonging to Org or a Collection
+  - predicate: hasOwner
+    domain: [Resource]
+    range: [ActorIdentity]
+    docstring: Indicates the owner (identity) for the resource
+
+# Org, Commitment, Negotiation, Policy
+  - predicate: hasMember
+    domain: [Org]
+    range: [ActorIdentity]
+    docstring: Indicates that the identity is a member of given Org
+  - predicate: hasAffiliation
+    domain: [Org]
+    range: [Org]
+    docstring: References an Org that subject Org is affiliated with by electronic contract
+  - predicate: hasPolicy
+    domain: [Resource]
+    range: [Policy]
+    docstring: Indicates the policy for the resource
+  - predicate: hasCommitment
+    domain: [ActorIdentity, Resource, Org]
+    range: [Commitment]
+    docstring: References a Commitment for an identity (that is committed) or a resource (that is used)
+  - predicate: hasContract
+    domain: [Negotiation]
+    range: [Commitment]
+    docstring: References the Commitment associated with a succesful Negotiaion
+  - predicate: hasNegotiation
+    domain: [Org, ActorIdentity]
+    range: [Negotiation]
+    docstring: References a Negotiation between the Org, user and a resource
+  - predicate: hasRole
+    domain: [ActorIdentity, Org]
+    range: [UserRole]
+    docstring: Indicates the role definition fulfilled by a resource
+
+# Messaging
+  - predicate: hasExchangeSpace
+    domain: [Org]
+    range: [ExchangeSpace]
+    docstring: References an ExchangeSpace that is the basis for the given Org
+  - predicate: hasExchangeName
+    domain: [ExchangeSpace]
+    range: [ExchangeName]
+    docstring: References an ExchangeName defined in the given ExchangeSpace
+  - predicate: hasExchangePoint
+    domain: [ExchangeSpace]
+    range: [ExchangePoint]
+    docstring: References an ExchangePoint defined in the given ExchangeSpace
+  - predicate: hasExchangeBroker
+    domain: [ExchangeSpace]
+    range: [ExchangeBroker]
+    docstring: References an ExchangeBroker, the given ExchangeSpace is replicated on
   - predicate: hasStream
     domain: [Subscription, ExchangePoint]
     range: [Stream]
@@ -21,20 +79,8 @@ AssociationDefinitions:
     domain: [Stream, Topic, Subscription]
     range: [Topic]
     docstring: References the Exchange Topic associated with other routing elements
-  - predicate: hasView
-    domain: [View]
-    range: [View]
-    docstring:
 
-# COI
-  - predicate: affiliatedWith
-    domain: [Org]
-    range: [Org]
-    docstring: References an Org that subject Org is affiliated with by electronic contract
-  - predicate: committedTo
-    domain: [Commitment]
-    range: [ActorIdentity]
-    docstring: References the ActorIdentity that this Commitment applies to
+# Agents
   - predicate: hasAgentDefinition
     domain: [AgentInstance]
     range: [AgentDefinition]
@@ -43,76 +89,25 @@ AssociationDefinitions:
     domain: [TaskableResource]
     range: [AgentInstance]
     docstring: References the responsible agent instance for given resource
-  - predicate: hasAttachment
-    domain: [Resource]
-    range: [Attachment]
-    docstring: References an Attachment for any given resource
-  - predicate: hasCommitment
-    domain: [ActorIdentity, Resource, Org]
-    range: [Commitment]
-    docstring: References a Commitment for an identity (that is committed) or a resource (that is used)
-  - predicate: hasContract
-    domain: [Negotiation]
-    range: [Commitment]
-    docstring: References the Commitment associated with a succesful Negotiaion
   - predicate: hasDefinition
     domain: [TaskableResource]
     range: [ExecutableResource]
     docstring:
-  - predicate: hasExchangeBroker
-    domain: [ExchangeSpace]
-    range: [ExchangeBroker]
-    docstring: References an ExchangeBroker, the given ExchangeSpace is replicated on
-  - predicate: hasExchangeName
-    domain: [ExchangeSpace]
-    range: [ExchangeName]
-    docstring: References an ExchangeName defined in the given ExchangeSpace
-  - predicate: hasExchangePoint
-    domain: [ExchangeSpace]
-    range: [ExchangePoint]
-    docstring: References an ExchangePoint defined in the given ExchangeSpace
-  - predicate: hasExchangeSpace
-    domain: [Org]
-    range: [ExchangeSpace]
-    docstring: References an ExchangeSpace that is the basis for the given Org
-  - predicate: hasMembership
-    domain: [Org]
-    range: [ActorIdentity]
-    docstring: Indicates the the ION identity is a member of given Org.
-  - predicate: hasOwner
-    domain: [Resource]
-    range: [ActorIdentity]
-    docstring: Indicates the owner (identity) for the resource
-  - predicate: hasPolicy
-    domain: [Resource]
-    range: [Policy]
-    docstring: Indicates the policy for the resource
-  - predicate: hasProcess
-    domain: [CapabilityContainer, Service]
-    range: [Process]
-    docstring: References a Process (instance) that is associated with the container or service
-  - predicate: hasNegotiation
-    domain: [Org, ActorIdentity]
-    range: [Negotiation]
-    docstring: References a Negotiation between the Org, user and a resource
-  - predicate: hasResource
-    domain: [Org, Collection]
-    range: [Resource]
-    docstring: References a resource belonging to Org or a Collection
-  - predicate: hasRole
-    domain: [ActorIdentity, Org]
-    range: [UserRole]
-    docstring: Indicates the role definition fulfilled by a resource
-  - predicate: hasServiceDefinition
-    domain: [Service]
-    range: [ServiceDefinition]
-    docstring: References the ServiceDefinition (type) for a given Service (instance)
 
-# CEI
+
+# Computing
   - predicate: hasProcessDefinition
     domain: [Resource]
     range: [ProcessDefinition]
     docstring: References the ProcessDefinition (type of process with executable) that instantiated or defined the resource
+  - predicate: hasProcess
+    domain: [CapabilityContainer, Service]
+    range: [Process]
+    docstring: References a Process (instance) that is associated with the container or service
+  - predicate: hasServiceDefinition
+    domain: [Service]
+    range: [ServiceDefinition]
+    docstring: References the ServiceDefinition (type) for a given Service (instance)
 
 # Examples
   - predicate: hasAccount

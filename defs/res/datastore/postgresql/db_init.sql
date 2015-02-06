@@ -151,8 +151,8 @@ import json
 res = json.loads(data)
 special = None
 doc_type = res.get('type_', None)
-if doc_type == "UserInfo" and isinstance(res.get('contact', None), dict):
-  email = res['contact'].get('email', None)
+if doc_type == "ActorIdentity" and isinstance(res.get('details', None), dict) and isinstance(res["details"].get('contact', None), dict):
+  email = res["details"]['contact'].get('email', None)
   if email:
     special = "contact.email=%s" % email
 elif doc_type == "Org" and res.get('org_governance_name', None):
