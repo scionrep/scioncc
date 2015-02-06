@@ -4,13 +4,8 @@
 
 __author__ = 'Luke Campbell <LCampbell@ASAScience.com>, Michael Meisinger'
 
-from unittest.case import skipIf, skip, SkipTest
-import dateutil.parser
-import time
-import calendar
 from nose.plugins.attrib import attr
 from mock import Mock, patch, sentinel
-from datetime import date, timedelta
 
 from pyon.util.unit_test import IonUnitTestCase
 from pyon.util.int_test import IonIntegrationTestCase
@@ -23,7 +18,7 @@ from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 from interface.services.core.idiscovery_service import DiscoveryServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
-from interface.objects import  ProcessDefinition, ContactInformation, GeospatialIndex, GeospatialBounds, TemporalBounds, View, CustomAttribute
+from interface.objects import GeospatialIndex, GeospatialBounds, TemporalBounds, View, CustomAttribute
 
 
 @attr('UNIT', group='dm')

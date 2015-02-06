@@ -23,7 +23,7 @@ except ImportError as e:
 
 @attr('UNIT')
 class InterceptorTest(PyonTestCase):
-    @unittest.skipIf(not _have_numpy,'No numpy')
+    @unittest.skipIf(not _have_numpy, 'No numpy')
     def test_numpy_encode(self):
 
         a = np.array([90,8010,3,14112,3.14159265358979323846264],dtype='float32')
@@ -49,7 +49,7 @@ class InterceptorTest(PyonTestCase):
         self.assertTrue((a==b).all())
 
 
-    @unittest.skipIf(not _have_numpy,'No numpy')
+    @unittest.skipIf(not _have_numpy, 'No numpy')
     def test_packed_numpy(self):
         a = np.array([(90,8010,3,14112,3.14159265358979323846264)],dtype='float32')
         invoke = Invocation()

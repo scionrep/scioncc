@@ -279,7 +279,7 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
 
     def setUp(self):
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2coi.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.ems = ExchangeManagementServiceClient()
         self.rr = ResourceRegistryServiceClient()
@@ -296,8 +296,6 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
         self.container.ex_manager.create_xp = Mock()
         self.container.ex_manager.delete_xp = Mock()
 
-    @attr('LOCOINT')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
     def test_xs_create_delete(self):
         exchange_space = ExchangeSpace(name="bobo")
         esid = self.ems.create_exchange_space(exchange_space, self.org_id)
@@ -330,8 +328,6 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
     def test_xs_delete_without_create(self):
         self.assertRaises(NotFound, self.ems.delete_exchange_space, '123')
 
-    @attr('LOCOINT')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
     def test_xp_create_delete(self):
 
         # xp needs an xs first
@@ -366,7 +362,6 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
 
         # should no longer exist on broker (both xp and xs)
 
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
     def test_xp_create_then_delete_xs(self):
 
         # xp needs an xs first
@@ -419,7 +414,6 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
     def test_xn_undeclare_without_declare(self):
         self.assertRaises(NotFound, self.ems.undeclare_exchange_name, 'some_non_id')
 
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
     def test_xn_declare_then_delete_xs(self):
 
         # xn needs an xs first
@@ -449,7 +443,7 @@ class TestContainerExchangeToEms(IonIntegrationTestCase):
     # these tests should auto contact the EMS to do the work
     def setUp(self):
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2coi.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.ems = ExchangeManagementServiceClient()
         self.rr = ResourceRegistryServiceClient()
@@ -458,8 +452,6 @@ class TestContainerExchangeToEms(IonIntegrationTestCase):
         # just mock out the transport
         self.container.ex_manager._priviledged_transport = Mock(BaseTransport)
 
-    @attr('LOCOINT')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
     def test_create_xs_talks_to_ems(self):
         self.patch_cfg('pyon.ion.exchange.CFG', container=DotDict(CFG.container, exchange=DotDict(auto_register=True)))
 
@@ -475,7 +467,6 @@ class TestContainerExchangeToEms(IonIntegrationTestCase):
         self.assertIn('house', self.container.ex_manager._priviledged_transport.declare_exchange_impl.call_args[0][0])
 
     @patch.dict('pyon.ion.exchange.CFG', container=DotDict(CFG.container, exchange=DotDict(auto_register=False)))
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Test reaches into container, doesn\'t work with CEI')
     def test_create_xs_with_no_flag_only_uses_ex_manager(self):
         self.patch_cfg('pyon.ion.exchange.CFG', container=DotDict(CFG.container, exchange=DotDict(auto_register=False)))
 

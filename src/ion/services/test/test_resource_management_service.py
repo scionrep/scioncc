@@ -124,7 +124,7 @@ class TestResourceManagementService(IonIntegrationTestCase):
 
     def setUp(self):
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
         self.rms = ResourceManagementServiceClient()
         self.oms = None
 
@@ -250,7 +250,7 @@ class TestResourceManagementServiceInterface(IonIntegrationTestCase):
     def setUp(self):
         # Start container
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         # Now create client to service
         self.rr = self.container.resource_registry

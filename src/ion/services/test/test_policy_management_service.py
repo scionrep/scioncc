@@ -177,7 +177,7 @@ class TestPolicyManagementServiceInt(IonIntegrationTestCase):
 
         # Start container
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2coi.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.policy_management_service = PolicyManagementServiceClient(node=self.container.node)
 

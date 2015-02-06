@@ -72,14 +72,13 @@ def convert_unicode(data):
         return data
 
 
-@attr('LOCOINT', 'INT', group='coi')
-@unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False), 'Skip test while in CEI LAUNCH mode')
+@attr('INT', group='coi')
 class TestServiceGatewayServiceInt(IonIntegrationTestCase):
 
     def setUp(self):
         # Start container
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         # Now create client to service
         self.service_gateway_service = ServiceGatewayServiceClient()

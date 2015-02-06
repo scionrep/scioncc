@@ -3,141 +3,48 @@
 
 __author__ = 'Stephen P. Henrie'
 
-
-import unittest
-from mock import Mock, patch
-from pyon.util.unit_test import PyonTestCase
-from pyon.util.int_test import IonIntegrationTestCase
 from nose.plugins.attrib import attr
 
-from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound
-from pyon.public import PRED, RT, IonObject
-from ion.services.org_management_service import OrgManagementService
+from pyon.util.int_test import IonIntegrationTestCase
+
+from pyon.core.governance import MODERATOR_ROLE
+from pyon.public import PRED, RT, BadRequest, NotFound
+
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
-from pyon.core.governance import MODERATOR_ROLE
-
-
-
-@attr('UNIT', group='coi')
-class TestOrgManagementService(PyonTestCase):
-
-    def setUp(self):
-        mock_clients = self._create_service_mock('org_management')
-
-        self.org_management_service = OrgManagementService()
-        self.org_management_service.clients = mock_clients
-
-        # Rename to save some typing
-        self.mock_create = mock_clients.resource_registry.create
-        self.mock_read = mock_clients.resource_registry.read
-        self.mock_update = mock_clients.resource_registry.update
-        self.mock_delete = mock_clients.resource_registry.delete
-        self.mock_create_association = mock_clients.resource_registry.create_association
-        self.mock_delete_association = mock_clients.resource_registry.delete_association
-        self.mock_find_objects = mock_clients.resource_registry.find_objects
-        self.mock_find_resources = mock_clients.resource_registry.find_resources
-        self.mock_find_subjects = mock_clients.resource_registry.find_subjects
-
-        # Org
-        self.org = Mock()
-        self.org.name = "Foo"
-        self.org.org_governance_name = ''
-
-        self.user_role = Mock()
-        self.user_role2 = Mock()
-
-    @patch('pyon.ion.directory.Directory.__init__', Mock(return_value=None))
-    def test_create_org(self):
-
-        self.mock_find_objects.return_value = ([self.user_role], [self.user_role2])
-
-        self.mock_create.return_value = ['111', 1]
-
-        org_id = self.org_management_service.create_org(self.org)
-
-        assert org_id == '111'
-        self.mock_create.assert_called_once_with(self.org)
-
-    def test_read_and_update_org(self):
-        self.mock_read.return_value = self.org
-
-        org = self.org_management_service.read_org('111')
-
-        assert org is self.mock_read.return_value
-        self.mock_read.assert_called_once_with('111', '')
-
-        org.name = 'Bar'
-
-        self.mock_update.return_value = ['111', 2]
-
-        self.org_management_service.update_org(org)
-
-        self.mock_update.assert_called_once_with(org)
-
-    def test_delete_org(self):
-        self.org_management_service.delete_org('111')
-
-        self.mock_delete.assert_called_once_with('111')
-
-    def test_read_org_not_found(self):
-        self.mock_read.side_effect = NotFound('Org bad does not exist')
-
-        # TEST: Execute the service operation call
-        with self.assertRaises(NotFound) as cm:
-            self.org_management_service.read_org('bad')
-
-        ex = cm.exception
-        self.assertEqual(ex.message, 'Org bad does not exist')
-        self.mock_read.assert_called_once_with('bad', '')
-
-    def test_delete_org_not_found(self):
-        self.mock_delete.side_effect = NotFound('Org bad does not exist')
-
-        # TEST: Execute the service operation call
-        with self.assertRaises(NotFound) as cm:
-            self.org_management_service.delete_org('bad')
-
-        ex = cm.exception
-        self.assertEqual(ex.message, 'Org bad does not exist')
-        self.mock_delete.assert_called_once_with('bad')
-
+from interface.objects import Org, UserRole
 
 @attr('INT', group='coi')
 class TestOrgManagementServiceInt(IonIntegrationTestCase):
 
     def setUp(self):
-
-        # Start container
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2coi.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.resource_registry = ResourceRegistryServiceClient(node=self.container.node)
         self.org_management_service = OrgManagementServiceClient(node=self.container.node)
 
-
-    def test_org_crud(self):
-
+    def test_org_management(self):
+        # CRUD
         with self.assertRaises(BadRequest) as br:
-            self.org_management_service.create_org(IonObject("Org", {"name": "Test Facility", "org_governance_name": "Test Facility" }))
-        self.assertTrue("can only contain alphanumeric and underscore characters" in br.exception.message)
+            self.org_management_service.create_org(Org(name="Test Facility", org_governance_name="Test Facility"))
+        self.assertTrue("contains invalid characters" in br.exception.message)
 
         with self.assertRaises(BadRequest):
             self.org_management_service.create_org()
 
-        org_obj = IonObject("Org", {"name": "Test Facility"})
+        org_obj = Org(name="Test Facility")
         org_id = self.org_management_service.create_org(org_obj)
         self.assertNotEqual(org_id, None)
-
 
         org = None
         org = self.org_management_service.read_org(org_id)
         self.assertNotEqual(org, None)
         self.assertEqual(org.org_governance_name, 'Test_Facility')
 
-        #Check that the roles got associated to them
+        # Check that the roles got associated to them
         role_list = self.org_management_service.find_org_roles(org_id)
-        self.assertEqual(len(role_list),2 )
+        self.assertEqual(len(role_list), 3)
 
         with self.assertRaises(BadRequest):
             self.org_management_service.update_org()
@@ -158,7 +65,24 @@ class TestOrgManagementServiceInt(IonIntegrationTestCase):
             user_role = self.org_management_service.find_org_role_by_name(org_id, MODERATOR_ROLE)
         self.assertIn("The User Role 'MODERATOR' does not exist for this Org", cm.exception.message)
 
+        # Org affiliation
+        root_org = self.org_management_service.find_org()
+        self.assertNotEqual(root_org, None)
 
+        ret = self.org_management_service.affiliate_org(root_org._id, org_id)
+        self.assertTrue(ret)
+
+        ret = self.org_management_service.unaffiliate_org(root_org._id, org_id)
+        self.assertTrue(ret)
+
+        # Org containers
+        containers = self.org_management_service.find_org_containers(root_org._id)
+
+        all_containers, _ = self.resource_registry.find_resources(restype=RT.CapabilityContainer, id_only=True)
+
+        self.assertEqual(len(containers), len(all_containers))
+
+        # Org deletion
         with self.assertRaises(BadRequest):
             self.org_management_service.delete_org()
         self.org_management_service.delete_org(org_id)
@@ -170,32 +94,3 @@ class TestOrgManagementServiceInt(IonIntegrationTestCase):
         with self.assertRaises(NotFound) as cm:
             self.org_management_service.delete_org(org_id)
         self.assertIn("does not exist", cm.exception.message)
-
-
-    def test_org_affiliation(self):
-
-        root_org = None
-        root_org = self.org_management_service.find_org()
-        self.assertNotEqual(root_org, None)
-
-        org_obj = IonObject("Org", {"name": "TestFacility"})
-        org_id = self.org_management_service.create_org(org_obj)
-        self.assertNotEqual(org_id, None)
-
-        ret = self.org_management_service.affiliate_org(root_org._id, org_id)
-        self.assertTrue(ret)
-
-        ret = self.org_management_service.unaffiliate_org(root_org._id, org_id)
-        self.assertTrue(ret)
-
-    def test_find_org_containers(self):
-
-        root_org = None
-        root_org = self.org_management_service.find_org()
-        self.assertNotEqual(root_org, None)
-
-        containers = self.org_management_service.find_org_containers(root_org._id)
-
-        all_containers,_ = self.resource_registry.find_resources(restype=RT.CapabilityContainer, id_only=True)
-
-        self.assertEqual(len(containers),len(all_containers))

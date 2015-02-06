@@ -70,81 +70,68 @@ class OrgManagementService(BaseOrgManagementService):
 
         if 'org_id' in kwargs:
             org_id = kwargs['org_id']
-
             if not org_id:
-                raise BadRequest("The org_id parameter is missing")
-
+                raise BadRequest("The org_id argument is missing")
             org = self.clients.resource_registry.read(org_id)
             if not org:
                 raise NotFound("Org %s does not exist" % org_id)
-
+            if org.type_ != RT.Org:
+                raise BadRequest("Resource with given id is not an Org -- SPOOFING ALERT")
             parameter_objects['org'] = org
 
         if 'actor_id' in kwargs:
             actor_id = kwargs['actor_id']
-
             if not actor_id:
-                raise BadRequest("The actor_id parameter is missing")
-
+                raise BadRequest("The actor_id argument is missing")
             actor = self.clients.resource_registry.read(actor_id)
             if not actor:
                 raise NotFound("Actor %s does not exist" % actor)
-
+            if actor.type_ != RT.ActorIdentity:
+                raise BadRequest("Resource with given id is not an ActorIdentity -- SPOOFING ALERT")
             parameter_objects['actor'] = actor
-
 
         if 'role_name' in kwargs:
             role_name = kwargs['role_name']
-
             if not role_name:
-                raise BadRequest("The role_name parameter is missing")
-
+                raise BadRequest("The role_name argument is missing")
             if org_id is None:
-                raise BadRequest("The org_id parameter is missing")
-
+                raise BadRequest("The org_id argument is missing")
             user_role = self._find_role(org_id, role_name)
             if user_role is None:
                 raise BadRequest("The User Role '%s' does not exist for this Org" % role_name)
-
+            if user_role.type_ != RT.UserRole:
+                raise BadRequest("Resource with given id is not an UserRole -- SPOOFING ALERT")
             parameter_objects['user_role'] = user_role
-
 
         if 'resource_id' in kwargs:
             resource_id = kwargs['resource_id']
-
             if not resource_id:
-                raise BadRequest("The resource_id parameter is missing")
-
+                raise BadRequest("The resource_id argument is missing")
             resource = self.clients.resource_registry.read(resource_id)
             if not resource:
                 raise NotFound("Resource %s does not exist" % resource_id)
-
             parameter_objects['resource'] = resource
-
 
         if 'negotiation_id' in kwargs:
             negotiation_id = kwargs['negotiation_id']
-
             if not negotiation_id:
-                raise BadRequest("The negotiation_id parameter is missing")
-
+                raise BadRequest("The negotiation_id argument is missing")
             negotiation = self.clients.resource_registry.read(negotiation_id)
             if not negotiation:
                 raise NotFound("Negotiation %s does not exist" % negotiation_id)
-
+            if negotiation.type_ != RT.Negotiation:
+                raise BadRequest("Resource with given id is not a Negotiation -- SPOOFING ALERT")
             parameter_objects['negotiation'] = negotiation
 
         if 'affiliate_org_id' in kwargs:
-
             affiliate_org_id = kwargs['affiliate_org_id']
-
             if not affiliate_org_id:
-                raise BadRequest("The affiliate_org_id parameter is missing")
-
+                raise BadRequest("The affiliate_org_id argument is missing")
             affiliate_org = self.clients.resource_registry.read(affiliate_org_id)
             if not affiliate_org:
                 raise NotFound("Org %s does not exist" % affiliate_org_id)
-
+            if affiliate_org.type_ != RT.Org:
+                raise BadRequest("Resource with given id is not an Org -- SPOOFING ALERT")
             parameter_objects['affiliate_org'] = affiliate_org
 
         return parameter_objects
@@ -154,71 +141,63 @@ class OrgManagementService(BaseOrgManagementService):
         is the internal id by which Org will be identified in the data store.
         """
         if not org:
-            raise BadRequest("The org parameter is missing")
+            raise BadRequest("The org argument is missing")
+        if not org.name:
+            raise BadRequest("Invalid Org name")
 
         # Only allow one root ION Org in the system
-        if org.name == self._get_root_org_name():
-            res_list,_  = self.clients.resource_registry.find_resources(restype=RT.Org, name=self._get_root_org_name())
-            if len(res_list) > 0:
-                raise BadRequest('There can only be one Org named %s' % self._get_root_org_name())
+        res_list, _ = self.clients.resource_registry.find_resources(restype=RT.Org, name=org.name)
+        if len(res_list) > 0:
+            raise BadRequest('Org named %s already exists' % org.name)
 
         # If this governance identifier is not set, then set to a safe version of the org name.
         if not org.org_governance_name:
             org.org_governance_name = create_basic_identifier(org.name)
-
         if not is_basic_identifier(org.org_governance_name):
             raise BadRequest("The Org org_governance_name '%s' contains invalid characters" % org.org_governance_name)
 
-
-        org_id, org_rev = self.clients.resource_registry.create(org)
-        org._id = org_id
-        org._rev = org_rev
+        org_id, _ = self.clients.resource_registry.create(org)
 
         # Instantiate a Directory for this Org
         directory = Directory(orgname=org.name)
 
+        # Instantiate initial set of User Roles for this Org
+        self._create_org_roles(org_id)
+
+        return org_id
+
+    def _create_org_roles(self, org_id):
         # Instantiate initial set of User Roles for this Org
         manager_role = IonObject(RT.UserRole, name='MODERATOR', governance_name=MODERATOR_ROLE,
                                  description='Manage organization members, resources and roles')
         self.add_user_role(org_id, manager_role)
 
         operator_role = IonObject(RT.UserRole, name='OPERATOR', governance_name=OPERATOR_ROLE,
-                                description='Control and modify organization resources')
+                                description='Modify and control organization resources')
         self.add_user_role(org_id, operator_role)
 
         member_role = IonObject(RT.UserRole, name='MEMBER', governance_name=MEMBER_ROLE,
                                 description='Access organization resources')
         self.add_user_role(org_id, member_role)
 
-        return org_id
-
     def update_org(self, org=None):
         """Updates the Org based on provided object.
-
-        @param org    Org
-        @throws BadRequest    if object does not have _id or _rev attribute
-        @throws NotFound    object with specified id does not exist
-        @throws Conflict    object not based on latest persisted object version
         """
         if not org:
-            raise BadRequest("The org parameter is missing")
-
-        # If this governance identifier is not set, then set to a safe version of the org name.
-        if not org.org_governance_name:
-            org.org_governance_name = create_basic_identifier(org.name)
-
-        if not is_basic_identifier(org.org_governance_name):
-            raise BadRequest("The Org org_governance_name '%s' contains invalid characters" % org.org_governance_name)
+            raise BadRequest("The org argument is missing")
+        if not org._id:
+            raise BadRequest("Org argument has no id")
+        old_org = self.clients.resource_registry.read(org._id)
+        if old_org.type_ != RT.Org:
+            raise BadRequest("Updated Org invalid id and type -- SPOOFING ALERT")
+        if org.org_governance_name != old_org.org_governance_name:
+            raise BadRequest("Cannot update Org org_governance_name")
 
         self.clients.resource_registry.update(org)
 
     def read_org(self, org_id=''):
         """Returns the Org object for the specified id.
         Throws exception if id does not match any persisted Org objects.
-
-        @param org_id    str
-        @retval org    Org
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id)
 
@@ -227,32 +206,23 @@ class OrgManagementService(BaseOrgManagementService):
     def delete_org(self, org_id=''):
         """Permanently deletes Org object with the specified
         id. Throws exception if id does not match any persisted Org object.
-
-        @param org_id    str
-        @throws NotFound    object with specified id does not exist
         """
-        if not org_id:
-            raise BadRequest("The org_id parameter is missing")
+        self._validate_parameters(org_id=org_id)
 
         self.clients.resource_registry.delete(org_id)
 
     def find_org(self, name=''):
         """Finds an Org object with the specified name. Defaults to the
-        root ION object. Throws a NotFound exception if the object
-        does not exist.
-
-        @param name    str
-        @retval org    Org
-        @throws NotFound    Org with name does not exist
+        root ION object. Throws a NotFound exception if the object does not exist.
         """
 
-        #Default to the root ION Org if not specified
+        # Default to the root ION Org if not specified
         if not name:
             name = self._get_root_org_name()
 
-        res_list,_  = self.clients.resource_registry.find_resources(restype=RT.Org, name=name)
+        res_list, _ = self.clients.resource_registry.find_resources(restype=RT.Org, name=name)
         if not res_list:
-            raise NotFound('The Org with name %s does not exist' % name )
+            raise NotFound('The Org with name %s does not exist' % name)
         return res_list[0]
 
     # -------------------------------------------------------------------------
@@ -262,13 +232,7 @@ class OrgManagementService(BaseOrgManagementService):
         """Adds a UserRole to an Org. Will call Policy Management Service to actually
         create the role object that is passed in, if the role by the specified
         name does not exist. Throws exception if either id does not exist.
-
-        @param org_id    str
-        @param user_role    UserRole
-        @retval user_role_id    str
-        @throws NotFound    object with specified name does not exist
         """
-
         param_objects = self._validate_parameters(org_id=org_id)
         org = param_objects['org']
 
@@ -281,7 +245,7 @@ class OrgManagementService(BaseOrgManagementService):
         user_role.org_governance_name = org.org_governance_name
         user_role_id = self.clients.policy_management.create_role(user_role)
 
-        aid = self.clients.resource_registry.create_association(org, PRED.hasRole, user_role_id)
+        self.clients.resource_registry.create_association(org, PRED.hasRole, user_role_id)
 
         return user_role_id
 
@@ -289,23 +253,16 @@ class OrgManagementService(BaseOrgManagementService):
         """Removes a UserRole from an Org. The UserRole will not be removed if there are
         users associated with the UserRole unless the force_removal parameter is set to True
         Throws exception if either id does not exist.
-
-        @param org_id    str
-        @param name    str
-        @param force_removal    bool
-        @retval success    bool
-        @throws NotFound    object with specified name does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, role_name=role_name)
         org = param_objects['org']
         user_role = param_objects['user_role']
 
         if not force_removal:
-            alist,_ = self.clients.resource_registry.find_subjects(RT.ActorIdentity, PRED.hasRole, user_role)
+            alist, _ = self.clients.resource_registry.find_subjects(RT.ActorIdentity, PRED.hasRole, user_role)
             if len(alist) > 0:
                 raise BadRequest('The User Role %s cannot be removed as there are %s users associated to it' %
                                  (user_role.name, str(len(alist))))
-
 
         # Finally remove the association to the Org
         aid = self.clients.resource_registry.get_association(org, PRED.hasRole, user_role)
@@ -321,11 +278,6 @@ class OrgManagementService(BaseOrgManagementService):
         """Returns the User Role object for the specified name in the Org.
         Throws exception if name does not match any persisted User Role or the Org does not exist.
         objects.
-
-        @param org_id    str
-        @param name    str
-        @retval user_role    UserRole
-        @throws NotFound    object with specified name or if does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, role_name=role_name)
         user_role = param_objects['user_role']
@@ -333,13 +285,12 @@ class OrgManagementService(BaseOrgManagementService):
         return user_role
 
     def _find_role(self, org_id='', role_name=''):
-
         if not org_id:
             raise BadRequest("The org_id parameter is missing")
-
         if not role_name:
             raise BadRequest("The governance_name parameter is missing")
 
+        # Iterating (vs. query) is just fine, because the number of org roles is sufficiently small
         org_roles = self.find_org_roles(org_id)
         for role in org_roles:
             if role.governance_name == role_name:
@@ -366,19 +317,14 @@ class OrgManagementService(BaseOrgManagementService):
     # Negotiations
 
     def negotiate(self, sap=None):
-        """A generic operation for negotiating actions with an Org, such as for enrollment, role request or to acquire a
-        resource managed by the Org. The Service Agreement Proposal is used to specify conditions of the proposal as well
-        as counter proposals and the Org will create Negotiation Resource to track the history and status of the negotiation.
-
-        @param sap    ServiceAgreementProposal
-        @retval sap    ServiceAgreementProposal
-        @throws BadRequest    If an SAP is not provided or incomplete
-        @throws Inconsistent    If an SAP has inconsistent information
-        @throws NotFound    If any of the ids in the SAP do not exist
+        """A generic operation for negotiating actions with an Org, such as for enrollment, role request
+        or to acquire a resource managed by the Org. The ServiceAgreementProposal object is used to
+        specify conditions of the proposal as well as counter proposals and the Org will create a
+        Negotiation resource to track the history and status of the negotiation.
         """
 
-        if sap is None or ( sap.type_ != OT.ServiceAgreementProposal and not issubtype(sap.type_, OT.ServiceAgreementProposal)):
-            raise BadRequest('The sap parameter must be a valid Service Agreement Proposal object')
+        if sap is None or (sap.type_ != OT.ServiceAgreementProposal and not issubtype(sap.type_, OT.ServiceAgreementProposal)):
+            raise BadRequest('The sap argument must be a valid ServiceAgreementProposal object')
 
         if sap.proposal_status == ProposalStatusEnum.INITIAL:
             neg_id = self.negotiation_handler.create_negotiation(sap)
@@ -387,7 +333,7 @@ class OrgManagementService(BaseOrgManagementService):
 
             # Publish an event indicating an Negotiation has been initiated
             self.event_pub.publish_event(event_type=OT.OrgNegotiationInitiatedEvent, origin=org._id, origin_type='Org',
-                description=sap.description, org_name=org.name, negotiation_id=neg_id, sub_type=sap.type_ )
+                description=sap.description, org_name=org.name, negotiation_id=neg_id, sub_type=sap.type_)
 
             # Synchronize the internal reference for later use
             sap.negotiation_id = neg_id
@@ -401,7 +347,7 @@ class OrgManagementService(BaseOrgManagementService):
         # Get the most recent version of the Negotiation resource
         negotiation = self.clients.resource_registry.read(neg_id)
 
-        # hardcodng some rules at the moment - could be replaced by a Rules Engine
+        # hardcoding some rules at the moment - could be replaced by a Rules Engine
         if sap.type_ == OT.AcquireResourceExclusiveProposal:
 
             if self.is_resource_acquired_exclusively(None, sap.resource_id):
@@ -472,7 +418,6 @@ class OrgManagementService(BaseOrgManagementService):
                 # Get the most recent version of the Negotiation resource
                 negotiation = self.clients.resource_registry.read(neg_id)
 
-
         # Return the latest proposal
         return negotiation.proposals[-1]
 
@@ -481,20 +426,13 @@ class OrgManagementService(BaseOrgManagementService):
         or else all proposals will be returned. An optional negotiation_status can be supplied
         or else all proposals will be returned. Will throw a not NotFound exception
         if any of the specified ids do not exist.
-
-        @param org_id    str
-        @param proposal_type    str
-        @param negotiation_status    str
-        @retval negotiation    list
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id)
 
-        neg_list,_ = self.clients.resource_registry.find_objects(org_id, PRED.hasNegotiation)
+        neg_list, _ = self.clients.resource_registry.find_objects(org_id, PRED.hasNegotiation)
 
-        if proposal_type != '':
+        if proposal_type:
             neg_list = [neg for neg in neg_list if neg.proposals[0].type_ == proposal_type]
-
         if negotiation_status > -1:
             neg_list = [neg for neg in neg_list if neg.negotiation_status == negotiation_status]
 
@@ -511,11 +449,10 @@ class OrgManagementService(BaseOrgManagementService):
         """
         param_objects = self._validate_parameters(org_id=org_id)
 
-        neg_list,_ = self.clients.resource_registry.find_objects(org_id, PRED.hasNegotiation)
+        neg_list, _ = self.clients.resource_registry.find_objects(org_id, PRED.hasNegotiation)
 
-        if proposal_type != '':
+        if proposal_type:
             neg_list = [neg for neg in neg_list if neg.proposals[0].type_ == proposal_type]
-
 
         neg_list = [neg for neg in neg_list if neg.negotiation_status != NegotiationStatusEnum.OPEN]
 
@@ -527,19 +464,11 @@ class OrgManagementService(BaseOrgManagementService):
         or else all proposals will be returned. An optional negotiation_status can be provided
         or else all proposals will be returned. Will throw a not NotFound exception
         if any of the specified ids do not exist.
-
-        @param actor_id    str
-        @param org_id    str
-        @param proposal_type    str
-        @param negotiation_status    str
-        @retval negotiation    list
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(actor_id=actor_id)
         actor = param_objects['actor']
 
-
-        neg_list,_ = self.clients.resource_registry.find_objects(actor, PRED.hasNegotiation)
+        neg_list, _ = self.clients.resource_registry.find_objects(actor, PRED.hasNegotiation)
 
         if org_id:
             param_objects = self._validate_parameters(org_id=org_id)
@@ -547,9 +476,8 @@ class OrgManagementService(BaseOrgManagementService):
 
             neg_list = [neg for neg in neg_list if neg.proposals[0].provider == org_id]
 
-        if proposal_type != '':
+        if proposal_type:
             neg_list = [neg for neg in neg_list if neg.proposals[0].type_ == proposal_type]
-
         if negotiation_status > -1:
             neg_list = [neg for neg in neg_list if neg.negotiation_status == negotiation_status]
 
@@ -562,11 +490,6 @@ class OrgManagementService(BaseOrgManagementService):
         """Enrolls a specified actor into the specified Org so that they may find and negotiate to use resources
         of the Org. Membership in the ION Org is implied by registration with the system, so a membership
         association to the ION Org is not maintained. Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param actor_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id)
         org = param_objects['org']
@@ -576,27 +499,20 @@ class OrgManagementService(BaseOrgManagementService):
             raise BadRequest("A request to enroll in the root ION Org is not allowed")
 
         aid = self.clients.resource_registry.create_association(org, PRED.hasMembership, actor)
-
-
         if not aid:
             return False
 
-        member_role = self.find_org_role_by_name(org._id,MEMBER_ROLE )
+        member_role = self.find_org_role_by_name(org._id, MEMBER_ROLE)
         self._add_role_association(org, actor, member_role)
 
         self.event_pub.publish_event(event_type=OT.OrgMembershipGrantedEvent, origin=org._id, origin_type='Org',
-            description='The member has enrolled in the Org', actor_id=actor._id, org_name=org.name )
+            description='The member has enrolled in the Org', actor_id=actor._id, org_name=org.name)
 
         return True
 
     def cancel_member_enrollment(self, org_id='', actor_id=''):
         """Cancels the membership of a specific actor actor within the specified Org. Once canceled, the actor will no longer
         have access to the resource of that Org. Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param actor_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id)
         org = param_objects['org']
@@ -624,10 +540,6 @@ class OrgManagementService(BaseOrgManagementService):
 
     def is_registered(self, actor_id=''):
         """Returns True if the specified actor_id is registered with the ION system; otherwise False.
-
-        @param actor_id    str
-        @retval is_registered    bool
-        @throws BadRequest    if the actor_id is not specified.
         """
         if not actor_id:
             raise BadRequest("The actor_id parameter is missing")
@@ -635,7 +547,7 @@ class OrgManagementService(BaseOrgManagementService):
         try:
             user = self.clients.resource_registry.read(actor_id)
             return True
-        except Exception, e:
+        except Exception as e:
             log.error('is_registered: %s for actor_id:%s' %  (e.message, actor_id))
 
         return False
@@ -643,85 +555,66 @@ class OrgManagementService(BaseOrgManagementService):
     def is_enrolled(self, org_id='', actor_id=''):
         """Returns True if the specified actor_id is enrolled in the Org and False if not.
         Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param actor_id    str
-        @retval is_enrolled    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id)
         org = param_objects['org']
         actor = param_objects['actor']
 
-        #Membership into the Root ION Org is implied as part of registration
+        # Membership into the Root ION Org is implied as part of registration
         if org.name == self._get_root_org_name():
             return True
 
         try:
             aid = self.clients.resource_registry.get_association(org, PRED.hasMembership, actor)
-        except NotFound, e:
+        except NotFound:
             return False
 
         return True
 
-
     def find_enrolled_users(self, org_id=''):
         """Returns a list of users enrolled in an Org. Will throw a not NotFound exception
         if none of the specified ids do not exist.
-
-        @param org_id    str
-        @retval user_list    list
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id)
         org = param_objects['org']
 
-        #Membership into the Root ION Org is implied as part of registration
+        # Membership into the Root ION Org is implied as part of registration
         if org.name == self._get_root_org_name():
-            user_list,_ = self.clients.resource_registry.find_resources(RT.ActorIdentity)
+            user_list, _ = self.clients.resource_registry.find_resources(RT.ActorIdentity)
         else:
-            user_list,_ = self.clients.resource_registry.find_objects(org, PRED.hasMembership, RT.ActorIdentity)
+            user_list, _ = self.clients.resource_registry.find_objects(org, PRED.hasMembership, RT.ActorIdentity)
 
         return user_list
 
     def find_enrolled_orgs(self, actor_id=''):
         """Returns a list of Orgs that the actor is enrolled in. Will throw a not NotFound exception
         if none of the specified ids do not exist.
-
-        @param actor_id    str
-        @retval org_list    list
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(actor_id=actor_id)
         actor = param_objects['actor']
 
-        org_list,_ = self.clients.resource_registry.find_subjects(RT.Org,PRED.hasMembership, actor )
+        org_list, _ = self.clients.resource_registry.find_subjects(RT.Org, PRED.hasMembership, actor)
 
-        #Membership into the Root ION Org is implied as part of registration
+        # Membership into the Root ION Org is implied as part of registration
         ion_org = self.find_org()
         org_list.append(ion_org)
 
         return org_list
 
+    # -------------------------------------------------------------------------
+    # Org role management
 
     def grant_role(self, org_id='', actor_id='', role_name='', scope=None):
         """Grants a defined role within an organization to a specific actor. A role of Member is
         automatically implied with successful enrollment. Will throw a not NotFound exception
         if none of the specified ids or role_name does not exist.
-
-        @param org_id    str
-        @param actor_id    str
-        @param role_name    str
-        @param scope    RoleScope
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id, role_name=role_name)
         org = param_objects['org']
         actor = param_objects['actor']
         user_role = param_objects['user_role']
 
-        if not self.is_enrolled(org_id,actor_id):
+        if not self.is_enrolled(org_id, actor_id):
             raise BadRequest("The actor is not a member of the specified Org (%s)" % org.name)
 
         ret = self._add_role_association(org, actor, user_role)
@@ -755,14 +648,7 @@ class OrgManagementService(BaseOrgManagementService):
     def revoke_role(self, org_id='', actor_id='', role_name=''):
         """Revokes a defined Role within an organization to a specific actor. Will throw a not NotFound exception
         if none of the specified ids or role_name does not exist.
-
-        @param org_id    str
-        @param actor_id    str
-        @param role_name    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
-
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id, role_name=role_name)
         org = param_objects['org']
         actor = param_objects['actor']
@@ -775,12 +661,6 @@ class OrgManagementService(BaseOrgManagementService):
     def has_role(self, org_id='', actor_id='', role_name=''):
         """Returns True if the specified actor_id has the specified role_name in the Org and False if not.
         Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param actor_id    str
-        @param role_name    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id, role_name=role_name)
         org = param_objects['org']
@@ -800,10 +680,10 @@ class OrgManagementService(BaseOrgManagementService):
         if actor is None:
             raise BadRequest("The actor parameter is missing")
 
-        role_list,_ = self.clients.resource_registry.find_objects(actor, PRED.hasRole, RT.UserRole)
+        role_list, _ = self.clients.resource_registry.find_objects(actor, PRED.hasRole, RT.UserRole)
 
-        # Iterate the list of roles associated with user and filter by the org_id. TODO - replace this when
-        # better indexing/views are available
+        # Iterate the list of roles associated with user and filter by the org_id.
+        # TODO - replace this when better query is available
         ret_list = []
         for role in role_list:
             if role.org_governance_name == org.org_governance_name:
@@ -820,15 +700,9 @@ class OrgManagementService(BaseOrgManagementService):
 
         return ret_list
 
-
     def find_org_roles_by_user(self, org_id='', actor_id=''):
         """Returns a list of User Roles for a specific actor in an Org.
         Will throw a not NotFound exception if either of the IDs do not exist.
-
-        @param org_id    str
-        @param actor_id    str
-        @retval user_role_list    list
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id)
         org = param_objects['org']
@@ -838,14 +712,9 @@ class OrgManagementService(BaseOrgManagementService):
 
         return role_list
 
-
     def find_all_roles_by_user(self, actor_id=''):
         """Returns a list of all User Roles roles by Org associated with the specified actor.
         Will throw a not NotFound exception if either of the IDs do not exist.
-
-        @param actor_id    str
-        @retval user_roles_by_org    dict
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(actor_id=actor_id)
         actor = param_objects['actor']
@@ -854,24 +723,19 @@ class OrgManagementService(BaseOrgManagementService):
 
         org_list = self.find_enrolled_orgs(actor_id)
 
-        #Membership with the ION Root Org is implied
+        # Membership with the ION Root Org is implied
         for org in org_list:
             role_list = self._find_org_roles_by_user(org, actor)
             ret_val[org.org_governance_name] = role_list
 
         return ret_val
 
-
-
+    # -------------------------------------------------------------------------
+    # Resource sharing in Org
 
     def share_resource(self, org_id='', resource_id=''):
         """Share a specified resource with the specified Org. Once shared, the resource will be added to a directory
         of available resources within the Org. Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param resource_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, resource_id=resource_id)
         org = param_objects['org']
@@ -886,15 +750,9 @@ class OrgManagementService(BaseOrgManagementService):
 
         return True
 
-
     def unshare_resource(self, org_id='', resource_id=''):
         """Unshare a specified resource with the specified Org. Once unshared, the resource will be removed from a directory
         of available resources within the Org. Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param resource_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, resource_id=resource_id)
         org = param_objects['org']
@@ -912,36 +770,28 @@ class OrgManagementService(BaseOrgManagementService):
         return True
 
     def is_resource_shared(self, org_id='', resource_id=''):
-
         if not org_id:
             raise BadRequest("The org_id parameter is missing")
-
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
 
         try:
-            res_list,_ = self.clients.resource_registry.find_objects(org_id, PRED.hasResource)
+            res_list, _ = self.clients.resource_registry.find_objects(org_id, PRED.hasResource)
 
             if res_list:
                 for res in res_list:
                     if res._id == resource_id:
                         return True
 
-        except Exception, e:
-            log.error('is_resource_shared: %s for org_id:%s and resource_id:%s' %  (e.message, org_id, resource_id))
+        except Exception as e:
+            log.error('is_resource_shared: %s for org_id:%s and resource_id:%s' % (e.message, org_id, resource_id))
 
         return False
-
 
     def acquire_resource(self, sap=None):
         """Creates a Commitment Resource for the specified resource for a specified user withing the specified Org as defined in the
         proposal. Once shared, the resource is committed to the user. Throws a NotFound exception if none of the ids are found.
-
-        @param proposal    AcquireResourceProposal
-        @retval commitment_id    str
-        @throws NotFound    object with specified id does not exist
         """
-
         if not sap:
             raise BadRequest("The sap parameter is missing")
 
@@ -952,7 +802,7 @@ class OrgManagementService(BaseOrgManagementService):
 
         commitment_id = self.create_resource_commitment(sap.provider, sap.consumer, sap.resource_id, exclusive, int(sap.expiration))
 
-        #Create association between the Commitment and the Negotiation objects
+        # Create association between the Commitment and the Negotiation objects
         self.clients.resource_registry.create_association(sap.negotiation_id, PRED.hasContract, commitment_id)
 
         return commitment_id
@@ -960,14 +810,6 @@ class OrgManagementService(BaseOrgManagementService):
     def create_resource_commitment(self, org_id='', actor_id='', resource_id='', exclusive=False, expiration=0):
         """Creates a Commitment Resource for the specified resource for a specified actor withing the specified Org. Once shared,
         the resource is committed to the actor. Throws a NotFound exception if none of the ids are found.
-
-        @param org_id    str
-        @param actor_id    str
-        @param resource_id    str
-        @param exclusive    bool
-        @param expiration    int
-        @retval commitment_id    str
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, actor_id=actor_id, resource_id=resource_id)
         org = param_objects['org']
@@ -983,7 +825,7 @@ class OrgManagementService(BaseOrgManagementService):
         commitment._id = commitment_id
         commitment._rev = commitment_rev
 
-        #Creating associations to all related objects
+        # Creating associations to all related objects
         self.clients.resource_registry.create_association(org_id, PRED.hasCommitment, commitment_id)
         self.clients.resource_registry.create_association(actor_id, PRED.hasCommitment, commitment_id)
         self.clients.resource_registry.create_association(resource_id, PRED.hasCommitment, commitment_id)
@@ -996,10 +838,6 @@ class OrgManagementService(BaseOrgManagementService):
 
     def release_commitment(self, commitment_id=''):
         """Release the commitment that was created for resources. Throws a NotFound exception if none of the ids are found.
-
-        @param commitment_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         if not commitment_id:
             raise BadRequest("The commitment_id parameter is missing")
@@ -1014,16 +852,33 @@ class OrgManagementService(BaseOrgManagementService):
 
         return True
 
-
     def is_resource_acquired(self, actor_id='', resource_id=''):
         """Returns True if the specified resource_id has been acquired. The actor_id is optional, as the operation can
         return True if the resource is acquired by any actor or specifically by the specified actor_id, otherwise
         False is returned.
+        """
+        if not resource_id:
+            raise BadRequest("The resource_id parameter is missing")
 
-        @param actor_id    str
-        @param resource_id    str
-        @retval success    bool
-        @throws BadRequest    if resource_id is not specified
+        try:
+            cur_time = int(get_ion_ts())
+            commitments, _ = self.clients.resource_registry.find_objects(resource_id, PRED.hasCommitment, RT.Commitment)
+            if commitments:
+                for com in commitments:
+                    # If the expiration is not 0 make sure it has not expired
+                    if (actor_id is None or com.consumer == actor_id) and (
+                                (int(com.expiration) == 0) or (int(com.expiration) > 0 and cur_time < int(com.expiration))):
+                        return True
+
+        except Exception as e:
+            log.error('is_resource_acquired: %s for actor_id:%s and resource_id:%s' %  (e.message, actor_id, resource_id))
+
+        return False
+
+    def is_resource_acquired_exclusively(self, actor_id='', resource_id=''):
+        """Returns True if the specified resource_id has been acquired exclusively. The actor_id is optional, as the operation can
+        return True if the resource is acquired exclusively by any actor or specifically by the specified actor_id,
+        otherwise False is returned.
         """
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
@@ -1034,45 +889,17 @@ class OrgManagementService(BaseOrgManagementService):
             if commitments:
                 for com in commitments:
                     # If the expiration is not 0 make sure it has not expired
-                    if ( actor_id is None or com.consumer == actor_id) and (( int(com.expiration) == 0 ) or (int(com.expiration) > 0 and cur_time < int(com.expiration))):
-                        return True
-
-        except Exception, e:
-            log.error('is_resource_acquired: %s for actor_id:%s and resource_id:%s' %  (e.message, actor_id, resource_id))
-
-        return False
-
-    def is_resource_acquired_exclusively(self, actor_id='', resource_id=''):
-        """Returns True if the specified resource_id has been acquired exclusively. The actor_id is optional, as the operation can
-        return True if the resource is acquired exclusively by any actor or specifically by the specified actor_id,
-        otherwise False is returned.
-
-        @param actor_id    str
-        @param resource_id    str
-        @retval success    bool
-        @throws BadRequest    if resource_id is not specified
-        """
-        if not resource_id:
-            raise BadRequest("The resource_id parameter is missing")
-
-        try:
-            cur_time = int(get_ion_ts())
-            commitments,_ = self.clients.resource_registry.find_objects(resource_id,PRED.hasCommitment, RT.Commitment)
-            if commitments:
-                for com in commitments:
-                    #If the expiration is not 0 make sure it has not expired
-                    if ( actor_id is None or actor_id == com.consumer )  and com.commitment.exclusive and\
+                    if (actor_id is None or actor_id == com.consumer) and com.commitment.exclusive and \
                        int(com.expiration) > 0 and cur_time < int(com.expiration):
                         return True
 
-        except Exception, e:
-            log.error('is_resource_acquired_exclusively: %s for actor_id:%s and resource_id:%s' %  (e.message, actor_id, resource_id))
+        except Exception as e:
+            log.error('is_resource_acquired_exclusively: %s for actor_id:%s and resource_id:%s' % (e.message, actor_id, resource_id))
 
         return False
 
     def is_in_org(self, container):
-
-        container_list,_ = self.clients.resource_registry.find_subjects(RT.Org, PRED.hasResource, container)
+        container_list, _ = self.clients.resource_registry.find_subjects(RT.Org, PRED.hasResource, container)
         if container_list:
             return True
 
@@ -1081,20 +908,16 @@ class OrgManagementService(BaseOrgManagementService):
     def find_org_containers(self, org_id=''):
         """Returns a list of containers associated with an Org. Will throw a not NotFound exception
         if the specified id does not exist.
-
-        @param org_id    str
-        @retval container_list    list
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id)
         org = param_objects['org']
 
-        #Containers in the Root ION Org are implied
+        # Containers in the Root ION Org are implied
         if org.org_governance_name == self._get_root_org_name():
-            container_list,_ = self.clients.resource_registry.find_resources(RT.CapabilityContainer)
+            container_list, _ = self.clients.resource_registry.find_resources(RT.CapabilityContainer)
             container_list[:] = [container for container in container_list if not self.is_in_org(container)]
         else:
-            container_list,_ = self.clients.resource_registry.find_objects(org, PRED.hasResource, RT.CapabilityContainer)
+            container_list, _ = self.clients.resource_registry.find_objects(org, PRED.hasResource, RT.CapabilityContainer)
 
         return container_list
 
@@ -1102,11 +925,6 @@ class OrgManagementService(BaseOrgManagementService):
         """Creates an association between multiple Orgs as an affiliation
         so that they may coordinate activities between them.
         Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param affiliate_org_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, affiliate_org_id=affiliate_org_id)
         org = param_objects['org']
@@ -1118,15 +936,9 @@ class OrgManagementService(BaseOrgManagementService):
 
         return True
 
-
     def unaffiliate_org(self, org_id='', affiliate_org_id=''):
         """Removes an association between multiple Orgs as an affiliation.
         Throws a NotFound exception if neither id is found.
-
-        @param org_id    str
-        @param affiliate_org_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         param_objects = self._validate_parameters(org_id=org_id, affiliate_org_id=affiliate_org_id)
         org = param_objects['org']
@@ -1142,7 +954,6 @@ class OrgManagementService(BaseOrgManagementService):
     # Local helper functions are below - do not remove them
 
     def is_enroll_negotiation_open(self, org_id, actor_id):
-
         try:
             neg_list = self.find_user_negotiations(actor_id, org_id, proposal_type=OT.EnrollmentProposal, negotiation_status=NegotiationStatusEnum.OPEN )
 
@@ -1153,6 +964,3 @@ class OrgManagementService(BaseOrgManagementService):
             log.error('is_enroll_negotiation_open: %s for org_id:%s and actor_id:%s' %  (e.message, org_id, actor_id))
 
         return False
-
-
-

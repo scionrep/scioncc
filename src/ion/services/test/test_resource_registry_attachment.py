@@ -19,7 +19,7 @@ class TestResourceRegistryAttachments(IonIntegrationTestCase):
         #container.start()
         #print 'started container'
 
-        self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
         self.RR  = ResourceRegistryServiceClient(node=self.container.node)
 
         print 'started services'

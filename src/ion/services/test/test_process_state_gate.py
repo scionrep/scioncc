@@ -51,7 +51,7 @@ class ProcessStateGateIntTest(IonIntegrationTestCase):
 
     def setUp(self):
         self._start_container()
-        self.container.start_rel_from_url('res/deploy/r2cei.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.pd_cli = ProcessDispatcherServiceClient(node=self.container.node)
 

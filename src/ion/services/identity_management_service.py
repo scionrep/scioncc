@@ -3,9 +3,7 @@
 __author__ = 'Thomas R. Lennan, Stephen Henrie, Michael Meisinger'
 
 import calendar
-import copy
-from datetime import datetime, timedelta
-import time
+from datetime import datetime
 from uuid import uuid4
 import bcrypt
 
@@ -31,9 +29,34 @@ class IdentityManagementService(BaseIdentityManagementService):
     def on_init(self):
         self.authentication = Authentication()
 
+    def _validate_parameters(self, **kwargs):
+        parameter_objects = dict()
+
+        if 'actor_id' in kwargs:
+            actor_id = kwargs['actor_id']
+            if not actor_id:
+                raise BadRequest("The actor_id argument is missing")
+            actor = self.clients.resource_registry.read(actor_id)
+            if not actor:
+                raise NotFound("Actor %s does not exist" % actor)
+            if actor.type_ != RT.ActorIdentity:
+                raise BadRequest("Resource with given id is not an ActorIdentity -- SPOOFING ALERT")
+            parameter_objects['actor'] = actor
+
+        if 'actor_identity' in kwargs:
+            actor_identity = kwargs['actor_identity']
+            if not actor_identity or actor_identity.type_ != RT.ActorIdentity:
+                raise BadRequest("Invalid actor_identity")
+
+        if 'credentials' in kwargs:
+            credentials = kwargs['credentials']
+            if not credentials or credentials.type_ != OT.Credentials:
+                raise BadRequest("Invalid credentials")
+
+        return parameter_objects
+
     def create_actor_identity(self, actor_identity=None):
-        if not actor_identity:
-            raise BadRequest("Invalid actor_identity")
+        self._validate_parameters(actor_identity=actor_identity)
         if actor_identity.credentials:
             raise BadRequest("Cannot create actor with credentials")
         if actor_identity.details and actor_identity.details.type_ == OT.IdentityDetails:
@@ -44,54 +67,58 @@ class IdentityManagementService(BaseIdentityManagementService):
         return actor_id
 
     def update_actor_identity(self, actor_identity=None):
-        if not actor_identity or not actor_identity._id:
-            raise BadRequest("Invalid actor_identity")
+        self._validate_parameters(actor_identity=actor_identity)
+        if not actor_identity._id:
+            raise BadRequest("actor_identity argument has no id")
+        old_actor = self.clients.resource_registry.read(actor_identity._id)
+        if old_actor.type_ != RT.ActorIdentity:
+            raise BadRequest("Updated ActorIdentity invalid id and type -- SPOOFING ALERT")
 
         # Prevent security risk because contained credentials may be manipulated
-        actor_obj = self.read_actor_identity(actor_identity._id)
-        actor_identity.credentials = actor_obj.credentials
+        actor_identity.credentials = old_actor.credentials
 
         self.clients.resource_registry.update(actor_identity)
 
     def read_actor_identity(self, actor_id=''):
-        if not actor_id:
-            raise BadRequest("Invalid actor_id")
-        actor_identity = self.clients.resource_registry.read(actor_id)
-        return actor_identity
+        param_objects = self._validate_parameters(actor_id=actor_id)
+
+        return param_objects["actor"]
 
     def delete_actor_identity(self, actor_id=''):
-        # Delete specified ActorIdentity object
+        self._validate_parameters(actor_id=actor_id)
+
         self.clients.resource_registry.delete(actor_id)
 
     def find_actor_identity_by_name(self, name=''):
         """Return the ActorIdentity object whose name attribute matches the passed value.
-
-        @param name    str
-        @retval user_info    ActorIdentity
-        @throws NotFound    failed to find ActorIdentity
-        @throws Inconsistent    Multiple ActorIdentity objects matched name
         """
-        objects, matches = self.clients.resource_registry.find_resources(RT.ActorIdentity, None, name, id_only=False)
+        objects, _ = self.clients.resource_registry.find_resources(RT.ActorIdentity, None, name, id_only=False)
         if not objects:
             raise NotFound("ActorIdentity with name %s does not exist" % name)
         if len(objects) > 1:
             raise Inconsistent("Multiple ActorIdentity objects with name %s exist" % name)
         return objects[0]
 
+    # -------------------------------------------------------------------------
+    # Credentials handling
+
     def register_credentials(self, actor_id='', credentials=None):
-        actor_obj = self.read_actor_identity(actor_id)
+        param_objects = self._validate_parameters(actor_id=actor_id, credentials=credentials)
+        actor_obj = param_objects["actor"]
 
         actor_obj.credentials.append(credentials)
 
         if credentials.username:
             actor_obj.alt_ids.append("UNAME:" + credentials.username)
 
-        self.update_actor_identity(actor_obj)
+        # Lower level RR call to avoid credentials clearing
+        self.clients.resource_registry.update(actor_obj)
 
     def unregister_credentials(self, actor_id='', credentials_name=''):
         if not credentials_name:
             raise BadRequest("Invalid credentials_name")
-        actor_obj = self.read_actor_identity(actor_id)
+        param_objects = self._validate_parameters(actor_id=actor_id)
+        actor_obj = param_objects["actor"]
         found_cred = -1
         for i, cred in enumerate(actor_obj.credentials):
             if cred.username == credentials_name:
@@ -104,7 +131,8 @@ class IdentityManagementService(BaseIdentityManagementService):
 
         actor_obj.alt_ids.remove("UNAME:" + credentials_name)
 
-        self.update_actor_identity(actor_obj)
+        # Lower level RR call to avoid credentials clearing
+        self.clients.resource_registry.update(actor_obj)
 
     def find_actor_identity_by_username(self, username=''):
         if not username:
@@ -118,7 +146,8 @@ class IdentityManagementService(BaseIdentityManagementService):
         if not username:
             raise BadRequest("Invalid username")
         self._check_pwd_policy(password)
-        actor_obj = self.read_actor_identity(actor_id)
+        param_objects = self._validate_parameters(actor_id=actor_id)
+        actor_obj = param_objects["actor"]
         cred_obj = None
         for cred in actor_obj.credentials:
             if cred.username == username:
@@ -132,9 +161,7 @@ class IdentityManagementService(BaseIdentityManagementService):
 
         self._generate_password_hash(cred_obj, password)
 
-        log.info("UPDATE: " + str(cred_obj))
-
-        # Must use low level function to update
+        # Lower level RR call to avoid credentials clearing
         self.clients.resource_registry.update(actor_obj)
 
     def set_user_password(self, username='', password=''):
@@ -152,7 +179,7 @@ class IdentityManagementService(BaseIdentityManagementService):
 
         self._generate_password_hash(cred_obj, password)
 
-        # Must use low level function to update
+        # Lower level RR call to avoid credentials clearing
         self.clients.resource_registry.update(actor_obj)
 
     def _generate_password_hash(self, cred_obj, password):
@@ -165,9 +192,9 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def check_actor_credentials(self, username='', password=''):
         if not username:
-            raise BadRequest("Invalid username")
+            raise BadRequest("Invalid argument username")
         if not password:
-            raise BadRequest("Invalid password")
+            raise BadRequest("Invalid argument password")
 
         actor_id = self.find_actor_identity_by_username(username)
         actor_obj = self.read_actor_identity(actor_id)
@@ -189,10 +216,13 @@ class IdentityManagementService(BaseIdentityManagementService):
         if len(password) < 3:
             raise BadRequest("Password too short")
 
+    # -------------------------------------------------------------------------
+    # Identity details (user profile) handling
+
     def define_identity_details(self, actor_id='', identity_details=None):
         actor_obj = self.read_actor_identity(actor_id)
         if not identity_details:
-            raise BadRequest("Invalid identity_details")
+            raise BadRequest("Invalid argument identity_details")
         if actor_obj.details:
             if actor_obj.details.type_ != identity_details.type_:
                 raise BadRequest("Type for identity_details does not match")
@@ -203,47 +233,12 @@ class IdentityManagementService(BaseIdentityManagementService):
     def read_identity_details(self, actor_id=''):
         actor_obj = self.read_actor_identity(actor_id)
 
-        if not actor_obj.details:
-            raise NotFound("No identity details for actor")
-
         return actor_obj.details
 
-    # -------------------------------------------------------------------------
-    # Merge account support
-
-    def _generate_token(self):
-        return str(uuid4()) + "_" + str(uuid4())
-
-    def _get_current_user_id(self):
-        ctx = self.get_context()
-        return ctx.get('ion-actor-id', None) if ctx else None
-
-    def _update_user_info_token(self, token=""):
-        if not token:
-            raise BadRequest("_update_user_info_token: token must be set")
-        ion_actor_id = self._get_current_user_id()
-        if ion_actor_id:
-            current_user_info = self.find_user_info_by_id(ion_actor_id)
-            current_user_info.tokens.append(token)
-            self.update_user_info(current_user_info)
-        else:
-            raise BadRequest("_update_user_info_token: Current UserInfo not found")
-
-    def _validate_token_string(self, token_string, user_info):
-        # Find the token from the  UserInfo
-        token_obj = [token for token in user_info.tokens if token.token_string == token_string]
-        if not token_obj or not token_obj[0].merge_email or not token_obj[0].expires:
-            raise NotFound("_validate_token: Token data not found")
-        token_obj = token_obj[0]
-        # Validate the expiration time and token status
-        current_time = calendar.timegm((datetime.utcnow()).timetuple())
-        if current_time > token_obj.expires or "OPEN" != token_obj.status:
-            raise BadRequest("_validate_token: access token expired or token status is invalid")
-        return token_obj
-
 
     # -------------------------------------------------------------------------
-    # Manage authentication tokens (R2 M185)
+    # Manage authentication tokens
+    # TODO: More compliant with OAuth2
 
     def _generate_auth_token(self, actor_id=None, expires=""):
         token_string = uuid4().hex
@@ -252,16 +247,9 @@ class IdentityManagementService(BaseIdentityManagementService):
         return token
 
     def create_authentication_token(self, actor_id='', start_time='', validity=0):
-        """Create an authentification token for provided actor id with a given start time and validity.
+        """Create an authentication token for provided actor id with a given start time and validity.
         start_time defaults to current time if empty and uses a system timestamp.
         validity is in seconds and must be set.
-
-        @param actor_id    str
-        @param start_time    str
-        @param validity    int
-        @retval token_string    str
-        @throws BadRequest    Illegal parameter type of value
-        @throws NotFound    Object not found
         """
         if not actor_id:
             raise BadRequest("Must provide argument: actor_id")
@@ -291,11 +279,6 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def read_authentication_token(self, token_string=''):
         """Returns the token object for given actor authentication token string.
-
-        @param token_string    str
-        @retval token    SecurityToken
-        @throws BadRequest    Illegal parameter type of value
-        @throws NotFound    Token string not found
         """
         token_id = "token_%s" % token_string
         token = self.container.object_store.read(token_id)
@@ -305,10 +288,6 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def update_authentication_token(self, token=None):
         """Updates the given token.
-
-        @param token    SecurityToken
-        @throws BadRequest    Illegal parameter type of value
-        @throws NotFound    Token not found
         """
         if not isinstance(token, SecurityToken):
             raise BadRequest("Illegal argument type: token")
@@ -323,10 +302,6 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def invalidate_authentication_token(self, token_string=''):
         """Invalidates an authentication token, but leaves it in place for auditing purposes.
-
-        @param token_string    str
-        @throws BadRequest    Illegal parameter type of value
-        @throws NotFound    Token string not found
         """
         token_id = "token_%s" % token_string
         token = self.container.object_store.read(token_id)
@@ -340,12 +315,6 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def check_authentication_token(self, token_string=''):
         """Checks given token and returns a dict with actor id if valid.
-
-        @param token_string    str
-        @retval token_info    dict
-        @throws BadRequest    Illegal parameter type of value
-        @throws NotFound    Token string not found
-        @throws Unauthorized    Token not valid anymore or otherwise
         """
         token_id = "token_%s" % token_string
         token = self.container.object_store.read(token_id)

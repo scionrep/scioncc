@@ -304,7 +304,7 @@ class TestGovernanceHeaders(IonIntegrationTestCase):
         self._start_container()
 
         #Load a deploy file
-        self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         #Instantiate a process to represent the test
         process=GovernanceTestProcess()
@@ -320,9 +320,7 @@ class TestGovernanceHeaders(IonIntegrationTestCase):
         self.resource_id_header_value = ''
 
 
-    @attr('LOCOINT')
     @attr('HEADERS')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     def test_governance_message_headers(self):
         '''
         This test is used to make sure the ION endpoint code is properly setting the
@@ -452,7 +450,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         self._start_container()
 
         #Load a deploy file
-        self.container.start_rel_from_url('res/deploy/r2deploy.yml')
+        self.container.start_rel_from_url('res/deploy/basic.yml')
 
         #Instantiate a process to represent the test
         process=GovernanceTestProcess()
@@ -516,9 +514,6 @@ class TestGovernanceInt(IonIntegrationTestCase):
         gevent.sleep(self.SLEEP_TIME)  # Wait for events to be fired and policy updated
 
 
-    @attr('LOCOINT')
-    @attr('BASIC')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     def test_basic_policy_operations(self):
 
         #Make sure that the system policies have been loaded
@@ -777,9 +772,6 @@ class TestGovernanceInt(IonIntegrationTestCase):
         id = self.ssclient.create_interval_timer(start_time="now", end_time="-1", event_origin="Interval_Timer_233", headers=actor_header)
 
 
-    @attr('LOCOINT')
-    @attr('RESET')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     @patch.dict(CFG, {'container':{'org_boundary':True}})
     def test_policy_cache_reset(self):
 
@@ -823,9 +815,6 @@ class TestGovernanceInt(IonIntegrationTestCase):
             self.assertEqual(len(before_policy_set['service_operation'][key]), len(after_policy_set['service_operation'][key]))
 
 
-    @attr('LOCOINT')
-    @attr('BOUNDARY')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     @patch.dict(CFG, {'container':{'org_boundary':True}})
     def test_org_boundary(self):
 
@@ -899,9 +888,6 @@ class TestGovernanceInt(IonIntegrationTestCase):
 
 
 
-    @attr('LOCOINT')
-    @attr('ENROLL')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     def test_org_enroll_negotiation(self):
 
         #Make sure that the system policies have been loaded
@@ -1101,9 +1087,6 @@ class TestGovernanceInt(IonIntegrationTestCase):
         ret = self.org_client.is_enrolled(org_id=org2_id, actor_id=actor_id, headers=self.system_actor_header)
         self.assertEquals(ret, False)
 
-    @attr('LOCOINT')
-    @attr('ROLE')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     def test_org_role_negotiation(self):
 
         #Make sure that the system policies have been loaded
@@ -1358,9 +1341,6 @@ class TestGovernanceInt(IonIntegrationTestCase):
         events_i = self.event_repo.find_events(origin=org2_id, event_type=OT.OrgNegotiationInitiatedEvent)
         self.assertEquals(len(events_i), 3)
 
-    @attr('LOCOINT')
-    @attr('ACQUIRE')
-    @unittest.skipIf(os.getenv('CEI_LAUNCH_TEST', False),'Not integrated for CEI')
     def test_org_acquire_resource_negotiation(self):
 
         #Make sure that the system policies have been loaded
