@@ -12,7 +12,7 @@ class ExchangeManagementService(BaseExchangeManagementService):
     The Exchange Management Service is the service that manages the Exchange and its associated
     resources, such as ExchangeSpaces, Names, Points and Brokers.
     """
-    EX_NAME_TYPES = {'XN_SERVICE', 'XN_PROCESS', 'XN_QUEUE'}
+    EX_NAME_TYPES = {'service', 'process', 'queue'}
 
     def on_init(self):
         self.rr = self.clients.resource_registry

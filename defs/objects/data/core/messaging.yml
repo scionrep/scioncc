@@ -4,7 +4,7 @@ ExchangeSpace: !Extends_InformationResource
 
 # RCommunicating participant within an Exchange Space.
 ExchangeName: !Extends_InformationResource
-  # Type of exchange name. One of XN_SERVICE, XN_PROCESS, XN_QUEUE
+  # Type of exchange name. One of service, process, queue
   xn_type: ""
 
 

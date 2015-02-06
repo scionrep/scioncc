@@ -222,8 +222,8 @@ exchange:
   core_xps:
     # used as defaults by pyon.ion.endpoint and PubSub Mgmt Service
     system_rpc: system
-    data_streams: system.data
-    events: system.events
+    data_streams: data
+    events: events
 
 
 # ----------------------------------------------------------------------------------

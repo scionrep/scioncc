@@ -10,6 +10,7 @@ import traceback
 from gevent import event as gevent_event
 
 from pyon.core import bootstrap
+from pyon.core.bootstrap import CFG
 from pyon.core.exception import BadRequest, IonException, StreamException
 from pyon.datastore.datastore import DataStore
 from pyon.datastore.datastore_query import QUERY_EXP_KEY, DatastoreQueryBuilder, DQ
@@ -23,16 +24,18 @@ from pyon.util.log import log
 from interface.objects import Event
 
 
-# @TODO: configurable
-EVENTS_XP = "system.events"
+# TODO: configurable and not redundant
+ION_ROOT_XS = "system"
+EVENTS_XP = "events"
 EVENTS_XP_TYPE = "topic"
 
 #The event will be ignored if older than this time period
 VALID_EVENT_TIME_PERIOD = 365 * 24 * 60 * 60 * 1000   # one year
 
+
 def get_events_exchange_point():
     # match with default output of XOs
-    return ".".join([bootstrap.get_sys_name(), 'ion.xs.system.xp', EVENTS_XP])
+    return "%s.%s.%s" % (bootstrap.get_sys_name(), ION_ROOT_XS, EVENTS_XP)
 
 class EventError(IonException):
     status_code = 500
@@ -236,7 +239,7 @@ class BaseEventSubscriberMixin(object):
 
         # create queue_name if none passed in
         if queue_name is None:
-            queue_name = create_simple_unique_id()
+            queue_name = "subsc_" + create_simple_unique_id()
 
         # prepend proc name to queue name if we have one
         if hasattr(self, "_process") and self._process:
@@ -263,6 +266,7 @@ class BaseEventSubscriberMixin(object):
 
             # set this name to be picked up by inherited folks
             self._ev_recv_name = (xp_name, queue_name)
+
 
 class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
 

@@ -26,13 +26,9 @@ from interface.objects import ExchangePoint as ResExchangePoint
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 
-ION_URN_PREFIX     = "urn:ionx"
 ION_ROOT_XS        = "system"
 ION_DEFAULT_BROKER = "system_broker"
-
-
-def valid_xname(name):
-    return name and str(name).find(":") == -1 and str(name).find(" ") == -1
+EVENTS_XP          = "events"
 
 
 class ExchangeManagerError(StandardError):
@@ -277,7 +273,7 @@ class ExchangeManager(object):
             return self._xs_cache[name]
 
         xs_objs, _ = self._rr.find_resources(RT.ExchangeSpace, name=name)
-        if not len(xs_objs) == 1:
+        if len(xs_objs) != 1:
             log.warn("Could not find RR XS object with name: %s", name)
             return None
 
@@ -293,9 +289,9 @@ class ExchangeManager(object):
         if not self.org_id:
             # find the default Org
             root_orgname = CFG.get_safe("system.root_org", "ION")
-            org_ids,_ = self._rr.find_resources(RT.Org, name=root_orgname, id_only=True)
+            org_ids, _ = self._rr.find_resources(RT.Org, name=root_orgname, id_only=True)
             if not org_ids or len(org_ids) != 1:
-                log.warn("EMS available but could not find ION root Org")
+                log.warn("Could not find ION root Org")
                 return None
 
             self.org_id = org_ids[0]
@@ -322,7 +318,7 @@ class ExchangeManager(object):
         # create object if we don't have one
         rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=ION_ROOT_XS, id_only=True)
         if not len(rids):
-            xso = ResExchangeSpace(name = ION_ROOT_XS)
+            xso = ResExchangeSpace(name=ION_ROOT_XS)
 
             # @TODO: we have a bug in the CC, need to skirt around the event publisher capability which shouldn't be there
             reset = False
@@ -400,7 +396,7 @@ class ExchangeManager(object):
         Returns a 2-tuple of name, node.
         """
         for broker_name, broker_cfg in CFG.get_safe('exchange.exchange_brokers', {}).iteritems():
-            # @TODO: bug in DotList, contains not implemented correctly
+            # Bug in DotList, contains not implemented correctly
             if xs_name in list(broker_cfg['join_xs']):
                 return broker_name, self._priv_nodes.get(broker_name, self._nodes.get(broker_name, None))
 
@@ -422,7 +418,7 @@ class ExchangeManager(object):
         Returns a 2-tuple of name, node.
         """
         for broker_name, broker_cfg in CFG.get_safe('exchange.exchange_brokers', {}).iteritems():
-            # @TODO: bug in DotList, contains not implemented correctly
+            # Bug in DotList, contains not implemented correctly
             if xp_name in list(broker_cfg['join_xp']):
                 return broker_name, self._priv_nodes.get(broker_name, self._nodes.get(broker_name, None))
 
@@ -582,7 +578,7 @@ class ExchangeManager(object):
         # get event xp for the xs if not set
         if not xp:
             # pull from configuration
-            eventxp = CFG.get_safe('exchange.core_xps.events', 'system.events')
+            eventxp = CFG.get_safe('exchange.core_xps.events', EVENTS_XP)
             xp = self.create_xp(eventxp)
 
         node      = xp.node
@@ -950,7 +946,7 @@ class ExchangeSpace(XOTransport, NameTrio):
 
     @property
     def exchange_durable(self):
-        # Fix OOIION-1710: Added because exchanges get deleted on broker restart
+        # Added because exchanges get deleted on broker restart
         if CFG.get_safe('container.exchange.names.durable', False):
             self._xs_durable = True
             return True
@@ -959,7 +955,7 @@ class ExchangeSpace(XOTransport, NameTrio):
 
     @property
     def exchange_auto_delete(self):
-        # Fix OOIION-1710: Added because exchanges get deleted on broker restart
+        # Added because exchanges get deleted on broker restart
         if CFG.get_safe('container.exchange.names.durable', False):
             self._xs_auto_delete = False
             return False
@@ -968,7 +964,7 @@ class ExchangeSpace(XOTransport, NameTrio):
 
     @property
     def exchange(self):
-        return "%s.ion.xs.%s" % (bootstrap.get_sys_name(), self._exchange)
+        return "%s.%s" % (bootstrap.get_sys_name(), self._exchange)
 
     def declare(self):
         self.declare_exchange_impl(self.exchange,
@@ -1101,7 +1097,7 @@ class ExchangePoint(ExchangeName):
 
     @property
     def exchange(self):
-        return "%s.xp.%s" % (self._xs.exchange, self._exchange)
+        return "%s.%s" % (self._xs.exchange, self._exchange)
 
     @property
     def queue(self):
@@ -1111,7 +1107,7 @@ class ExchangePoint(ExchangeName):
 
     def declare(self):
         param_kwargs = {}
-        # Fix OOIION-1710: Added because exchanges get deleted on broker restart
+        # Added because exchanges get deleted on broker restart
         if CFG.get_safe('container.exchange.names.durable', False):
             param_kwargs["durable"] = True
             param_kwargs["auto_delete"] = False

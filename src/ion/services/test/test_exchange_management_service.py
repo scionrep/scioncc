@@ -158,7 +158,7 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
         exchange_space = ExchangeSpace(name="bozo")
         esid = self.ems.create_exchange_space(exchange_space, self.org_id)
 
-        exchange_name = ExchangeName(name='shoes', xn_type="XN_PROCESS")
+        exchange_name = ExchangeName(name='shoes', xn_type="process")
         enid = self.ems.declare_exchange_name(exchange_name, esid)
 
         # should be in RR
@@ -174,7 +174,7 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
         self.ems.undeclare_exchange_name(enid)      # canonical name = xn id in current impl
 
         # TEST: xn_declare_no_xs(self):
-        exchange_name = ExchangeName(name="shoez", xn_type='XN_PROCESS')
+        exchange_name = ExchangeName(name="shoez", xn_type='process')
         self.assertRaises(NotFound, self.ems.declare_exchange_name, exchange_name, '11')
 
         # TEST: xn_undeclare_without_declare(self):
@@ -186,7 +186,7 @@ class TestExchangeManagementServiceInt(IonIntegrationTestCase):
         exchange_space = ExchangeSpace(name="bozo")
         esid = self.ems.create_exchange_space(exchange_space, self.org_id)
 
-        exchange_name = ExchangeName(name='shnoz', xn_type="XN_PROCESS")
+        exchange_name = ExchangeName(name='shnoz', xn_type="process")
         enid = self.ems.declare_exchange_name(exchange_name, esid)
 
         # delete the XS

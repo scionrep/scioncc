@@ -463,7 +463,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_create_xs(self):
         xs      = self.ex_manager.create_xs(sentinel.xs)
-        exstr   = '%s.ion.xs.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
+        exstr   = '%s.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
 
         self.assertEquals(xs._exchange, sentinel.xs)
         self.assertEquals(xs.exchange, exstr)
@@ -483,7 +483,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_create_xs_with_params(self):
         xs      = self.ex_manager.create_xs(sentinel.xs, exchange_type=sentinel.ex_type, durable=True)
-        exstr   = '%s.ion.xs.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
+        exstr   = '%s.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
 
         self.assertEquals(xs._xs_durable, True)
         self.assertEquals(xs._xs_exchange_type, sentinel.ex_type)
@@ -494,7 +494,7 @@ class TestExchangeObjects(PyonTestCase):
     def test_delete_xs(self):
         # need an XS first
         xs      = self.ex_manager.create_xs(sentinel.delete_me)
-        exstr   = '%s.ion.xs.%s' % (get_sys_name(), str(sentinel.delete_me))     # what we expect the exchange property to return
+        exstr   = '%s.%s' % (get_sys_name(), str(sentinel.delete_me))     # what we expect the exchange property to return
 
         self.assertIn(sentinel.delete_me, self.ex_manager.xs_by_name)
 
@@ -507,7 +507,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_create_xp(self):
         xp      = self.ex_manager.create_xp(sentinel.xp)
-        exstr   = "%s.ion.xs.%s.xp.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
+        exstr   = "%s.%s.xp.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
 
         self.assertEquals(xp._exchange, sentinel.xp)
         self.assertEquals(xp._xs, self.ex_manager.default_xs)
@@ -526,7 +526,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_create_xp_with_different_xs(self):
         xs = self.ex_manager.create_xs(sentinel.xs)
-        xs_exstr = '%s.ion.xs.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
+        xs_exstr = '%s.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
 
         xp = self.ex_manager.create_xp(sentinel.xp, xs)
         xp_exstr = '%s.xp.%s' % (xs_exstr, str(sentinel.xp))
@@ -539,7 +539,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_delete_xp(self):
         xp      = self.ex_manager.create_xp(sentinel.xp)
-        exstr   = "%s.ion.xs.%s.xp.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
+        exstr   = "%s.%s.xp.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
 
         self.assertIn(sentinel.xp, self.ex_manager.xn_by_name)
 
@@ -597,7 +597,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_create_xn_with_different_xs(self):
         xs = self.ex_manager.create_xs(sentinel.xs)
-        xs_exstr = '%s.ion.xs.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
+        xs_exstr = '%s.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
 
         xn      = self.ex_manager.create_xn_service('servicename', xs)
         qstr    = '%s.%s' % (xn.exchange, 'servicename')        # what we expect the queue name to look like
