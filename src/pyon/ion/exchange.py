@@ -26,9 +26,9 @@ from interface.objects import ExchangePoint as ResExchangePoint
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 
-ION_ROOT_XS        = "system"
 ION_DEFAULT_BROKER = "system_broker"
-EVENTS_XP          = "events"
+DEFAULT_SYSTEM_XS = "system"
+DEFAULT_EVENTS_XP = "events"
 
 
 class ExchangeManagerError(StandardError):
@@ -43,11 +43,9 @@ class ExchangeManager(object):
     def __init__(self, container):
         log.debug("ExchangeManager initializing ...")
         self.container = container
-
         self._rr_client = None
 
         # Define the callables that can be added to Container public API
-        # @TODO: remove
         self.container_api = [self.create_xs,
                               self.create_xp,
                               self.create_xn_service,
@@ -59,6 +57,7 @@ class ExchangeManager(object):
         for call in self.container_api:
             setattr(self.container, call.__name__, call)
 
+        self.system_xs_name         = CFG.get_safe("exchange.core.system_xs", DEFAULT_SYSTEM_XS)
         self.default_xs             = None
         self._xs_cache              = {}              # caching of xs names to RR objects
         self._default_xs_obj        = None      # default XS registry object
@@ -263,12 +262,13 @@ class ExchangeManager(object):
 
         # reset xs map to initial state
         self._default_xs_declared = False
-        self.xs_by_name = { ION_ROOT_XS: self.default_xs }      # friendly named XS to XSO
+        self.xs_by_name = {self.system_xs_name: self.default_xs }      # friendly named XS to XSO
 
-    def _get_xs_obj(self, name=ION_ROOT_XS):
+    def _get_xs_obj(self, name=None):
         """
         Gets a resource-registry represented XS, either via cache or RR request.
         """
+        name = name or self.system_xs_name
         if name in self._xs_cache:
             return self._xs_cache[name]
 
@@ -304,21 +304,21 @@ class ExchangeManager(object):
         The ROOT/default XS needs a special creation because simply trying to create it is a chicken/egg problem.
         We simulate the EMS here.
         """
-        node_name, node = self._get_node_for_xs(ION_ROOT_XS)
+        node_name, node = self._get_node_for_xs(self.system_xs_name)
         transport       = self._get_priv_transport(node_name)
 
         xs = ExchangeSpace(self,
                            transport,
                            node,
-                           ION_ROOT_XS,
+                           self.system_xs_name,
                            exchange_type='topic',
                            durable=False,            # @TODO: configurable?
                            auto_delete=True)
 
         # create object if we don't have one
-        rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=ION_ROOT_XS, id_only=True)
+        rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=self.system_xs_name, id_only=True)
         if not len(rids):
-            xso = ResExchangeSpace(name=ION_ROOT_XS)
+            xso = ResExchangeSpace(name=self.system_xs_name)
 
             # @TODO: we have a bug in the CC, need to skirt around the event publisher capability which shouldn't be there
             reset = False
@@ -332,7 +332,7 @@ class ExchangeManager(object):
             if reset:
                 self.container._capabilities.append(self.container.CCAP.EVENT_PUBLISHER)
 
-            self._xs_cache[ION_ROOT_XS] = self._rr.read(rid)
+            self._xs_cache[self.system_xs_name] = self._rr.read(rid)
 
         # ensure_default_declared will take care of any declaration we need to do
         return xs
@@ -442,7 +442,7 @@ class ExchangeManager(object):
 
         if declare:
             # declare default but only if we're not making default!
-            if self.default_xs is not None and name != ION_ROOT_XS:
+            if self.default_xs is not None and name != self.system_xs_name:
                 self._ensure_default_declared()
 
             xs.declare()
@@ -578,7 +578,7 @@ class ExchangeManager(object):
         # get event xp for the xs if not set
         if not xp:
             # pull from configuration
-            eventxp = CFG.get_safe('exchange.core_xps.events', EVENTS_XP)
+            eventxp = CFG.get_safe('exchange.core.events', DEFAULT_EVENTS_XP)
             xp = self.create_xp(eventxp)
 
         node      = xp.node
@@ -930,8 +930,6 @@ class ExchangeManager(object):
 ##############################################################################
 
 class ExchangeSpace(XOTransport, NameTrio):
-
-    ION_DEFAULT_XS = "system"
 
     def __init__(self, exchange_manager, privileged_transport, node, exchange, exchange_type='topic', durable=False, auto_delete=True):
         XOTransport.__init__(self,

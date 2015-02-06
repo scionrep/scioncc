@@ -2,9 +2,6 @@
 
 __author__ = 'Dave Foster <dfoster@asascience.com>'
 
-import unittest
-from nose.plugins.attrib import attr
-from mock import Mock, sentinel, patch, call, MagicMock
 import requests
 from gevent.queue import Queue
 import os
@@ -14,13 +11,18 @@ from uuid import uuid4
 import simplejson as json
 from copy import deepcopy
 
+import unittest
+from nose.plugins.attrib import attr
+from mock import Mock, sentinel, patch, call, MagicMock
+
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.util.unit_test import PyonTestCase
+
 from pyon.core.bootstrap import get_sys_name
 from pyon.core import exception
 from pyon.core.bootstrap import CFG
 from pyon.util.async import spawn
-from pyon.ion.exchange import ExchangeManager, ION_ROOT_XS, ExchangeNameProcess, ExchangeNameService, ExchangeName, ExchangeNameQueue, ExchangeManagerError
+from pyon.ion.exchange import ExchangeManager, ExchangeNameProcess, ExchangeNameService, ExchangeName, ExchangeNameQueue, ExchangeManagerError, DEFAULT_SYSTEM_XS
 from pyon.net.endpoint import RPCServer, Subscriber, Publisher
 from pyon.net.transport import BaseTransport, NameTrio, TransportError
 from pyon.net.messaging import NodeB
@@ -31,14 +33,16 @@ from examples.service.hello_service import HelloService
 
 from interface.services.examples.ihello_service import HelloServiceClient
 
+
 def _make_exchange_cfg(**kwargs):
     return DotDict(CFG.exchange, exchange_brokers=kwargs)
 
+
 def _make_broker_cfg(**kwargs):
-    default = {'server':'amqp',
-               'description':'',
-               'join_xs':[ION_ROOT_XS],
-               'join_xp':[]}
+    default = {'server': 'amqp',
+               'description': '',
+               'join_xs': [DEFAULT_SYSTEM_XS],    # TODO: make configurable
+               'join_xp': []}
 
     default.update(**kwargs)
 
@@ -409,6 +413,8 @@ class TestExchangeManagerInt(IonIntegrationTestCase):
 @attr('UNIT', group='exchange')
 class TestExchangeObjects(PyonTestCase):
     def setUp(self):
+        self.system_xs_name = CFG.get_safe("exchange.core.system_xs", "system")
+
         self.ex_manager = ExchangeManager(Mock())
         self.pt = Mock(spec=BaseTransport)
         self.ex_manager.get_transport = Mock(return_value=self.pt)
@@ -430,7 +436,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_exchange_by_name(self):
         # defaults: Root XS, no XNs
-        self.assertIn(ION_ROOT_XS, self.ex_manager.xs_by_name)
+        self.assertIn(self.system_xs_name, self.ex_manager.xs_by_name)
         self.assertIn(self.ex_manager.default_xs, self.ex_manager.xs_by_name.itervalues())
         self.assertEquals(len(self.ex_manager.xn_by_name), 0)
 
@@ -448,18 +454,18 @@ class TestExchangeObjects(PyonTestCase):
         self.assertEquals(xn1, self.ex_manager.xn_by_name['xn1'])
         self.assertIsInstance(xn1, ExchangeNameProcess)
 
-        self.assertEquals({ION_ROOT_XS:[xn1]}, self.ex_manager.xn_by_xs)
+        self.assertEquals({self.system_xs_name:[xn1]}, self.ex_manager.xn_by_xs)
 
         xn2 = self.ex_manager.create_xn_service('xn2')
         self.assertIn('xn2', self.ex_manager.xn_by_name)
-        self.assertIn(xn2, self.ex_manager.xn_by_xs[ION_ROOT_XS])
+        self.assertIn(xn2, self.ex_manager.xn_by_xs[self.system_xs_name])
         self.assertEquals(xn2.xn_type, 'XN_SERVICE')
 
         # create one under our second xn3
         xn3 = self.ex_manager.create_xn_queue('xn3', xs)
         self.assertIn('xn3', self.ex_manager.xn_by_name)
         self.assertIn(xn3, self.ex_manager.xn_by_xs['exchange'])
-        self.assertNotIn(xn3, self.ex_manager.xn_by_xs[ION_ROOT_XS])
+        self.assertNotIn(xn3, self.ex_manager.xn_by_xs[self.system_xs_name])
 
     def test_create_xs(self):
         xs      = self.ex_manager.create_xs(sentinel.xs)
@@ -578,7 +584,7 @@ class TestExchangeObjects(PyonTestCase):
 
         # should be in mapping
         self.assertIn('servicename', self.ex_manager.xn_by_name)
-        self.assertIn(xn, self.ex_manager.xn_by_xs[ION_ROOT_XS])
+        self.assertIn(xn, self.ex_manager.xn_by_xs[self.system_xs_name])
 
         # declaration
         self.pt.declare_queue_impl.assert_called_once(qstr, durable=ExchangeNameService._xn_durable, auto_delete=ExchangeNameService._xn_auto_delete)

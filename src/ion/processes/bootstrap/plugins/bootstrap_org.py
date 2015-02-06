@@ -6,7 +6,6 @@ __author__ = 'Michael Meisinger, Stephen Henrie'
 
 from ion.core.bootstrap_process import BootstrapPlugin, AbortBootstrap
 from pyon.core.governance import MODERATOR_ROLE, SUPERUSER_ROLE
-from pyon.ion.exchange import ION_ROOT_XS
 from pyon.public import IonObject, RT
 
 from interface.objects import Org, UserRole, ExchangeSpace
@@ -44,6 +43,7 @@ class BootstrapOrg(BootstrapPlugin):
         org_ms_client.grant_role(self.org_id, system_actor_id, MODERATOR_ROLE)
 
         # Create root ExchangeSpace
-        xs = ExchangeSpace(name=ION_ROOT_XS, description="ION service XS")
+        system_xs_name = process.container.ex_manager.system_xs_name
+        xs = ExchangeSpace(name=system_xs_name, description="ION service XS")
         self.xs_id = ex_ms_client.create_exchange_space(xs, self.org_id)
 

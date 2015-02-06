@@ -24,24 +24,24 @@ from pyon.util.log import log
 from interface.objects import Event
 
 
-# TODO: configurable and not redundant
-ION_ROOT_XS = "system"
-EVENTS_XP = "events"
-EVENTS_XP_TYPE = "topic"
-
 #The event will be ignored if older than this time period
 VALID_EVENT_TIME_PERIOD = 365 * 24 * 60 * 60 * 1000   # one year
+DEFAULT_SYSTEM_XS = "system"
+DEFAULT_EVENTS_XP = "events"
 
-
-def get_events_exchange_point():
-    # match with default output of XOs
-    return "%s.%s.%s" % (bootstrap.get_sys_name(), ION_ROOT_XS, EVENTS_XP)
 
 class EventError(IonException):
     status_code = 500
 
 
 class EventPublisher(Publisher):
+
+    @classmethod
+    def get_events_exchange_point(cls):
+        # match with default output of XOs
+        root_xs = CFG.get_safe("exchange.core.system_xs", DEFAULT_SYSTEM_XS)
+        events_xp = CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP)
+        return "%s.%s.%s" % (bootstrap.get_sys_name(), root_xs, events_xp)
 
     def __init__(self, event_type=None, xp=None, process=None, **kwargs):
         """
@@ -53,6 +53,7 @@ class EventPublisher(Publisher):
 
         self.event_type = event_type
         self.process = process
+        self._events_xp = CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP)
 
         if bootstrap.container_instance and getattr(bootstrap.container_instance, 'event_repository', None):
             self.event_repo = bootstrap.container_instance.event_repository
@@ -62,10 +63,10 @@ class EventPublisher(Publisher):
         # generate an exchange name to publish events to
         container = (hasattr(self, '_process') and hasattr(self._process, 'container') and self._process.container) or BaseEndpoint._get_container_instance()
         if container and container.has_capability(container.CCAP.EXCHANGE_MANAGER):   # might be too early in chain
-            xp = xp or container.create_xp(EVENTS_XP)
+            xp = xp or container.create_xp(self._events_xp)
             to_name = xp
         else:
-            xp = xp or get_events_exchange_point()
+            xp = xp or self.get_events_exchange_point()
             to_name = (xp, None)
 
         Publisher.__init__(self, to_name=to_name, **kwargs)
@@ -81,7 +82,6 @@ class EventPublisher(Publisher):
         origin_type = event_object.origin_type or "_"
         routing_key = "%s.%s.%s.%s.%s" % (base_str, event_object._get_type(), sub_type, origin_type, event_object.origin)
         return routing_key
-
 
     def publish_event_object(self, event_object):
         """
@@ -102,12 +102,12 @@ class EventPublisher(Publisher):
             # make sure we are an xp, if not, upgrade
             if not isinstance(self._send_name, XOTransport):
 
-                default_nt = NameTrio(get_events_exchange_point())
+                default_nt = NameTrio(self.get_events_exchange_point())
                 if isinstance(self._send_name, NameTrio) \
                    and self._send_name.exchange == default_nt.exchange \
                    and self._send_name.queue == default_nt.queue \
                    and self._send_name.binding == default_nt.binding:
-                    self._send_name = container.create_xp(EVENTS_XP)
+                    self._send_name = container.create_xp(self._events_xp)
                 else:
                     self._send_name = container.create_xp(self._send_name)
 
@@ -225,13 +225,14 @@ class BaseEventSubscriberMixin(object):
 
     def __init__(self, xp_name=None, event_type=None, origin=None, queue_name=None,
                  sub_type=None, origin_type=None, pattern=None):
+        self._events_xp = CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP)
         self.event_type = event_type
         self.sub_type = sub_type
         self.origin_type = origin_type
         self.origin = origin
 
         # establish names for xp, binding/pattern/topic, queue_name
-        xp_name = xp_name or EVENTS_XP
+        xp_name = xp_name or self._events_xp
         if pattern:
             binding = pattern
         else:

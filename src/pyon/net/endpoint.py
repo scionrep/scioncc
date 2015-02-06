@@ -336,7 +336,7 @@ class BaseEndpoint(object):
         """
         # ensure NameTrio
         if not isinstance(name, NameTrio):
-            sys_ex = "%s.%s" % (bootstrap.get_sys_name(), CFG.get_safe('exchange.core_xps.system_rpc', 'system'))
+            sys_ex = "%s.%s" % (bootstrap.get_sys_name(), CFG.get_safe('exchange.core.system_xs', 'system'))
             name = NameTrio(sys_ex, name)   # if name is a tuple it takes precedence
             #log.debug("MAKINGNAMETRIO %s\n%s", name, ''.join(traceback.format_list(traceback.extract_stack()[-10:-1])))
 

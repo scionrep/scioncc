@@ -219,11 +219,14 @@ exchange:
       join_xs: [system]
       join_xp: []
 
-  core_xps:
-    # used as defaults by pyon.ion.endpoint and PubSub Mgmt Service
-    system_rpc: system
-    data_streams: data
+  # Well known exchange elements
+  core:
+    # System root exchange space
+    system_xs: system
+    # XP for system events
     events: events
+    # XP for data streams
+    data_streams: data
 
 
 # ----------------------------------------------------------------------------------
