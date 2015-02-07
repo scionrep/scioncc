@@ -1,5 +1,5 @@
 
-from ooi.exception import ApplicationException
+from putil.exception import ApplicationException
 from unittest.case import TestCase
 import unittest
 

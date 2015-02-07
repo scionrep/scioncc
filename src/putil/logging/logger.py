@@ -10,7 +10,7 @@ USAGE:
     If you want to do some logging...
 
     put this at the top of your file:
-        from ooi.logging import log
+        from putil.logging import log
 
     then log out:
         log.info("PI is an irrational number")
@@ -21,17 +21,17 @@ USAGE:
 WARNING: DO NOT stray from the path.  Some evil trickery is going on here and you could get hurt!
 
     DO NOT import as something else:
-        from ooi.logging import log as foo_bar
+        from putil.logging import log as foo_bar
 
     DO NOT use the fully qualified name:
-        import ooi.logging
+        import putil.logging
 
     DO NOT use the internal classes directly
-        from ooi.logging.logger import _ScopedLogger
+        from putil.logging.logger import _ScopedLogger
         cant_stop_me = _ScopedLogger()
 
     DO NOT pass "log" around for other things to use:
-        from ooi.logging import log
+        from putil.logging import log
         import other.module
         other.module.write_some_messages(log)
 
@@ -95,7 +95,7 @@ logging.Logger.trace = trace
 #
 # this should happen exactly once in each module.  after that, the installed logger would be called:
 #     # say i'm inside x.y.py
-#     from ooi.logging import log  # x.y.log is a _ScopedLogger()
+#     from putil.logging import log  # x.y.log is a _ScopedLogger()
 #     log.info('first message')    # sets x.y.log = logging.getLogger('x.y') [and then runs .info() on it]
 #     log.info('second message')   # this isn't a _ScopedLogger any more, its logging.getLogger('x.y'), remember?
 #
@@ -106,7 +106,7 @@ class _ScopedLogger(object):
     def _add_filter(self, filter):
         """ set this filter on each new logger created (does not affect loggers already created)
             not intended to be called directly by client code (interface is supposed to look like a Logger).
-            instead, call ooi.logging.config.add_filter(filter)
+            instead, call putil.logging.config.add_filter(filter)
         """
         self._filters.append(filter)
 

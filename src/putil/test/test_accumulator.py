@@ -1,13 +1,13 @@
 from unittest.case import TestCase
 import unittest
 import time
-import ooi.timer
+import putil.timer
 from math import fabs
 class TestTimer(TestCase):
 
     def test_use_case_example(self):
-        a = ooi.timer.Accumulator(keys=['half','done', 'fish' ])
-        t = ooi.timer.Timer()
+        a = putil.timer.Accumulator(keys=['half','done', 'fish' ])
+        t = putil.timer.Timer()
         time.sleep(0.05)
         t.complete_step('half')
         time.sleep(0.04)
@@ -15,7 +15,7 @@ class TestTimer(TestCase):
         a.add(t)
         a.add_value('fish', 3)
 
-        t = ooi.timer.Timer()
+        t = putil.timer.Timer()
         time.sleep(0.06)
         t.complete_step('half')
         time.sleep(0.05)

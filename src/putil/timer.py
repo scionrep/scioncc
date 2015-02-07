@@ -13,7 +13,7 @@ import logging
 from threading import Lock
 import math
 import inspect
-from ooi.logging import log
+from putil.logging import log
 
 def _get_calling_module(default_value=None):
     try:

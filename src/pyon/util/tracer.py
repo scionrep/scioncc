@@ -14,7 +14,7 @@ tracerlog = logging.getLogger('tracer')
 
 from pyon.util.containers import get_ion_ts, get_datetime_str
 
-from ooi.logging import log, DEBUG
+from putil.logging import log, DEBUG
 
 DEFAULT_CONFIG = {"enabled": True,
                   "max_entries": 5000,

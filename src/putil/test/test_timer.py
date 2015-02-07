@@ -1,16 +1,16 @@
 from unittest.case import TestCase
 import unittest
 import time
-import ooi.timer
+import putil.timer
 from math import fabs
 class TestTimer(TestCase):
     def setUp(self):
         self.op1_times = iter([ .01, .02 ])
-        self.a1 = ooi.timer.Accumulator()
+        self.a1 = putil.timer.Accumulator()
 
         self.op2_step1_times = iter([ .005, .015, .005, .005])
         self.op2_step2_times = iter([ .01, .02, .01, .01])
-        self.a2 = ooi.timer.Accumulator()
+        self.a2 = putil.timer.Accumulator()
 
     def test_found_caller(self):
         import importable.create_timer
@@ -18,7 +18,7 @@ class TestTimer(TestCase):
         self.assertEquals('timing.importable.create_timer', t.logger.name)
 
     def test_time_event(self):
-        t = ooi.timer.Timer()
+        t = putil.timer.Timer()
 
         time.sleep(0.01)
         t.complete_step('pause')
@@ -29,7 +29,7 @@ class TestTimer(TestCase):
         self.assertEquals(3, len(t.times))
 
     def one_step_operation(self):
-        t = ooi.timer.Timer()
+        t = putil.timer.Timer()
         time.sleep(self.op1_times.next())
         t.complete_step()
         self.a1.add(t)
@@ -48,7 +48,7 @@ class TestTimer(TestCase):
 
 
     def two_step_operation(self):
-        t = ooi.timer.Timer()
+        t = putil.timer.Timer()
         time.sleep(self.op2_step1_times.next())
         t.complete_step('one')
         time.sleep(self.op2_step2_times.next())

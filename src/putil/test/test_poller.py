@@ -1,5 +1,5 @@
 
-from ooi.poller import BlockingDirectoryIterator
+from putil.poller import BlockingDirectoryIterator
 from unittest.case import TestCase
 import unittest
 

@@ -4,7 +4,7 @@ import unittest
 
 import os
 import shutil
-from ooi.reflection import EggCache
+from putil.reflection import EggCache
 
 repo = 'http://sddevrepo.oceanobservatories.org/releases'
 egg = 'seabird_sbe54tps_ooicore-0.0.4-py2.7.egg'

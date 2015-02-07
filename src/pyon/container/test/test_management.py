@@ -3,7 +3,7 @@ from pyon.util.unit_test import PyonTestCase
 import pyon.container.management
 import interface.objects
 import logging
-from ooi.logging import config, log, TRACE
+from putil.logging import config, log, TRACE
 from pyon.core.bootstrap import IonObject
 from pyon.ion.resource import OT
 

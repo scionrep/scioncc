@@ -22,7 +22,7 @@ except ImportError as ie:
 
 from pyon.public import log, iex, StandaloneProcess, RT
 
-from ooi.timer import Timer,Accumulator
+from putil.timer import Timer,Accumulator
 
 stats = Accumulator(persist=True)
 

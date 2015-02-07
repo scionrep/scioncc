@@ -1,11 +1,11 @@
 
-from ooi.logging import config
+from putil.logging import config
 import logging
 import unittest
 from unittest.case import TestCase
 import os.path
 import os
-import ooi.exception
+import putil.exception
 
 LOGFILE='/tmp/unittest-stack.log'
 CONFIGFILE='logging.yml'
@@ -52,7 +52,7 @@ class TestStackLogger(TestCase):
             try:
                 splotgorpsh()
             except:
-                raise ooi.exception.ApplicationException()
+                raise putil.exception.ApplicationException()
         except:
             self.log.error('fralnclumpf', exc_info=True)
 

@@ -7,7 +7,7 @@ import uuid
 import os
 import logging
 import sys
-from ooi.logging import log
+from putil.logging import log
 from pyon.core import log as logutil
 
 import pyon

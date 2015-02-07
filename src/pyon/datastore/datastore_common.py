@@ -4,7 +4,7 @@
 
 __author__ = 'Michael Meisinger'
 
-from ooi.logging import log
+from putil.logging import log
 
 from pyon.core.exception import BadRequest
 from pyon.util.containers import get_safe, named_any, DotDict

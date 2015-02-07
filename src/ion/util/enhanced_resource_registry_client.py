@@ -3,8 +3,8 @@
 __author__ = 'Ian Katz, Michael Meisinger'
 
 import re
-from ooi import logging
-from ooi.logging import log
+from putil import logging
+from putil.logging import log
 
 from pyon.util.containers import get_ion_ts, DotDict
 from pyon.core.exception import BadRequest, Inconsistent, NotFound

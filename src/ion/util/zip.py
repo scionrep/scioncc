@@ -2,7 +2,7 @@ import base64
 from StringIO import StringIO
 import zipfile
 
-from ooi.logging import log
+from putil.logging import log
 
 
 

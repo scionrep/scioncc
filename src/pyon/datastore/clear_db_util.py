@@ -5,7 +5,7 @@
 import sys
 from optparse import OptionParser
 
-from ooi.logging import log
+from putil.logging import log
 from pyon.datastore.datastore_common import DatastoreFactory
 
 

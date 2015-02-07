@@ -1,6 +1,6 @@
-
-import ooi.testing
-from ooi.exception import ApplicationException
+import os
+import putil.testing
+from putil.exception import ApplicationException
 from unittest.case import TestCase
 import unittest
 
@@ -9,10 +9,10 @@ class TargetException(ApplicationException):
         super(TargetException,self).__init__()
         self.drop_chained_init_frame()
 
-class TestException(TestCase, ooi.testing.ImportTest):
+class TestException(TestCase, putil.testing.ImportTest):
     def __init__(self):
         TestCase.__init__(self, methodName='runTest')
-        ooi.testing.ImportTest.__ini__(self, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__name__))),'src'), 'ooi')
+        putil.testing.ImportTest.__init__(self, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__name__))),'src'), 'putil')
 
     def willRaiseGeneric(self):
         return 1/0

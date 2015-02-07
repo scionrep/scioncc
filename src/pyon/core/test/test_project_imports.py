@@ -4,7 +4,7 @@ test that all modules in pyon have valid syntax and can be imported successfully
 
 import os
 from unittest import TestCase,main
-import ooi.testing
+import putil.testing
 import __main__
 from nose.plugins.attrib import attr
 
@@ -12,7 +12,7 @@ MODULES = ['examples', 'interface', 'pyon', 'putil' ]
 
 
 @attr('UNIT')
-class TestProjectImports(ooi.testing.ImportTest):
+class TestProjectImports(putil.testing.ImportTest):
     def __init__(self, *a, **b):
         # for utilities project only, want to search in BASE/src
         # but this test is in BASE/pyon/core/test

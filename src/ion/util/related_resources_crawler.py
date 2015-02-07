@@ -6,7 +6,7 @@
 """
 from ion.util.enhanced_resource_registry_client import EnhancedResourceRegistryClient
 
-from ooi.logging import log
+from putil.logging import log
 
 class RelatedResourcesCrawler(object):
 

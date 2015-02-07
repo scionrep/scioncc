@@ -26,8 +26,8 @@ import sys
 import gc
 from threading import Lock
 
-from ooi.logging import log, config
-from ooi.timer import get_accumulators
+from putil.logging import log, config
+from putil.timer import get_accumulators
 
 from pyon.core.bootstrap import CFG
 from pyon.container.snapshot import ContainerSnapshot

@@ -18,7 +18,7 @@ try:
 except ImportError:
     print "PostgreSQL imports not available!"
 
-from ooi.logging import log
+from putil.logging import log
 
 from pyon.core.exception import BadRequest, Conflict, NotFound, Inconsistent
 from pyon.datastore.datastore_common import DataStore

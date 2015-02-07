@@ -1,5 +1,5 @@
 
-from ooi.logging import config
+from putil.logging import config
 import logging
 import unittest
 from unittest.case import TestCase

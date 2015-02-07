@@ -8,10 +8,10 @@ formatters:
   brief:
     format: '%(asctime)s %(levelname)-8s %(name)-15s %(message)s'
   default:
-    (): 'ooi.logging.format.StackFormatter'
+    (): 'putil.logging.format.StackFormatter'
     format: '%(asctime)s %(levelname)s %(threadName)s %(name)s:%(lineno)d %(message)s'
   raw:
-    (): 'ooi.logging.format.RawRecordFormatter'
+    (): 'putil.logging.format.RawRecordFormatter'
 
 handlers:
   console:
@@ -34,7 +34,7 @@ handlers:
     host: graylog
 #    host: graylog.oceanobservatories.org
 #
-# LogRecord objects for later forwarding to graylog. see documentation for: ooi.logging.replay
+# LogRecord objects for later forwarding to graylog. see documentation for: putil.logging.replay
   raw:
     class: logging.handlers.RotatingFileHandler
     formatter: raw

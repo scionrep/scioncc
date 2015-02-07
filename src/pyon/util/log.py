@@ -5,12 +5,12 @@ logging utilities for pycc container
 - config, the log configuration manager
 """
 
-import ooi.logging
-import ooi.logging.format
+import putil.logging
+import putil.logging.format
 import logging
 import sys
 
-log = ooi.logging.log
+log = putil.logging.log
 
 TRACE = 'TRACE'
 DEBUG     = 'DEBUG'
@@ -20,7 +20,7 @@ ERROR     = 'ERROR'
 CRITICAL  = 'CRITICAL'
 EXCEPTION = 'EXCEPTION'
 
-class RPCStackFormatter(ooi.logging.format.StackFormatter):
+class RPCStackFormatter(putil.logging.format.StackFormatter):
     """ print stack traces for exceptions with special handling for chains of RPC calls.
         for chains of RPC calls, the stack trace will drop stack frames from the top (where gevent invokes the function),
         and from the bottom (where the call invokes another remote RPC service and passes through the broker).

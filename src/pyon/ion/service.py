@@ -11,8 +11,6 @@ from pyon.util.log import log
 from pyon.util.containers import named_any, itersubclasses
 from pyon.util.context import LocalContextMixin
 
-from interface.objects import Resource, IonObjectBase
-
 
 class BaseClients(object):
     """
@@ -140,6 +138,7 @@ class BaseService(LocalContextMixin):
             return
         if not resource_obj:
             raise BadRequest("Argument '%s': missing" % arg_name)
+        from interface.objects import Resource
         if not isinstance(resource_obj, Resource):
             raise BadRequest("Argument '%s': not a resource object" % arg_name)
         if "noid" in checks and "_id" in resource_obj:
@@ -170,6 +169,7 @@ class BaseService(LocalContextMixin):
             return
         if not arg_obj:
             raise BadRequest("Argument '%s':  missing" % arg_name)
+        from interface.objects import IonObjectBase
         if not isinstance(arg_obj, IonObjectBase):
             raise BadRequest("Argument '%s': not an object" % arg_name)
         if obj_type and arg_obj.type_ != obj_type:

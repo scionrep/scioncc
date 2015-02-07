@@ -1,7 +1,7 @@
 import inspect
 import sys
 
-from ooi.exception import ApplicationException
+from putil.exception import ApplicationException
 
 
 __author__ = 'Thomas R. Lennan'

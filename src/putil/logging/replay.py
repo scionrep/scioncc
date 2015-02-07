@@ -11,7 +11,7 @@
 
         formatters:
           raw:
-            (): 'ooi.logging.format.RawRecordFormatter'
+            (): 'putil.logging.format.RawRecordFormatter'
         handlers:
           file:
             class: logging.handlers.RotatingFileHandler

@@ -5,7 +5,7 @@ import os
 import glob
 from threading import Thread
 from gevent.event import Event
-from ooi.logging import log
+from putil.logging import log
 from Queue import Queue
 
 class ConditionPoller(Thread):

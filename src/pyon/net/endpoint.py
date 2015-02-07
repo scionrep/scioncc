@@ -28,7 +28,7 @@ import logging
 rpclog = logging.getLogger('rpc')
 
 # create global accumulator for RPC times
-from ooi.timer import Timer, Accumulator
+from putil.timer import Timer, Accumulator
 stats = Accumulator(keys='!total', persist=True)
 
 # Callback hooks for message in and out. Signature: def callback(msg, headers, env)

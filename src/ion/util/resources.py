@@ -15,7 +15,7 @@ try:
 except ImportError:
     print "Excel imports failed"
 
-from ooi.timer import get_accumulators
+from putil.timer import get_accumulators
 
 from pyon.core import bootstrap
 from pyon.core.bootstrap import CFG, get_sys_name

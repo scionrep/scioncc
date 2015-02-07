@@ -7,7 +7,7 @@ import pprint
 import socket
 import sys
 
-from ooi.timer import get_accumulators
+from putil.timer import get_accumulators
 
 from pyon.public import log, IonObject, BadRequest, CFG
 from pyon.util.containers import get_ion_ts
