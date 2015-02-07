@@ -276,7 +276,7 @@ class Container(BaseContainerAgent):
         else:
             log.debug("Container.serve_forever short-circuiting due to CFG.system.immediate")
 
-        self.proc_manager.proc_sup.shutdown(CFG.cc.timeout.shutdown)
+        self.proc_manager.proc_sup.shutdown(CFG.get_safe("container.timeout.shutdown"))
 
     def status(self):
         """

@@ -87,7 +87,7 @@ class IonProcessThread(PyonThread):
         self._heartbeat_op      = None              # last operation (by AR)
         self._heartbeat_count   = 0                 # number of times this operation has been seen consecutively
 
-        self._log_call_exception = CFG.get_safe("container.processes.log_exceptions", False)
+        self._log_call_exception = CFG.get_safe("container.process.log_exceptions", False)
         PyonThread.__init__(self, target=target, **kwargs)
 
     def heartbeat(self):
@@ -120,8 +120,8 @@ class IonProcessThread(PyonThread):
                     self._heartbeat_count += 1  # we've seen this before! increment count
 
                     # we've been in this for the last X ticks, or it's been X seconds, fail this part of the heartbeat
-                    if self._heartbeat_count > CFG.get_safe('cc.timeout.heartbeat_proc_count_threshold', 30) or \
-                       get_ion_ts_millis() - int(self._heartbeat_time) >= CFG.get_safe('cc.timeout.heartbeat_proc_time_threshold', 30) * 1000:
+                    if self._heartbeat_count > CFG.get_safe('container.timeout.heartbeat_proc_count_threshold', 30) or \
+                       get_ion_ts_millis() - int(self._heartbeat_time) >= CFG.get_safe('container.timeout.heartbeat_proc_time_threshold', 30) * 1000:
                         heartbeat_ok = False
                 else:
                     # it's made some progress
@@ -453,7 +453,7 @@ class IonProcessThread(PyonThread):
             for listener in self._startup_listeners:
                 self.add_endpoint(listener)
 
-            with Timeout(seconds=CFG.get_safe('cc.timeout.start_listener', 30)):
+            with Timeout(seconds=CFG.get_safe('container.messaging.timeout.start_listener', 30)):
                 if gevent.__version__.startswith("1"):
                     gevent.wait([x.get_ready_event() for x in self.listeners])
                 else:

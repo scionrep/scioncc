@@ -1,10 +1,11 @@
 # Central configuration file for SciON container, system and services.
 # The contents are transformed into a dict that supports dot notation:
-#   CFG.server.amqp.host
+#   CFG.server.amqp.host or CFG.get_safe("server.amqp.host", 1234)
 # Do not modify this file! Set overrides in pyon.local.yml or in rel files
 
 # PLEASE DO NOT ADD NEW TOP LEVEL KEYS
 # PLEASE COORDINATE WITH ARCHITECTURE FOR APPROPRIATE CFG KEYS
+
 
 # ----------------------------------------------------------------------------------
 # The "system" root entry defines settings for the distributed ION system that this
@@ -117,8 +118,11 @@ container:
       privileged:
     endpoint:
       prefetch_count: 1      # how many messages to prefetch from broker by default
+    timeout:
+      start_listener: 30.0
+      receive: 30            # RPC receive timeout in seconds
 
-  processes:
+  process:
     exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
     log_exceptions: False    # Whether all RPC call invocation exceptions should be logged
     max_replicas: 0          # Limit the number of process replicas to start per container (0 is unlimited)
@@ -127,6 +131,13 @@ container:
     validate:
       setattr: False
 
+  timeout:
+    start_listener: 30.0
+    shutdown: 30.0
+    heartbeat: 30.0
+    heartbeat_proc_time_threshold: 600.0
+    heartbeat_proc_count_threshold: 20
+
   org_boundary: False  # If True, then check against policies related to the Org below; else do not.
 
   org_name: ION  # The default is the ROOT ION Org
@@ -134,14 +145,6 @@ container:
   filesystem:
     force_clean: False
     root: /tmp/ion
-
-  service_gateway:
-    web_server:
-      port: 5000
-    trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
-    user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
-    service_blacklist: []    # Names of services not accessible via the gateway
-    service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible
 
   containerui:
     web_server:
@@ -153,21 +156,7 @@ container:
     enabled: False        # Enable the database class and message tracer in container
     max_entries: 10000    # Length of trace buffer
 
-
-# TODO: Rename to "container". See there.
-cc:
-  timeout:
-    # Apparently 10.0 is not enough to start a listener...
-    start_listener: 30.0
-    shutdown: 30.0
-    heartbeat: 30.0
-    heartbeat_proc_time_threshold: 600.0
-    heartbeat_proc_count_threshold: 20
-
-endpoint:
-  receive:
-    timeout: 30   # RPC receive timeout in seconds
-
+# TODO: Move into container and split into process and messaging
 interceptor:
   interceptors:
     sample:
@@ -245,11 +234,12 @@ service:
   discovery:
     max_search_results: 250
 
+  service_gateway:
+    web_server:
+      port: 5000
+    trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
+    user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
+    service_blacklist: []    # Names of services not accessible via the gateway
+    service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible
 
 units: res/config/units/udunits2.xml
-
-
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# PLEASE DO NOT ADD NEW TOP LEVEL KEYS
-# PLEASE COORDINATE WITH ARCHITECTURE FOR APPROPRIATE CFG KEYS
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

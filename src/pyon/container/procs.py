@@ -57,7 +57,7 @@ class ProcManager(object):
         self._spawned_proc_to_process = {}
 
         # The pyon worker process supervisor
-        self.proc_sup = IonProcessThreadManager(heartbeat_secs=CFG.cc.timeout.heartbeat, failure_notify_callback=self._spawned_proc_failed)
+        self.proc_sup = IonProcessThreadManager(heartbeat_secs=CFG.get_safe("container.timeout.heartbeat"), failure_notify_callback=self._spawned_proc_failed)
 
         # list of callbacks for process state changes
         self._proc_state_change_callbacks = []
@@ -95,7 +95,7 @@ class ProcManager(object):
                 log.warn("Failed to terminate process (%s): %s", proc.id, ex)
 
         # TODO: Have a choice of shutdown behaviors for waiting on children, timeouts, etc
-        self.proc_sup.shutdown(CFG.cc.timeout.shutdown)
+        self.proc_sup.shutdown(CFG.get_safe("container.timeout.shutdown"))
 
         if self.procs:
             log.warn("ProcManager procs not empty: %s", self.procs)
@@ -327,7 +327,7 @@ class ProcManager(object):
         #self.container.fail_fast("Container process (%s) failed: %s" % (svc, gproc.exception))
 
         # Stop the container if this was the last process
-        if not self.procs and CFG.get_safe("container.processes.exit_once_empty", False):
+        if not self.procs and CFG.get_safe("container.process.exit_once_empty", False):
             self.container.fail_fast("Terminating container after last process (%s) failed: %s" % (gproc, gproc.exception))
 
     def _cleanup_method(self, queue_name, ep=None):

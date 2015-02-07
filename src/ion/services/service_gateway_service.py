@@ -82,20 +82,24 @@ class ServiceGatewayService(BaseServiceGatewayService):
 
         service_gateway_instance = self
 
-        self.server_hostname = self.CFG.get_safe('container.service_gateway.web_server.hostname', DEFAULT_WEB_SERVER_HOSTNAME)
-        self.server_port = self.CFG.get_safe('container.service_gateway.web_server.port', DEFAULT_WEB_SERVER_PORT)
-        self.web_server_enabled = self.CFG.get_safe('container.service_gateway.web_server.enabled', True)
-        self.web_logging = self.CFG.get_safe('container.service_gateway.web_server.log')
-        self.log_errors = self.CFG.get_safe('container.service_gateway.log_errors', True)
+        self.server_hostname = self.CFG.get_safe('service.service_gateway.web_server.hostname', DEFAULT_WEB_SERVER_HOSTNAME)
+        self.server_port = self.CFG.get_safe('service.service_gateway.web_server.port', DEFAULT_WEB_SERVER_PORT)
+        self.web_server_enabled = self.CFG.get_safe('service.service_gateway.web_server.enabled', True)
+        self.web_logging = self.CFG.get_safe('service.service_gateway.web_server.log')
+        self.log_errors = self.CFG.get_safe('service.service_gateway.log_errors', True)
 
         # Optional list of trusted originators can be specified in config.
-        self.trusted_originators = self.CFG.get_safe('container.service_gateway.trusted_originators')
+        self.trusted_originators = self.CFG.get_safe('service.service_gateway.trusted_originators')
         if not self.trusted_originators:
             self.trusted_originators = None
             log.info("Service Gateway will not check requests against trusted originators since none are configured.")
 
+        # Service
+        self.service_blacklist = self.CFG.get_safe('service.service_gateway.service_blacklist') or []
+        self.service_whitelist = self.CFG.get_safe('service.service_gateway.service_whitelist') or []
+
         # Get the user_cache_size
-        self.user_cache_size = self.CFG.get_safe('container.service_gateway.user_cache_size', DEFAULT_USER_CACHE_SIZE)
+        self.user_cache_size = self.CFG.get_safe('service.service_gateway.user_cache_size', DEFAULT_USER_CACHE_SIZE)
 
         # Initialize an LRU Cache to keep user roles cached for performance reasons
         #maxSize = maximum number of elements to keep in cache

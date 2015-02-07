@@ -34,7 +34,7 @@ class PolicyToken:
         self.requesting_message = requesting_message
         self.token = token
 
-        timeout = CFG.get_safe('endpoint.receive.timeout', 10)
+        timeout = CFG.get_safe('container.messaging.timeout.receive', 10)
         self.expire_time = current_time_millis() + (timeout * 1000)  # Set the expire time to current time + timeout in ms
 
     def is_expired(self):

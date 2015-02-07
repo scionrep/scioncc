@@ -23,7 +23,7 @@ class AppManager(object):
 
     def start(self):
         log.debug("AppManager starting ...")
-        self.max_proc_replicas = int(CFG.get_safe("container.processes.max_replicas", 0))
+        self.max_proc_replicas = int(CFG.get_safe("container.process.max_replicas", 0))
 
     def stop(self):
         log.debug("AppManager stopping ...")

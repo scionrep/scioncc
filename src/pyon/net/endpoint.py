@@ -848,7 +848,7 @@ class RequestEndpointUnit(BidirectionalEndpointUnit):
         if 'timeout' in kwargs and kwargs['timeout'] is not None:
             timeout = kwargs['timeout']
         else:
-            timeout = CFG.get_safe('endpoint.receive.timeout', 10)
+            timeout = CFG.get_safe('container.messaging.timeout.receive', 10)
 
         # we have a timeout, update reply-by header
         headers['reply-by'] = str(int(headers['ts']) + int(timeout * 1000))
