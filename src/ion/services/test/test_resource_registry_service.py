@@ -25,19 +25,6 @@ class TestResourceRegistry(IonIntegrationTestCase):
         # Now create client to bank service
         self.resource_registry_service = ResourceRegistryServiceClient()
 
-    @unittest.skip('Represents a bug in storage/retrieval')
-    def test_tuple_in_dict(self):
-        # create a resource with a tuple saved in a dict
-        transform_obj = IonObject(RT.Transform)
-        transform_obj.configuration = {}
-        transform_obj.configuration["tuple"] = ('STRING',)
-        transform_id, _ = self.resource_registry_service.create(transform_obj)
-
-        # read the resource back
-        returned_transform_obj = self.resource_registry_service.read(transform_id)
-
-        self.assertEqual(transform_obj.configuration["tuple"], returned_transform_obj.configuration["tuple"])
-
     def test_basics(self):
         # Sequence all the tests so that we can save numerous system start and stops
         self._do_test_crud()
@@ -46,7 +33,6 @@ class TestResourceRegistry(IonIntegrationTestCase):
         self._do_test_attach()
         self._do_test_association()
         self._do_test_find_resources()
-        self._do_test_find_objects_mult()
 
     def _do_test_crud(self):
         # Some quick registry tests
@@ -418,48 +404,24 @@ class TestResourceRegistry(IonIntegrationTestCase):
         self.resource_registry_service.delete(user_info_obj_id)
 
     def _do_test_find_resources(self):
-        pass
-        # with self.assertRaises(BadRequest) as cm:
-        #     self.resource_registry_service.find_resources(RT.UserInfo, LCS.DRAFT, "name", False)
-        # self.assertTrue(cm.exception.message == "find by name does not support lcstate")
-        #
-        # ret = self.resource_registry_service.find_resources(RT.UserInfo, None, "name", False)
-        # self.assertEquals(len(ret[0]), 0)
-        #
-        # # Instantiate an object
-        # obj = IonObject("InstrumentAgentInstance", name="name")
-        #
-        # # Persist object and read it back
-        # obj_id, obj_rev = self.resource_registry_service.create(obj)
-        # read_obj = self.resource_registry_service.read(obj_id)
-        #
-        # ret = self.resource_registry_service.find_resources(RT.InstrumentAgentInstance, None, "name", False)
-        # self.assertEquals(len(ret[0]), 1)
-        # self.assertEquals(ret[0][0]._id, read_obj._id)
-        #
-        # ret = self.resource_registry_service.find_resources(RT.InstrumentAgentInstance, LCS.DEPLOYED, None, False)
-        # self.assertEquals(len(ret[0]), 1)
-        # self.assertEquals(ret[0][0]._id, read_obj._id)
+        with self.assertRaises(BadRequest) as cm:
+            self.resource_registry_service.find_resources(RT.ActorIdentity, LCS.DRAFT, "name", False)
+        self.assertTrue(cm.exception.message == "find by name does not support lcstate")
 
-    def _do_test_find_objects_mult(self):
-        pass
-    #     dp = DataProcess()
-    #     transform = Transform()
-    #     pd = ProcessDefinition()
-    #
-    #     dp_id, _ = self.resource_registry_service.create(dp)
-    #     transform_id, _ = self.resource_registry_service.create(transform)
-    #     pd_id, _ = self.resource_registry_service.create(pd)
-    #
-    #     self.resource_registry_service.create_association(subject=dp_id, object=transform_id, predicate=PRED.hasTransform)
-    #     self.resource_registry_service.create_association(subject=transform_id, object=pd_id, predicate=PRED.hasProcessDefinition)
-    #
-    #     results, _  = self.resource_registry_service.find_objects_mult(subjects=[dp_id],id_only=True)
-    #     self.assertTrue(results == [transform_id])
-    #
-    #     results, _  = self.resource_registry_service.find_objects_mult(subjects=[dp_id, transform_id], id_only=True)
-    #     results.sort()
-    #     correct = [transform_id, pd_id]
-    #     correct.sort()
-    #     self.assertTrue(results == correct)
+        ret = self.resource_registry_service.find_resources(RT.ActorIdentity, None, "name", False)
+        self.assertEquals(len(ret[0]), 0)
 
+        # Instantiate an object
+        obj = IonObject("ProcessDefinition", name="name")
+
+        # Persist object and read it back
+        obj_id, obj_rev = self.resource_registry_service.create(obj)
+        read_obj = self.resource_registry_service.read(obj_id)
+
+        ret = self.resource_registry_service.find_resources(RT.ProcessDefinition, None, "name", False)
+        self.assertEquals(len(ret[0]), 1)
+        self.assertEquals(ret[0][0]._id, read_obj._id)
+
+        ret = self.resource_registry_service.find_resources(RT.ProcessDefinition, LCS.DEPLOYED, None, False)
+        self.assertEquals(len(ret[0]), 1)
+        self.assertEquals(ret[0][0]._id, read_obj._id)
