@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-
 __author__ = 'Stephen P. Henrie'
 
-
-
-
+from pyon.core import MSG_HEADER_ACTOR
 from pyon.util.log import log
 from pyon.core.exception import Unauthorized, Inconsistent
 
@@ -44,7 +41,7 @@ class GovernanceDispatcher(object):
 
         receiver = invocation.get_message_receiver()
         op = invocation.get_header_value('op', 'Unknown')
-        actor_id = invocation.get_header_value('ion-actor-id', 'anonymous')
+        actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, 'anonymous')
 
         #Raise Inconsistent message if conversation interceptor found a problem
         #TODO - May just want to drop this message instead of returning in case of DOS attack

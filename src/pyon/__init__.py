@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------
-# PYON (C) OCEAN OBSERVATORIES INITIATIVE
+# SciON capability container (pyon)
 # Initial package static initialization
 # -------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ if 'pydevd' in sys.modules:
 else:
     from gevent import monkey; monkey.patch_all()
 
-# Fix AttributeError("'_DummyThread' object has no attribute '_Thread__block'",) issue (OOIION-621)
+# Fix AttributeError("'_DummyThread' object has no attribute '_Thread__block'",) issue
 # http://stackoverflow.com/questions/13193278/understand-python-threading-bug
 import threading
 try:
@@ -53,16 +53,3 @@ except Exception as ex:
 # CHANGE HERE BEFORE IMPORTING ANY FURTHER PYON CODE TO OVERRIDE
 DEFAULT_CONFIG_PATHS = ['res/config/pyon.yml']
 DEFAULT_LOCAL_CONFIG_PATHS = ['res/config/pyon.local.yml']
-
-# -------------------------------------------------------------------------
-# If we're running from a subdirectory of the code (in source mode, not egg),
-# change dir to the root directory for easier debugging and unit test launching.
-### Note: commented out because this prevents start of pycc from a different repo.
-'''
-import os
-cwd, path = os.getcwd(), os.path.realpath(__file__)
-base_path = os.path.dirname(path)
-if '.egg' not in cwd:
-    while not os.path.exists('.pyon_root_marker'):
-        os.chdir('..')
-'''

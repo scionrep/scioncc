@@ -1,16 +1,11 @@
-    #!/usr/bin/env python
-
+#!/usr/bin/env python
 
 __author__ = 'Stephen P. Henrie'
-
-
 
 from os import path
 from StringIO import StringIO
 
 from ndg.xacml.parsers.etree.factory import ReaderFactory
-
-
 from ndg.xacml.core import Identifiers, XACML_1_0_PREFIX
 from ndg.xacml.core.attribute import Attribute
 from ndg.xacml.core.attributevalue import (AttributeValue,
@@ -23,6 +18,8 @@ from ndg.xacml.core.context.action import Action
 from ndg.xacml.core.context.environment import Environment
 from ndg.xacml.core.context.pdp import PDP
 from ndg.xacml.core.context.result import Decision
+
+from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound
 from pyon.core.governance import SUPERUSER_ROLE
@@ -270,8 +267,8 @@ class PolicyDecisionPointManager(object):
 
         sender, sender_type = invocation.get_message_sender()
         op = invocation.get_header_value('op', 'Unknown')
-        ion_actor_id = invocation.get_header_value('ion-actor-id', 'anonymous')
-        actor_roles = invocation.get_header_value('ion-actor-roles', {})
+        ion_actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, 'anonymous')
+        actor_roles = invocation.get_header_value(MSG_HEADER_ROLES, {})
         message_format = invocation.get_header_value('format', '')
 
         #log.debug("Checking XACML Request: receiver_type: %s, sender: %s, receiver:%s, op:%s,  ion_actor_id:%s, ion_actor_roles:%s", receiver_type, sender, receiver, op, ion_actor_id, actor_roles)
@@ -327,7 +324,6 @@ class PolicyDecisionPointManager(object):
                     request.action.attributes.append(self.create_string_attribute(ACTION_VERB, operation_verb))
 
             except NotFound:
-
                 pass
 
         #Create generic attributes for each of the primitive message parameter types to be available in XACML rules

@@ -1,10 +1,12 @@
-    #!/usr/bin/env python
-
+#!/usr/bin/env python
 
 __author__ = 'Stephen P. Henrie'
 
 import pickle
 
+from ndg.xacml.core.context.result import Decision
+
+from pyon.core import MSG_HEADER_ACTOR
 from pyon.core.bootstrap import CFG
 from pyon.core.governance.governance_interceptor import BaseInternalGovernanceInterceptor
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
@@ -13,7 +15,6 @@ from pyon.core.registry import is_ion_object, message_classes, has_class_decorat
 from pyon.util.containers import current_time_millis
 from pyon.util.log import log
 
-from ndg.xacml.core.context.result import Decision
 
 PERMIT_SUB_CALLS = 'PERMIT_SUB_CALLS'
 
@@ -97,9 +98,9 @@ class PolicyInterceptor(BaseInternalGovernanceInterceptor):
         #THis fix infers that all messages that do not specify an actor id are TRUSTED wihtin the system
         policy_loaded = CFG.get_safe('system.load_policy', False)
         if policy_loaded:
-            actor_id = invocation.get_header_value('ion-actor-id', None)
+            actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, None)
         else:
-            actor_id = invocation.get_header_value('ion-actor-id', 'anonymous')
+            actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, 'anonymous')
 
         #Only check messages marked as the initial rpc request - TODO - remove the actor_id is not None when headless process have actor_ids
         if msg_performative == 'request' and actor_id is not None:
@@ -192,7 +193,7 @@ class PolicyInterceptor(BaseInternalGovernanceInterceptor):
 
         #Not found, so create a new one
         container_id = invocation.get_header_value('origin-container-id', None)
-        actor_id = invocation.get_header_value('ion-actor-id', 'anonymous')
+        actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, 'anonymous')
         requesting_message = invocation.get_header_value('format', 'Unknown')
 
         #TODO - investigate adding information about parent conversation when available

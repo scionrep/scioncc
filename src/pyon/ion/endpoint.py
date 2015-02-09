@@ -4,6 +4,7 @@
 
 __author__ = 'Michael Meisinger, David Stuebe, Dave Foster <dfoster@asascience.com>'
 
+from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES
 from pyon.net.transport import BaseTransport
 from pyon.net.endpoint import Publisher, Subscriber, EndpointUnit, process_interceptors, RPCRequestEndpointUnit, BaseEndpoint, RPCClient, RPCResponseEndpointUnit, RPCServer, PublisherEndpointUnit, SubscriberEndpointUnit
 from pyon.ion.event import BaseEventSubscriberMixin
@@ -110,23 +111,23 @@ class ProcessEndpointUnitMixin(EndpointUnit):
         header = {}
 
         # fwd on actor specific information, according to common message format spec
-        actor_id            = context.get('ion-actor-id', None)
-        actor_roles         = context.get('ion-actor-roles', None)
+        actor_id            = context.get(MSG_HEADER_ACTOR, None)
+        actor_roles         = context.get(MSG_HEADER_ROLES, None)
         actor_tokens        = context.get('ion-actor-tokens', None)
-        expiry              = context.get('expiry', None)
+        expiry              = context.get(MSG_HEADER_VALID, None)
         container_id        = context.get('origin-container-id', None)
         original_conv_id    = context.get('original-conv-id', None)
         conv_id             = context.get('conv-id', None)
 
         #If an actor-id is specified then there may be other associated data that needs to be passed on
         if actor_id:
-            header['ion-actor-id'] = actor_id
-            if actor_roles:     header['ion-actor-roles']   = actor_roles
+            header[MSG_HEADER_ACTOR] = actor_id
+            if actor_roles:     header[MSG_HEADER_ROLES]   = actor_roles
 
         #This set of tokens is set independently of the actor
         if actor_tokens:    header['ion-actor-tokens']   = actor_tokens
 
-        if expiry:          header['expiry']                = expiry
+        if expiry:          header[MSG_HEADER_VALID]                = expiry
         if container_id:    header['origin-container-id']   = container_id
 
         #Since this is not the originating message, this must be a requests within an existing conversation,

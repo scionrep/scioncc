@@ -9,14 +9,15 @@ from gevent import greenlet, Timeout
 from gevent.event import Event, AsyncResult
 from gevent.queue import Queue
 
-from pyon.util.log import log
-from pyon.core.thread import PyonThreadManager, PyonThread, ThreadManager, PyonThreadTraceback, PyonHeartbeatError
-from pyon.ion.service import BaseService
-from pyon.util.async import spawn
+from pyon.core import MSG_HEADER_ACTOR
+from pyon.core.bootstrap import CFG
 from pyon.core.exception import IonException, ContainerError
 from pyon.core.exception import Timeout as IonTimeout
+from pyon.core.thread import PyonThreadManager, PyonThread, ThreadManager, PyonThreadTraceback, PyonHeartbeatError
+from pyon.util.log import log
+from pyon.ion.service import BaseService
+from pyon.util.async import spawn
 from pyon.util.containers import get_ion_ts, get_ion_ts_millis
-from pyon.core.bootstrap import CFG
 
 STAT_INTERVAL_LENGTH = 60000  # Interval time for process saturation stats collection
 
@@ -552,5 +553,5 @@ def get_ion_actor_id(process):
     ion_actor_id = None
     if process:
         ctx = process.get_context()
-        ion_actor_id = ctx.get('ion-actor-id', None) if ctx else None
+        ion_actor_id = ctx.get(MSG_HEADER_ACTOR, None) if ctx else None
     return ion_actor_id

@@ -9,7 +9,7 @@ import sys
 import traceback
 from gevent import event as gevent_event
 
-from pyon.core import bootstrap
+from pyon.core import bootstrap, MSG_HEADER_ACTOR
 from pyon.core.bootstrap import CFG
 from pyon.core.exception import BadRequest, IonException, StreamException
 from pyon.datastore.datastore import DataStore
@@ -188,7 +188,7 @@ class EventPublisher(Publisher):
         try:
             if self.process:
                 ctx = self.process.get_context()
-                actor_id = ctx.get('ion-actor-id', None) or ""
+                actor_id = ctx.get(MSG_HEADER_ACTOR, None) or ""
         except Exception as ex:
             pass
 

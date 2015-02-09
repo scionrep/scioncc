@@ -15,6 +15,7 @@ from pyon.core.registry import getextends, is_ion_object_dict, issubtype
 from pyon.core.governance import DEFAULT_ACTOR_ID, get_role_message_headers, find_roles_by_actor
 from pyon.ion.resource import get_object_schema
 from pyon.public import IonObject, OT, NotFound, Inconsistent, BadRequest, EventSubscriber, log, CFG
+from pyon.public import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES
 from pyon.util.lru_cache import LRUCache
 from pyon.util.containers import current_time_millis
 
@@ -380,16 +381,16 @@ class ServiceGateway(object):
     # Service call (messaging) helpers
 
     def _get_gateway_headers(self):
-        return {"ion-actor-id": self.name, 'expiry': DEFAULT_EXPIRY}
+        return {MSG_HEADER_ACTOR: self.name, MSG_HEADER_VALID: DEFAULT_EXPIRY}
 
     def build_message_headers(self, ion_actor_id, expiry):
         headers = dict()
-        headers['ion-actor-id'] = ion_actor_id
-        headers['expiry'] = expiry
+        headers[MSG_HEADER_ACTOR] = ion_actor_id
+        headers[MSG_HEADER_VALID] = expiry
 
         # If this is an anonymous requester then there are no roles associated with the request
         if ion_actor_id == DEFAULT_ACTOR_ID:
-            headers['ion-actor-roles'] = dict()
+            headers[MSG_HEADER_ROLES] = dict()
             return headers
 
         try:
@@ -397,7 +398,7 @@ class ServiceGateway(object):
             if self.user_role_cache.has_key(ion_actor_id):
                 role_header = self.user_role_cache.get(ion_actor_id)
                 if role_header is not None:
-                    headers['ion-actor-roles'] = role_header
+                    headers[MSG_HEADER_ROLES] = role_header
                     return headers
 
             # The user's roles were not cached so hit the datastore to find it.

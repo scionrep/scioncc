@@ -9,6 +9,9 @@ __all__ = []
 from pyon.core import exception as iex
 __all__ += ['iex']
 
+from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_VALID
+__all__ += ['MSG_HEADER_ACTOR', 'MSG_HEADER_ROLES', 'MSG_HEADER_VALID']
+
 from pyon.core.bootstrap import get_obj_registry, IonObject, get_sys_name, CFG
 __all__ += ['get_obj_registry', 'IonObject', 'get_sys_name', 'CFG']
 

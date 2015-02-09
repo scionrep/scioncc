@@ -5,7 +5,7 @@ __author__ = 'Thomas R. Lennan, Michael Meisinger, Stephen Henrie'
 
 from pyon.core.governance import MODERATOR_ROLE, OPERATOR_ROLE, GovernanceHeaderValues, has_org_role
 from pyon.ion.resregistry import ResourceRegistryServiceWrapper
-from pyon.public import log, OT, RT, PRED, Inconsistent
+from pyon.public import log, OT, RT, PRED, Inconsistent, MSG_HEADER_ACTOR
 
 from interface.services.core.iresource_registry_service import BaseResourceRegistryService
 
@@ -189,7 +189,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
         elif resource.type_ == 'UserInfo':
             actor_identity,_ = self.resource_registry.find_subjects(subject_type=RT.ActorIdentity,
                                                                     predicate=PRED.hasInfo, object=resource_id, id_only=False)
-            if actor_identity[0]._id == headers['ion-actor-id']:
+            if actor_identity[0]._id == headers[MSG_HEADER_ACTOR]:
                 return True, ''
         # Allow actor to add attachment to any resource in an org where the actor has appropriate role
         else:
@@ -220,7 +220,7 @@ class ResourceRegistryService(BaseResourceRegistryService):
         elif resource.type_ == 'UserInfo':
             actor_identity,_ = self.resource_registry.find_subjects(subject_type=RT.ActorIdentity,
                                                                     predicate=PRED.hasInfo, object=resource_id, id_only=False)
-            if actor_identity[0]._id == headers['ion-actor-id']:
+            if actor_identity[0]._id == headers[MSG_HEADER_ACTOR]:
                 return True, ''
         # Allow actor to add attachment to any resource in an org where the actor has appropriate role
         else:
