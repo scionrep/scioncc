@@ -5,9 +5,7 @@ docstring: |
   to provide access to the resources of an Org to enrolled or affiliated entities (identities). Contains
   contract and commitment repository
 
-spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+COI+OV+Org+Management+Service
-
-dependencies: [policy_management,resource_registry]
+dependencies: [resource_registry]
 
 methods:
   #@AlwaysVerifyPolicy
@@ -98,7 +96,6 @@ methods:
       role_name: ""
       force_removal: False
     out:
-      success: True
     throws:
       NotFound: object with specified name does not exist
 
@@ -489,4 +486,3 @@ methods:
       success: True
     throws:
       NotFound: object with specified id does not exist
-

@@ -1,22 +1,16 @@
 #!/usr/bin/env python
 
-"""Provides the interface to define and manage policy and a repository to store and retrieve policy
-and templates for policy definitions, aka attribute authority.
-
-@see https://confluence.oceanobservatories.org/display/syseng/CIAD+COI+OV+Policy+Management+Service
-"""
+"""Define and manage policy and a repository to store and retrieve policy
+and templates for policy definitions, aka attribute authority."""
 
 __author__ = 'Stephen P. Henrie'
 
+from pyon.public import PRED, RT, OT, IonObject, NotFound, BadRequest, Inconsistent, log, EventPublisher
+from pyon.util.containers import is_basic_identifier, create_basic_identifier
+from pyon.ion.endpoint import ProcessEventSubscriber
 
 from interface.services.core.ipolicy_management_service import BasePolicyManagementService
-from pyon.core.exception import NotFound, BadRequest, Inconsistent
-from pyon.public import PRED, RT, Container, CFG, OT, IonObject
-from pyon.util.containers import is_basic_identifier, create_basic_identifier
-from pyon.util.log import log
-from pyon.ion.event import EventPublisher
-from pyon.ion.endpoint import ProcessEventSubscriber
-from ion.util.related_resources_crawler import RelatedResourcesCrawler
+
 
 class PolicyManagementService(BasePolicyManagementService):
 
@@ -35,16 +29,31 @@ class PolicyManagementService(BasePolicyManagementService):
                                                               process=self)
         self._process.add_endpoint(self.policy_event_subscriber)
 
+    def _policy_event_callback(self, *args, **kwargs):
+        """
+        This method is a callback function for receiving Policy Events.
+        """
+        policy_event = args[0]
+        policy_id = policy_event.origin
+        log.debug("Policy modified: %s", str(policy_event.__dict__))
+
+        try:
+            policy = self.clients.resource_registry.read(policy_id)
+            if policy:
+                self._publish_policy_event(policy)
+
+        except Exception as ex:
+            # If this is a delete operation, then don't bother with not finding the object. Should be handled by
+            # delete_policy operation
+            if policy_event.sub_type != 'DELETE':
+                log.error(ex)
+
+    # -------------------------------------------------------------------------
+    # Policy management
+
     def create_resource_access_policy(self, resource_id='', policy_name='', description='', policy_rule=''):
         """Helper operation for creating an access policy for a specific resource. The id string returned
         is the internal id by which Policy will be identified in the data store.
-
-        @param resource_id    str
-        @param policy_name    str
-        @param description    str
-        @param policy_rule    str
-        @retval policy_id    str
-        @throws BadRequest    If any of the paramaters are not set.
         """
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
@@ -72,13 +81,6 @@ class PolicyManagementService(BasePolicyManagementService):
     def create_service_access_policy(self, service_name='', policy_name='', description='', policy_rule=''):
         """Helper operation for creating an access policy for a specific service. The id string returned
         is the internal id by which Policy will be identified in the data store.
-
-        @param service_name    str
-        @param policy_name    str
-        @param description    str
-        @param policy_rule    str
-        @retval policy_id    str
-        @throws BadRequest    If any of the paramaters are not set.
         """
         if not service_name:
             raise BadRequest("The service_name parameter is missing")
@@ -102,12 +104,6 @@ class PolicyManagementService(BasePolicyManagementService):
     def create_common_service_access_policy(self, policy_name='', description='', policy_rule=''):
         """Helper operation for creating a service access policy common to all services. The id string returned
         is the internal id by which Policy will be identified in the data store.
-
-        @param policy_name    str
-        @param description    str
-        @param policy_rule    str
-        @retval policy_id    str
-        @throws BadRequest    If any of the paramaters are not set.
         """
 
         if not policy_name:
@@ -131,12 +127,6 @@ class PolicyManagementService(BasePolicyManagementService):
         """Helper operation for adding a precondition policy for a specific process operation; could be a service or agent.
         The id string returned is the internal id by which Policy will be identified in the data store. The precondition
         method must return a tuple (boolean, string).
-
-        @param process_name    str
-        @param op    str
-        @param policy_content    str
-        @retval policy_id    str
-        @throws BadRequest    If any of the parameters are not set.
         """
         if not process_name:
             raise BadRequest("The process_name parameter is missing")
@@ -179,10 +169,6 @@ class PolicyManagementService(BasePolicyManagementService):
     def create_policy(self, policy=None):
         """Persists the provided Policy object The id string returned
         is the internal id by which Policy will be identified in the data store.
-
-        @param policy    Policy
-        @retval policy_id    str
-        @throws BadRequest    if object passed has _id or _rev attribute
         """
 
         if not policy:
@@ -210,11 +196,6 @@ class PolicyManagementService(BasePolicyManagementService):
         an existing version of Policy is not found.  Throws Conflict if
         the provided Policy object is not based on the latest persisted
         version of the object.
-
-        @param policy    Policy
-        @throws NotFound    object with specified id does not exist
-        @throws BadRequest    if object does not have _id or _rev attribute
-        @throws Conflict    object not based on latest persisted object version
         """
 
         if not policy:
@@ -229,10 +210,6 @@ class PolicyManagementService(BasePolicyManagementService):
         """Returns the Policy object for the specified policy id.
         Throws exception if id does not match any persisted Policy
         objects.
-
-        @param policy_id    str
-        @retval policy    Policy
-        @throws NotFound    object with specified id does not exist
         """
         if not policy_id:
             raise BadRequest("The policy_id parameter is missing")
@@ -245,9 +222,6 @@ class PolicyManagementService(BasePolicyManagementService):
     def delete_policy(self, policy_id=''):
         """For now, permanently deletes Policy object with the specified
         id. Throws exception if id does not match any persisted Policy.
-
-        @param policy_id    str
-        @throws NotFound    object with specified id does not exist
         """
         if not policy_id:
             raise BadRequest("The policy_id parameter is missing")
@@ -267,9 +241,6 @@ class PolicyManagementService(BasePolicyManagementService):
 
     def enable_policy(self, policy_id=''):
         """Sets a flag to enable the use of the policy
-
-        @param policy_id    str
-        @throws NotFound    object with specified id does not exist
         """
         policy = self.read_policy(policy_id)
         policy.enabled = True
@@ -278,9 +249,6 @@ class PolicyManagementService(BasePolicyManagementService):
 
     def disable_policy(self, policy_id=''):
         """Resets a flag to disable the use of the policy
-
-        @param policy_id    str
-        @throws NotFound    object with specified id does not exist
         """
         policy = self.read_policy(policy_id)
         policy.enabled = False
@@ -290,14 +258,7 @@ class PolicyManagementService(BasePolicyManagementService):
 
     def add_resource_policy(self, resource_id='', policy_id=''):
         """Associates a policy to a specific resource
-
-        @param resource_id    str
-        @param policy_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
-
-
         resource, policy = self._add_resource_policy(resource_id, policy_id)
 
         return True
@@ -305,11 +266,6 @@ class PolicyManagementService(BasePolicyManagementService):
 
     def remove_resource_policy(self, resource_id='', policy_id=''):
         """Removes an association for a policy to a specific resource
-
-        @param resource_id    str
-        @param policy_id    str
-        @retval success    bool
-        @throws NotFound    object with specified id does not exist
         """
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
@@ -329,9 +285,10 @@ class PolicyManagementService(BasePolicyManagementService):
 
         return True
 
-    #Internal helper function for removing a policy resource association and publish event for containers to update
-    def _add_resource_policy(self, resource_id, policy_id, publish_event=True):
 
+    def _add_resource_policy(self, resource_id, policy_id, publish_event=True):
+        """Removing a policy resource association and publish event for containers to update
+        """
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
 
@@ -348,7 +305,7 @@ class PolicyManagementService(BasePolicyManagementService):
 
         aid = self.clients.resource_registry.create_association(resource, PRED.hasPolicy, policy)
 
-        #Publish an event that the resource policy has changed
+        # Publish an event that the resource policy has changed
         if publish_event:
             self._publish_resource_policy_event(policy, resource)
 
@@ -361,29 +318,11 @@ class PolicyManagementService(BasePolicyManagementService):
 
         self.clients.resource_registry.delete_association(aid)
 
-        #Publish an event that the resource policy has changed
+        # Publish an event that the resource policy has changed
         self._publish_resource_policy_event(policy, resource)
 
 
 
-    def _policy_event_callback(self, *args, **kwargs):
-        """
-        This method is a callback function for receiving Policy Events.
-        """
-        policy_event = args[0]
-        policy_id = policy_event.origin
-        log.debug("Policy modified: %s" ,  str(policy_event.__dict__))
-
-        try:
-            policy = self.clients.resource_registry.read(policy_id)
-            if policy:
-                self._publish_policy_event(policy)
-
-        except Exception, e:
-            #If this is a delete operation, then don't bother with not finding the object. Should be handled by
-            #delete_policy operation
-            if policy_event.sub_type != 'DELETE':
-                log.error(e)
 
     def _publish_policy_event(self, policy, delete_policy=False):
 
@@ -443,10 +382,6 @@ class PolicyManagementService(BasePolicyManagementService):
 
     def find_resource_policies(self, resource_id=''):
         """Finds all policies associated with a specific resource
-
-        @param resource_id    str
-        @retval policy_list    list
-        @throws NotFound    object with specified id does not exist
         """
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
@@ -463,10 +398,6 @@ class PolicyManagementService(BasePolicyManagementService):
 
     def _find_resources_for_policy(self, policy_id=''):
         """Finds all resources associated with a specific policy
-
-        @param policy_id    str
-        @retval resource_list    list
-        @throws NotFound    object with specified id does not exist
         """
         resource_list,_ = self.clients.resource_registry.find_subjects(None, PRED.hasPolicy, policy_id)
 
@@ -476,15 +407,9 @@ class PolicyManagementService(BasePolicyManagementService):
     def get_active_resource_access_policy_rules(self, resource_id='', org_name=''):
         """Generates the set of all enabled access policies for the specified resource within the specified Org. If the org_name
         is not provided, then the root ION Org will be assumed.
-
-        @param resource_id    str
-        @param org_name    str
-        @retval policy_rules    str
-        @throws NotFound    object with specified id does not exist
         """
         if not resource_id:
             raise BadRequest("The resource_id parameter is missing")
-
 
         #TODO - extend to handle Org specific service policies at some point.
 
@@ -496,7 +421,7 @@ class PolicyManagementService(BasePolicyManagementService):
 
         resource_id_list = self._get_related_resource_ids(resource)
 
-        if not len(resource_id_list):
+        if not resource_id_list:
             resource_id_list.append(resource_id)
 
         log.debug("Retrieving policies for resources: %s", resource_id_list)
@@ -509,58 +434,17 @@ class PolicyManagementService(BasePolicyManagementService):
                     log.debug("Including policy: %s", p.name)
                     rules += p.policy_type.policy_rule
 
-
         return rules
 
     def _get_related_resource_ids(self, resource):
-
+        """For given resource object, find related resources based on type"""
         resource_id_list = []
-
-        #Include related resource policies for specific resource types
-        #TODO - this is the first attempt at this... may have to iterate on this
-        if resource.type_ == RT.InstrumentDevice:
-            resource_types = [RT.InstrumentModel, RT.InstrumentSite, RT.PlatformDevice, RT.PlatformSite, RT.Subsite, RT.Observatory, RT.Org]
-            predicate_set = {PRED.hasModel: (True, True), PRED.hasDevice: (False, True), PRED.hasSite: (False, True), PRED.hasResource: (False, True)}
-            resource_id_list.extend(self._crawl_related_resources(resource_id=resource._id, resource_types=resource_types, predicate_set=predicate_set))
-
-        elif resource.type_ == RT.PlatformDevice:
-            resource_types = [RT.PlatformModel, RT.PlatformDevice, RT.PlatformSite, RT.Subsite, RT.Observatory, RT.Org]
-            predicate_set = {PRED.hasModel: (True, True), PRED.hasDevice: (False, True) , PRED.hasSite: (False, True), PRED.hasResource: (False, True)}
-            resource_id_list.extend(self._crawl_related_resources(resource_id=resource._id, resource_types=resource_types, predicate_set=predicate_set))
-        else:
-            #For anything else attempt to add Observatory by default
-            resource_types = [ RT.Observatory, RT.Org]
-            predicate_set = {PRED.hasSite: (False, True), PRED.hasResource: (False, True)}
-            resource_id_list.extend(self._crawl_related_resources(resource_id=resource._id, resource_types=resource_types, predicate_set=predicate_set))
-
         return resource_id_list
 
-    def _crawl_related_resources(self, resource_id, resource_types=None, predicate_set=None):
-        """
-        An internal helper function to generate a unique list of related resources
-        @return:
-        """
-        resource_types = resource_types if resource_types is not None else []
-        predicate_set = predicate_set if predicate_set is not None else {}
-        r = RelatedResourcesCrawler()
-        test_real_fn = r.generate_get_related_resources_fn(self.clients.resource_registry, resource_whitelist=resource_types, predicate_dictionary=predicate_set)
-        related_objs = test_real_fn(resource_id)
-
-        unique_ids = []
-        for i in related_objs:
-            if i.o not in unique_ids: unique_ids.append(i.o)
-            if i.s not in unique_ids: unique_ids.append(i.s)
-
-        return unique_ids
 
     def get_active_service_access_policy_rules(self, service_name='', org_name=''):
         """Generates the set of all enabled access policies for the specified service within the specified Org. If the org_name
         is not provided, then the root ION Org will be assumed.
-
-        @param service_name    str
-        @param org_name    str
-        @retval policy_rules    str
-        @throws NotFound    object with specified id does not exist
         """
         #TODO - extend to handle Org specific service policies at some point.
 
@@ -582,16 +466,9 @@ class PolicyManagementService(BasePolicyManagementService):
     def get_active_process_operation_preconditions(self, process_name='', op='', org_name=''):
         """Generates the set of all enabled precondition policies for the specified process operation within the specified
         Org; could be a service or resource agent. If the org_name is not provided, then the root ION Org will be assumed.
-
-        @param process_name    str
-        @param op    str
-        @param org_name    str
-        @retval preconditions    list
-        @throws NotFound    object with specified id does not exist
         """
         if not process_name:
             raise BadRequest("The process_name parameter is missing")
-
 
         #TODO - extend to handle Org specific service policies at some point.
 
@@ -608,7 +485,7 @@ class PolicyManagementService(BasePolicyManagementService):
 
         return preconditions
 
-    #Local helper functions for testing policies - do not remove
+    # Local helper functions for testing policies - do not remove
 
     def func1_pass(self, msg, header):
         return True, ''
@@ -616,96 +493,3 @@ class PolicyManagementService(BasePolicyManagementService):
     def func2_deny(self,  msg, header):
         return False, 'Denied for no reason'
 
-
-
-    #
-    #  ROLE CRUD Operations
-    #
-
-
-    def create_role(self, user_role=None):
-        """Persists the provided UserRole object. The name of a role can only contain
-        alphanumeric and underscore characters while the description can me human
-        readable. The id string returned is the internal id by which a UserRole will
-        be indentified in the data store.
-
-        @param user_role    UserRole
-        @retval user_role_id    str
-        @throws BadRequest    if object passed has _id or _rev attribute
-        """
-
-        if not user_role:
-            raise BadRequest("The user_role parameter is missing")
-
-        #If this governance identifier is not set, then set to a safe version of the policy name.
-        if not user_role.governance_name:
-            user_role.governance_name = create_basic_identifier(user_role.name)
-
-        if not is_basic_identifier(user_role.governance_name):
-            raise BadRequest("The governance_name field '%s' can only contain alphanumeric and underscore characters" % user_role.governance_name)
-
-        user_role_id, version = self.clients.resource_registry.create(user_role)
-        return user_role_id
-
-    def update_role(self, user_role=None):
-        """Updates the provided UserRole object.  The name of a role can only contain
-        alphanumeric and underscore characters while the description can me human
-        readable.Throws NotFound exception if an existing version of UserRole is
-        not found.  Throws Conflict if the provided UserRole object is not based on
-        the latest persisted version of the object.
-
-        @param user_role    UserRole
-        @retval success    bool
-        @throws BadRequest    if object does not have _id or _rev attribute
-        @throws NotFound    object with specified id does not exist
-        @throws Conflict    object not based on latest persisted object version
-        """
-
-
-        if not user_role:
-            raise BadRequest("The user_role parameter is missing")
-
-        #If this governance identifier is not set, then set to a safe version of the policy name.
-        if not user_role.governance_name:
-            user_role.governance_name = create_basic_identifier(user_role.name)
-
-        if not is_basic_identifier(user_role.governance_name):
-            raise BadRequest("The governance_name field '%s' can only contain alphanumeric and underscore characters" % user_role.governance_name)
-
-        self.clients.resource_registry.update(user_role)
-
-    def read_role(self, user_role_id=''):
-        """Returns the UserRole object for the specified role id.
-        Throws exception if id does not match any persisted UserRole
-        objects.
-
-        @param user_role_id    str
-        @retval user_role    UserRole
-        @throws NotFound    object with specified id does not exist
-        """
-        if not user_role_id:
-            raise BadRequest("The user_role_id parameter is missing")
-
-        user_role = self.clients.resource_registry.read(user_role_id)
-        if not user_role:
-            raise NotFound("Role %s does not exist" % user_role_id)
-        return user_role
-
-    def delete_role(self, user_role_id=''):
-        """For now, permanently deletes UserRole object with the specified
-        id. Throws exception if id does not match any persisted UserRole.
-
-        @throws NotFound    object with specified id does not exist
-        """
-        if not user_role_id:
-            raise BadRequest("The user_role_id parameter is missing")
-
-        user_role = self.clients.resource_registry.read(user_role_id)
-        if not user_role:
-            raise NotFound("Role %s does not exist" % user_role_id)
-
-        alist,_ = self.clients.resource_registry.find_subjects(RT.ActorIdentity, PRED.hasRole, user_role)
-        if len(alist) > 0:
-            raise BadRequest('The User Role %s cannot be removed as there are %s users associated to it' % (user_role.name, str(len(alist))))
-
-        self.clients.resource_registry.delete(user_role_id)

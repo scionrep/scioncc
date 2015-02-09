@@ -81,6 +81,9 @@ class OrgManagementService(BaseOrgManagementService):
             raise BadRequest("Resource with given id is not an UserRole -- SPOOFING ALERT")
         return user_role
 
+    # -------------------------------------------------------------------------
+    # Org management (CRUD)
+
     def create_org(self, org=None):
         """Creates an Org based on the provided object. The id string returned
         is the internal id by which Org will be identified in the data store.
@@ -166,15 +169,16 @@ class OrgManagementService(BaseOrgManagementService):
         name does not exist. Throws exception if either id does not exist.
         """
         org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
+        self._validate_resource_obj("user_role", user_role, RT.UserRole, checks="noid,name")
+        if not is_basic_identifier(user_role.governance_name):
+            raise BadRequest("Invalid role governance_name")
 
-        if not user_role:
-            raise BadRequest("The user_role argument is missing")
+        user_role.org_governance_name = org_obj.org_governance_name
 
         if self._find_role(org_id, user_role.governance_name) is not None:
             raise BadRequest("The user role '%s' is already associated with this Org" % user_role.governance_name)
 
-        user_role.org_governance_name = org_obj.org_governance_name
-        user_role_id = self.clients.policy_management.create_role(user_role)
+        user_role_id, _ = self.rr.create(user_role)
 
         self.rr.create_association(org_obj, PRED.hasRole, user_role_id)
 
@@ -202,7 +206,7 @@ class OrgManagementService(BaseOrgManagementService):
 
         self.rr.delete_association(aid)
 
-        return True
+        self.rr.delete(user_role._id)
 
     def find_org_role_by_name(self, org_id='', role_name=''):
         """Returns the User Role object for the specified name in the Org.
@@ -868,7 +872,7 @@ class OrgManagementService(BaseOrgManagementService):
             if neg_list:
                 return True
 
-        except Exception, e:
+        except Exception as ex:
             log.error('is_enroll_negotiation_open: %s for org_id:%s and actor_id:%s' % (e.message, org_id, actor_id))
 
         return False
