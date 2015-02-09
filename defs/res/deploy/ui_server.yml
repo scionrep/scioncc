@@ -1,0 +1,27 @@
+type: release
+name: basic
+version: 0.1
+description: SciON basic services
+ion: 2.0
+apps:
+  ##################################
+  # STANDALONE DEPENDENCIES
+  # Dependencies not needed in production to start the UI standalone after a force clean
+  # for local testing
+  ##################################
+
+  - name: resource_registry
+    processapp: [resource_registry, ion.services.resource_registry_service, ResourceRegistryService]
+    bootlevel: 5
+    replicas: 1
+
+
+  ##################################
+  # UI SERVER
+  # Running a HTTP server, serving static UI content and optionally running a service
+  # gateway
+  ##################################
+
+  - name: ui_server
+    processapp: [ui_server, ion.processes.ui.server, UIServer]
+    bootlevel: 30

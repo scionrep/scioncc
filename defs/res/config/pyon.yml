@@ -227,6 +227,18 @@ process:
     - event_type: TimerEvent
     - event_type: SchedulerEvent
 
+  ui_server:
+    server:
+      enabled: true
+      hostname: localhost
+      port: 4000
+      secret: ""
+      socket_io: false
+      log_access: true
+      log_errors: true
+    service_gateway: true
+    extensions: []   # A list of fully qualified class names implementing the UIExtension interface
+
 
 # ----------------------------------------------------------------------------------
 # The "service" root entry
@@ -235,11 +247,12 @@ service:
     max_search_results: 250
 
   service_gateway:
-    web_server:
-      port: 5000
     trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
-    user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
-    service_blacklist: []    # Names of services not accessible via the gateway
     service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible
+    service_blacklist: []    # Names of services not accessible via the gateway. Applies after white list
+    user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
+    develop_mode: true
 
 units: res/config/units/udunits2.xml
+
+

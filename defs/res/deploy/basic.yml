@@ -85,9 +85,6 @@ apps:
 
   # LAST SERVICE GATEWAY SERVICE
   #
-  # Note the use of node_exclusive policy parameter. This is to prevent multiple
-  # service gateway workers from being scheduled onto the same VM, because they
-  # all attempt to bind the same port.
-  - name: service_gateway
-    processapp: [service_gateway, ion.services.service_gateway_service, ServiceGatewayService]
+  - name: ui_server
+    processapp: [ui_server, ion.processes.ui.server, UIServer]
     bootlevel: 30
