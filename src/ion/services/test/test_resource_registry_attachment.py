@@ -20,9 +20,7 @@ class TestResourceRegistryAttachments(IonIntegrationTestCase):
         #print 'started container'
 
         self.container.start_rel_from_url('res/deploy/basic.yml')
-        self.RR  = ResourceRegistryServiceClient(node=self.container.node)
-
-        print 'started services'
+        self.RR  = ResourceRegistryServiceClient()
 
     def test_resource_registry_blob_sanity(self):
         resource_id, _ = self.RR.create(IonObject(RT.Resource, name="foo"))

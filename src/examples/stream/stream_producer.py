@@ -50,7 +50,7 @@ class StreamProducer(SimpleProcess):
         # Create scoped exchange name
         XP = '.'.join([bootstrap.get_sys_name(), 'data'])
 
-        pub = ProcessPublisher(node=self.container.node, name=(XP,routing_key), process=self)
+        pub = ProcessPublisher(name=(XP,routing_key), process=self)
         num = 1
         while True:
             msg = dict(num=str(num))

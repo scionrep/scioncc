@@ -77,8 +77,8 @@ class GovernanceController(object):
             self.policy_event_subscriber = EventSubscriber(event_type=OT.PolicyEvent, callback=self.policy_event_callback)
             self.policy_event_subscriber.start()
 
-            self.rr_client = ResourceRegistryServiceProcessClient(node=self.container.node, process=self.container)
-            self.policy_client = PolicyManagementServiceProcessClient(node=self.container.node, process=self.container)
+            self.rr_client = ResourceRegistryServiceProcessClient(process=self.container)
+            self.policy_client = PolicyManagementServiceProcessClient(process=self.container)
 
             self._policy_snapshot = self._get_policy_snapshot()
             self._log_policy_update("start_governance_ctrl", message="Container start")

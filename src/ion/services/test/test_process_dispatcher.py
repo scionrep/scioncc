@@ -291,7 +291,7 @@ class ProcessDispatcherServiceIntTest(IonIntegrationTestCase):
         self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.rr_cli = ResourceRegistryServiceClient()
-        self.pd_cli = ProcessDispatcherServiceClient(node=self.container.node)
+        self.pd_cli = ProcessDispatcherServiceClient()
 
         self.process_definition = ProcessDefinition(name='test_process')
         self.process_definition.executable = {'module': 'ion.services.test.test_process_dispatcher',

@@ -309,7 +309,7 @@ class TestGovernanceHeaders(IonIntegrationTestCase):
         #Instantiate a process to represent the test
         process=GovernanceTestProcess()
 
-        self.rr_client = ResourceRegistryServiceProcessClient(node=self.container.node, process=process)
+        self.rr_client = ResourceRegistryServiceProcessClient(process=process)
 
         #Get info on the ION System Actor
         self.system_actor = get_system_actor()
@@ -464,18 +464,18 @@ class TestGovernanceInt(IonIntegrationTestCase):
 
         gevent.sleep(self.SLEEP_TIME*2)  # Wait for events to be fired and policy updated
 
-        self.rr_msg_client = ResourceRegistryServiceProcessClient(node=self.container.node, process=process)
+        self.rr_msg_client = ResourceRegistryServiceProcessClient(process=process)
         self.rr_client = ResourceRegistryServiceWrapper(self.container.resource_registry, process)
 
-        self.id_client = IdentityManagementServiceProcessClient(node=self.container.node, process=process)
+        self.id_client = IdentityManagementServiceProcessClient(process=process)
 
-        self.pol_client = PolicyManagementServiceProcessClient(node=self.container.node, process=process)
+        self.pol_client = PolicyManagementServiceProcessClient(process=process)
 
-        self.org_client = OrgManagementServiceProcessClient(node=self.container.node, process=process)
+        self.org_client = OrgManagementServiceProcessClient(process=process)
 
-        self.ems_client = ExchangeManagementServiceProcessClient(node=self.container.node, process=process)
+        self.ems_client = ExchangeManagementServiceProcessClient(process=process)
 
-        self.sys_management = SystemManagementServiceProcessClient(node=self.container.node, process=process)
+        self.sys_management = SystemManagementServiceProcessClient(process=process)
 
 
         #Get info on the ION System Actor

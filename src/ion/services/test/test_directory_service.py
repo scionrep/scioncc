@@ -18,7 +18,7 @@ class TestDirectoryService(IonIntegrationTestCase):
         self.container.start_rel_from_url('res/deploy/basic.yml')
 
         # Now create client to bank service
-        self.directory_service = DirectoryServiceClient(node=self.container.node)
+        self.directory_service = DirectoryServiceClient()
 
     def test_directory_service(self):
         # Lookup of non-existent entry is benign

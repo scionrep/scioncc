@@ -272,7 +272,7 @@ class TestEventsInt(IonIntegrationTestCase):
             ar.set(args[0])
 
         sub = EventSubscriber(event_type="ResourceEvent", origin="specific", callback=cb)
-        pub = EventPublisher(event_type="ResourceEvent", node=self.container.node)
+        pub = EventPublisher(event_type="ResourceEvent")
 
         self._listen(sub)
 

@@ -30,7 +30,7 @@ class HelloClientProcess(ImmediateProcess):
         hello_client(self.container, actor_id, text )
 
         if container_name:
-            cc_client = ContainerAgentProcessClient(node=self.container.node, process=self, name=container_name)
+            cc_client = ContainerAgentProcessClient(process=self, name=container_name)
             cc_client.stop()
 
 

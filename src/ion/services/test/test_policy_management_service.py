@@ -179,7 +179,7 @@ class TestPolicyManagementServiceInt(IonIntegrationTestCase):
         self._start_container()
         self.container.start_rel_from_url('res/deploy/basic.yml')
 
-        self.policy_management_service = PolicyManagementServiceClient(node=self.container.node)
+        self.policy_management_service = PolicyManagementServiceClient()
 
     def test_policy_crud(self):
 

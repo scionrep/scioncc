@@ -447,7 +447,7 @@ class ContainerAgentCapability(ContainerCapability):
     def start(self):
         # Start the CC-Agent API
         listen_name = self.container.create_xn_process(self.container.name)
-        rsvc = ProcessRPCServer(node=self.container.node, from_name=listen_name, service=self.container, process=self.container)
+        rsvc = ProcessRPCServer(from_name=listen_name, service=self.container, process=self.container)
 
         # Start an ION process with the right kind of endpoint factory
         proc = self.container.proc_manager.proc_sup.spawn(name=self.container.name, listeners=[rsvc], service=self.container)

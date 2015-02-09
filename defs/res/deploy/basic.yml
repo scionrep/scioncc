@@ -61,8 +61,6 @@ apps:
   # HIGHER LEVEL SERVICES
   ##################################
 
-  ##### COI SERVICES
-
   - name: resource_management
     processapp: [resource_management, ion.services.resource_management_service, ResourceManagementService]
     bootlevel: 10
@@ -83,8 +81,10 @@ apps:
       bootstrap_plugins:
         - plugin: [ion.processes.bootstrap.plugins.bootstrap_policy, BootstrapPolicy]
 
-  # LAST SERVICE GATEWAY SERVICE
-  #
+  ##################################
+  # UI SERVER AND SERVICE GATEWAY
+  ##################################
+
   - name: ui_server
     processapp: [ui_server, ion.processes.ui.server, UIServer]
     bootlevel: 30

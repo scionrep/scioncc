@@ -21,8 +21,8 @@ class TestOrgManagementServiceInt(IonIntegrationTestCase):
         self._start_container()
         self.container.start_rel_from_url('res/deploy/basic.yml')
 
-        self.resource_registry = ResourceRegistryServiceClient(node=self.container.node)
-        self.org_management_service = OrgManagementServiceClient(node=self.container.node)
+        self.resource_registry = ResourceRegistryServiceClient()
+        self.org_management_service = OrgManagementServiceClient()
 
     def test_org_management(self):
         # CRUD

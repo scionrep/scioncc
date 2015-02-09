@@ -7,6 +7,7 @@ import time
 import inspect, ast, sys, traceback, string
 import json, simplejson
 from flask import Blueprint, request, abort
+import flask
 
 from pyon.core.object import IonObjectBase
 from pyon.core.exception import Unauthorized
@@ -38,6 +39,7 @@ DEFAULT_SG_ROUTE = "/service"
 SG_URL_PREFIX = CFG.get_safe(CFG_PREFIX + '.url_prefix') or DEFAULT_SG_ROUTE
 DEFAULT_USER_CACHE_SIZE = 2000
 DEFAULT_EXPIRY = '0'
+SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
 
 # Flask blueprint for service gateway routes
 sg_blueprint = Blueprint("service_gateway", __name__)
@@ -64,6 +66,7 @@ class ServiceGateway(object):
         self.config = config
         self.response_class = response_class
 
+        self.url_prefix = SG_URL_PREFIX
         self.develop_mode = self.config.get_safe(CFG_PREFIX + '.develop_mode') is True
 
         # Optional list of trusted originators can be specified in config.
@@ -131,7 +134,7 @@ class ServiceGateway(object):
     # Routes
 
     def sg_index(self):
-        return self.gateway_json_response("ScionCC/service_gateway/1.0")
+        return self.gateway_json_response(SG_IDENTIFICATION)
 
     def process_gateway_request(self, service_name=None, operation=None):
         """
@@ -311,21 +314,26 @@ class ServiceGateway(object):
         actor_id = DEFAULT_ACTOR_ID
         expiry = DEFAULT_EXPIRY
         authtoken = ""
-        if json_params:
-            if 'requester' in json_params:
-                actor_id = json_params['requester']
-            if 'expiry' in json_params:
-                expiry = json_params['expiry']
-            if 'authtoken' in json_params:
-                authtoken = json_params['authtoken']
+        if flask.session.get("actor_id", None):
+            # Get info from current session
+            actor_id = flask.session["actor_id"]
+            expiry = str(int(flask.session.get("valid_until", 0)) * 1000)
+            log.info("Request associated with session actor_id=%s, expiry=%s", actor_id, expiry)
 
-        else:
-            if 'requester' in request.args:
-                actor_id = str(request.args['requester'])
-            if 'expiry' in request.args:
-                expiry = str(request.args['expiry'])
-            if 'authtoken' in request.args:
-                authtoken = str(request.args['authtoken'])
+        # Try to find auth token override
+        # Check in headers for OAuth bearer token
+        auth_hdr = request.headers.get("authorization", None)
+        if auth_hdr:
+            token_parts = auth_hdr.split(" ")
+            if len(token_parts) == 2 and token_parts[0].lower() == "bearer":
+                authtoken = token_parts[1]
+        if not authtoken:
+            if json_params:
+                if 'authtoken' in json_params:
+                    authtoken = json_params['authtoken']
+            else:
+                if 'authtoken' in request.args:
+                    authtoken = str(request.args['authtoken'])
 
         # Enable temporary authentication tokens to resolve to actor ids
         if authtoken:
@@ -333,7 +341,7 @@ class ServiceGateway(object):
                 token_info = self.idm_client.check_authentication_token(authtoken, headers=self._get_gateway_headers())
                 actor_id = token_info.get("actor_id", actor_id)
                 expiry = token_info.get("expiry", expiry)
-                log.info("Resolved token %s into actor id=%s expiry=%s", authtoken, actor_id, expiry)
+                log.info("Resolved token %s into actor_id=%s expiry=%s", authtoken, actor_id, expiry)
             except NotFound:
                 log.info("Provided authentication token not found: %s", authtoken)
             except Unauthorized:

@@ -550,7 +550,7 @@ class GovernanceIntTest(IonIntegrationTestCase):
         hello3 = self.container.spawn_process('hello_service3','examples.service.hello_service','HelloService' )
         #self.addCleanup(self.container.terminate_process, hello3)
 
-        client = HelloServiceProcessClient(node=self.container.node, process=self.gov_client)
+        client = HelloServiceProcessClient(process=self.gov_client)
 
         actor_id='anonymous'
         text='mytext 123'
