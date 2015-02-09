@@ -5,17 +5,14 @@ service gateway and web sockets"""
 
 __author__ = 'Michael Meisinger, Stephen Henrie'
 
-import traceback
-import flask
-from flask import Flask, request, abort, session, render_template, redirect, Response, jsonify
-from flask.ext.socketio import SocketIO, SocketIOServer
+from flask import Flask
 import gevent
 from gevent.wsgi import WSGIServer
-import sys
 
-from pyon.public import StandaloneProcess, log, NotFound, CFG, BadRequest, OT, get_ion_ts_millis
-from pyon.util.containers import is_valid_identifier, get_datetime_str, named_any
-
+from flask.ext.socketio import SocketIO, SocketIOServer
+from pyon.public import StandaloneProcess, log, BadRequest, OT, get_ion_ts_millis
+from pyon.util.containers import named_any
+from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth
 from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
 
 
@@ -112,7 +109,6 @@ class UIServer(StandaloneProcess):
                                               resource='socket.io',
                                               log=None)
             self.http_server._gl = gevent.spawn(self.http_server.serve_forever)
-            from werkzeug.serving import run_with_reloader
             #run_with_reloader()
 
         if self.service_gateway:
@@ -142,8 +138,8 @@ class UIServer(StandaloneProcess):
 
     def login(self):
         try:
-            username = self.get_arg("username")
-            password = self.get_arg("password")
+            username = get_arg("username")
+            password = get_arg("password")
             if username and password:
                 actor_id = self.idm_client.check_actor_credentials(username, password)
                 actor_user = self.idm_client.read_identity_details(actor_id)
@@ -153,83 +149,33 @@ class UIServer(StandaloneProcess):
                 full_name = actor_user.contact.individual_names_given + " " + actor_user.contact.individual_name_family
 
                 valid_until = int(get_ion_ts_millis() / 1000 + self.session_timeout)
-                self.set_auth(actor_id, username, full_name, valid_until=valid_until)
-                user_info = self.get_auth()
-                return self.build_json_response(user_info)
+                set_auth(actor_id, username, full_name, valid_until=valid_until)
+                user_info = get_auth()
+                return build_json_response(user_info)
 
             else:
                 raise BadRequest("Username or password missing")
 
         except Exception:
-            return self.build_error()
+            return build_json_error()
 
     def get_session(self):
         try:
-            user_info = self.get_auth()
-            return self.build_json_response(user_info)
+            user_info = get_auth()
+            return build_json_response(user_info)
         except Exception:
-            return self.build_error()
+            return build_json_error()
 
     def logout(self):
         try:
-            user_info = self.get_auth()
-            self.clear_auth()
-            return self.build_json_response("OK")
+            clear_auth()
+            return build_json_response("OK")
         except Exception:
-            return self.build_error()
+            return build_json_error()
 
-    # -------------------------------------------------------------------------
-    # Helpers
 
-    def build_json_response(self, result_obj):
-        status = 200
-        result = dict(status=status, result=result_obj)
-        return jsonify(result)
-
-    def build_error(self):
-        (type, value, tb) = sys.exc_info()
-        status = getattr(value, "status_code", 500)
-        result = dict(error=dict(message=value.message, type=type.__name__, trace=traceback.format_exc()),
-                      status=status)
-
-        return jsonify(result), status
-
-    def get_arg(self, arg_name, default="", is_mult=False):
-        if is_mult:
-            aval = request.form.getlist(arg_name)
-            return aval
-        else:
-            aval = request.values.get(arg_name, None)
-            return str(aval) if aval else default
-
-    def get_auth(self):
-        return dict(actor_id=flask.session.get("actor_id", ""),
-                    username=flask.session.get("username", ""),
-                    full_name=flask.session.get("full_name", ""),
-                    attributes=flask.session.get("attributes", {}),
-                    roles=flask.session.get("roles", {}),
-                    is_logged_in=bool(flask.session.get("actor_id", "")),
-                    is_registered=bool(flask.session.get("actor_id", "")),
-                    valid_until=flask.session.get("valid_until", 0))
-
-    def set_auth(self, actor_id, username, full_name, valid_until, **kwargs):
-        flask.session["actor_id"] = actor_id or ""
-        flask.session["username"] = username or ""
-        flask.session["full_name"] = full_name or ""
-        flask.session["valid_until"] = valid_until or 0
-        flask.session["attributes"] = kwargs.copy()
-        flask.session["roles"] = {}
-        flask.session.modified = True
-
-    def clear_auth(self):
-        flask.session["actor_id"] = ""
-        flask.session["username"] = ""
-        flask.session["full_name"] = ""
-        flask.session["valid_until"] = 0
-        flask.session["attributes"] = {}
-        flask.session["roles"] = {}
-        flask.session.modified = True
-
+# -------------------------------------------------------------------------
+# Authentication routes
 
 @app.route('/auth/login', methods=['GET', 'POST'])
 def login_route():
@@ -244,12 +190,3 @@ def session_route():
 @app.route('/auth/logout', methods=['GET', 'POST'])
 def logout_route():
     return ui_instance.logout()
-
-
-class UIExtension(object):
-    def on_init(self, ui_server, flask_app):
-        pass
-    def on_start(self):
-        pass
-    def on_stop(self):
-        pass
