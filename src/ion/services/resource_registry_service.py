@@ -2,7 +2,6 @@
 
 __author__ = 'Thomas R. Lennan, Michael Meisinger, Stephen Henrie'
 
-
 from pyon.core.governance import MODERATOR_ROLE, OPERATOR_ROLE, GovernanceHeaderValues, has_org_role
 from pyon.ion.resregistry import ResourceRegistryServiceWrapper
 from pyon.public import log, OT, RT, PRED, Inconsistent, MSG_HEADER_ACTOR
@@ -143,15 +142,6 @@ class ResourceRegistryService(BaseResourceRegistryService):
 
     def get_resource_extension(self, resource_id='', resource_extension='', ext_associations=None, ext_exclude=None, optional_args=None):
         """Returns any ExtendedResource object containing additional related information derived from associations
-
-        @param resource_id    str
-        @param resource_extension    str
-        @param ext_associations    dict
-        @param ext_exclude    list
-        @param optional_args    dict
-        @retval extended_resource    ExtendedResource
-        @throws BadRequest    A parameter is missing
-        @throws NotFound    An object with the specified resource_id does not exist
         """
         # Ensure that it is not a NoneType
         optional_args = dict() if optional_args is None else optional_args
