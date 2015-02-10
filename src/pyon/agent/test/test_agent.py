@@ -19,7 +19,7 @@ class TestResourceAgentClient(IonIntegrationTestCase):
     def test_agent_registration(self):
         self._start_container()
 
-        idev = IonObject("InstrumentDevice", name="any_resource")
+        idev = IonObject("TestInstrument", name="any_resource")
         idev_id, _ = self.container.resource_registry.create(idev)
 
         config = dict(agent=dict(resource_id=idev_id))
