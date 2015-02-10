@@ -28,9 +28,7 @@
         <py-compile dir="pyon" pythonpath="${src}" optimize="0"/>
         <py-compile dir="putil" pythonpath="${src}" optimize="0"/>
         <py-compile dir="ion" pythonpath="${src}" optimize="0"/>
-        <py-compile dir="ooi" pythonpath="${src}" optimize="0"/>
         <py-compile dir="scripts" pythonpath="${src}" optimize="0"/>
-        <py-compile dir="examples" pythonpath="${src}" optimize="0"/>
     </target>
 
     <target name="clean" description="clean up">

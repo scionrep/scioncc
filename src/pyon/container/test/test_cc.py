@@ -53,7 +53,7 @@ class TestCCInt(IonIntegrationTestCase):
         self._start_container()
         cc_client = ContainerAgentClient(name=self.container.name)
 
-        p = cc_client.spawn_process('hello', 'examples.service.hello_service', 'HelloService')
+        p = cc_client.spawn_process('hello', 'ion.services.examples.hello_service', 'HelloService')
 
 @attr('INT')
 class TestCCIntProcs(IonIntegrationTestCase):

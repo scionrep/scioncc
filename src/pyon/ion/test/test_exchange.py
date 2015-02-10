@@ -29,7 +29,7 @@ from pyon.net.messaging import NodeB
 from pyon.net.channel import SendChannel
 from pyon.util.containers import DotDict
 
-from examples.service.hello_service import HelloService
+from ion.services.examples.hello_service import HelloService
 
 from interface.services.examples.ihello_service import HelloServiceClient
 
