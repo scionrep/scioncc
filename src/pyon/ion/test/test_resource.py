@@ -17,8 +17,8 @@ from pyon.util.unit_test import IonUnitTestCase
 @attr('UNIT', group='resource')
 class TestResources(IonUnitTestCase):
 
-    def xtest_resource_lcworkflow(self):
-        default_workflow = lcs_workflows['InstrumentDevice']
+    def test_resource_lcworkflow(self):
+        default_workflow = lcs_workflows['TestInstrument']
 
         self.assertEquals(len(default_workflow.lcstate_states), 7)
         self.assertEquals(len(default_workflow.lcstate_transitions), 24)
@@ -60,12 +60,12 @@ class TestResources(IonUnitTestCase):
                            LCE.ENABLE: AS.AVAILABLE})
 
         # Simplified workflows
-        infres_workflow = lcs_workflows['DataProduct']
+        infres_workflow = lcs_workflows['TestDataset']
 
         self.assertEquals(len(infres_workflow.lcstate_states), 4)
         self.assertEquals(len(infres_workflow.availability_states), 3)
 
-        simple_workflow = lcs_workflows['Deployment']
+        simple_workflow = lcs_workflows['TestSite']
 
         self.assertEquals(len(simple_workflow.lcstate_states), 5)
         self.assertEquals(len(simple_workflow.availability_states), 3)
@@ -98,14 +98,14 @@ class TestResources(IonUnitTestCase):
         instrument_device = Mock()
         instrument_device._id = '123'
         instrument_device.name = "MyInstrument"
-        instrument_device.type_ = RT.InstrumentDevice
+        instrument_device.type_ = RT.TestInstrument
         instrument_device.lcstate = LCS.DRAFT
         instrument_device.availability = AS.PRIVATE
 
         instrument_device2 = Mock()
         instrument_device2._id = '456'
         instrument_device2.name = "MyInstrument2"
-        instrument_device2.type_ = RT.InstrumentDevice
+        instrument_device2.type_ = RT.TestInstrument
 
 
         actor_identity = Mock()
@@ -156,7 +156,7 @@ class TestResources(IonUnitTestCase):
         Instrument_device_to_actor_identity_association = Mock()
         Instrument_device_to_actor_identity_association._id = '666'
         Instrument_device_to_actor_identity_association.s = "123"
-        Instrument_device_to_actor_identity_association.st = RT.InstrumentDevice
+        Instrument_device_to_actor_identity_association.st = RT.TestInstrument
         Instrument_device_to_actor_identity_association.p = PRED.hasOwner
         Instrument_device_to_actor_identity_association.o = "111"
         Instrument_device_to_actor_identity_association.ot = RT.ActorIdentity
@@ -166,7 +166,7 @@ class TestResources(IonUnitTestCase):
         Instrument_device_to_actor_identity_association2 = Mock()
         Instrument_device_to_actor_identity_association2._id = '667'
         Instrument_device_to_actor_identity_association2.s = "456"
-        Instrument_device_to_actor_identity_association2.st = RT.InstrumentDevice
+        Instrument_device_to_actor_identity_association2.st = RT.TestInstrument
         Instrument_device_to_actor_identity_association2.p = PRED.hasOwner
         Instrument_device_to_actor_identity_association2.o = "111"
         Instrument_device_to_actor_identity_association2.ot = RT.ActorIdentity
@@ -186,7 +186,7 @@ class TestResources(IonUnitTestCase):
         self.assertEquals(extended_res.resource, instrument_device)
         self.assertEquals(len(extended_res.owners),2)
         self.assertEquals(extended_res.resource_object.type_, RT.SystemResource)
-        self.assertEquals(extended_res.remote_resource_object.type_, RT.InstrumentDevice)
+        self.assertEquals(extended_res.remote_resource_object.type_, RT.TestInstrument)
         self.assertEquals(extended_res.resource_object.name, 'TestSystem_Resource')
         self.assertEquals(extended_res.owner_count, 2)
         self.assertEquals(extended_res.single_owner.name, user_info.name)
@@ -208,7 +208,7 @@ class TestResources(IonUnitTestCase):
         self.assertEquals(extended_res.resource, instrument_device)
         self.assertEquals(len(extended_res.owners),2)
         self.assertEquals(extended_res.resource_object.type_, RT.SystemResource)
-        self.assertEquals(extended_res.remote_resource_object.type_, RT.InstrumentDevice)
+        self.assertEquals(extended_res.remote_resource_object.type_, RT.TestInstrument)
         self.assertEquals(extended_res.resource_object.name, 'AltSystem_Resource')
 
 
@@ -217,7 +217,7 @@ class TestResources(IonUnitTestCase):
         self.assertEquals(extended_res.resource, instrument_device)
         self.assertEquals(len(extended_res.owners),0)
         self.assertEquals(extended_res.resource_object.type_, RT.SystemResource)
-        self.assertEquals(extended_res.remote_resource_object.type_, RT.InstrumentDevice)
+        self.assertEquals(extended_res.remote_resource_object.type_, RT.TestInstrument)
 
         #Test the list of ids interface
         extended_res_list = extended_resource_handler.create_extended_resource_container_list(OT.TestExtendedResource, ['123','456'])
@@ -225,7 +225,7 @@ class TestResources(IonUnitTestCase):
         self.assertEquals(extended_res_list[0].resource, instrument_device)
         self.assertEquals(len(extended_res_list[0].owners),2)
         self.assertEquals(extended_res_list[0].resource_object.type_, RT.SystemResource)
-        self.assertEquals(extended_res.remote_resource_object.type_, RT.InstrumentDevice)
+        self.assertEquals(extended_res.remote_resource_object.type_, RT.TestInstrument)
 
         #Test create_prepare_update_resource
         prepare_create = extended_resource_handler.create_prepare_resource_support(prepare_resource_type=OT.TestPrepareUpdateResource)
