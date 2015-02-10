@@ -3,6 +3,7 @@
 """Integration test base class and utils"""
 
 from mock import patch
+from unittest import SkipTest
 import unittest
 import os
 from gevent import greenlet, spawn
@@ -13,7 +14,6 @@ from pyon.core.bootstrap import bootstrap_pyon, CFG
 from pyon.core.interfaces.interfaces import InterfaceAdmin
 from pyon.util.log import log
 from pyon.util.file_sys import FileSystem
-
 
 def pre_initialize_ion():
     # Do necessary system initialization
@@ -40,6 +40,7 @@ class IonIntegrationTestCase(unittest.TestCase):
     Base test class to allow operations such as starting the container
     TODO: Integrate with IonUnitTestCase
     """
+    SkipTest = SkipTest
 
     # @see
     # http://www.saltycrane.com/blog/2012/07/how-prevent-nose-unittest-using-docstring-when-verbosity-2/

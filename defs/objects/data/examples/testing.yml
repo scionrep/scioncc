@@ -3,6 +3,7 @@
 # to match an observatory resource model.
 
 TestDeviceModel: !Extends_AppResource
+  manufacturer: ""
   attributes: {}
 
 
@@ -28,6 +29,7 @@ TestSite: !Extends_AppResource
 
 
 TestDataset: !Extends_InformationResource
+  location: !GeospatialLocation
   geospatial_bounds: !GeospatialBounds
   geospatial_crs: !GeospatialCoordinateReferenceSystem
   temporal_bounds: !TemporalBounds

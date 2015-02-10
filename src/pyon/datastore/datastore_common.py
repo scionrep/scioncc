@@ -129,26 +129,29 @@ def get_obj_geospatial_point(doc, calculate=True):
         geo_center = doc["geospatial_point_center"]
     if not geo_center and calculate:
         # Try to calculate center point from bounds
-        geo_bounds = get_obj_geospatial_bounds(doc, calculate=False, return_geo_bounds=True)
-        if geo_bounds:
+        present, geo_bounds = get_obj_geospatial_bounds(doc, calculate=False, return_geo_bounds=True)
+        if present:
             try:
                 from ion.util.geo_utils import GeoUtils
-                geo_bounds_obj = DotDict(geo_bounds)
+                geo_bounds_obj = DotDict(**geo_bounds)
                 geo_center = GeoUtils.calc_geospatial_point_center(geo_bounds_obj)
             except Exception:
-                log.warn("Could not calculate geospatial center point")
+                log.exception("Could not calculate geospatial center point")
     if geo_center and isinstance(geo_center, dict):
         if "lat" in geo_center and "lon" in geo_center:
             lat, lon = geo_center.get("lat", 0), geo_center.get("lon", 0)
-            return True, (lat, lon, 0)
+            if lat or lon:
+                return True, (lat, lon, 0)
         elif "latitude" in geo_center and "longitude" in geo_center:
             lat, lon = geo_center.get("latitude", 0), geo_center.get("longitude", 0)
             elev = geo_center.get("elevation", 0)
-            return True, (lat, lon, elev)
+            if lat or lon or elev:
+                return True, (lat, lon, elev)
         elif "geospatial_latitude" in geo_center and "geospatial_longitude" in geo_center:
             lat, lon = geo_center.get("geospatial_latitude", 0), geo_center.get("geospatial_longitude", 0)
             elev = geo_center.get("geospatial_vertical_location", 0)
-            return True, (lat, lon, elev)
+            if lat or lon:
+                return True, (lat, lon, elev)
     return False, (0, 0, 0)
 
 
@@ -165,7 +168,7 @@ def get_obj_geospatial_bounds(doc, calculate=True, return_geo_bounds=False):
         if "geospatial_longitude_limit_west" in geo_bounds and "geospatial_latitude_limit_south" in geo_bounds and \
             "geospatial_longitude_limit_east" in geo_bounds and "geospatial_latitude_limit_north" in geo_bounds:
             if return_geo_bounds:
-                return geo_bounds
+                return True, geo_bounds
             try:
                 x1 = float(geo_bounds["geospatial_longitude_limit_west"])
                 y1 = float(geo_bounds["geospatial_latitude_limit_south"])

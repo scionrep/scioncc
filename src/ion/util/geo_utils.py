@@ -14,7 +14,7 @@ class GeoUtils(object):
     DISTANCE_LONGEST = "longest"
 
     @classmethod
-    def calc_geospatial_point_center(cls, geospatial_bounds=None, distance=None):
+    def calc_geospatial_point_center(cls, geospatial_bounds=None, distance=None, return_location=False):
         if not geospatial_bounds:
             raise BadRequest("Geospatial bounds data is not set correctly")
         if (geospatial_bounds.geospatial_latitude_limit_north < -90 or geospatial_bounds.geospatial_latitude_limit_north > 90 or
@@ -52,6 +52,13 @@ class GeoUtils(object):
             geo_index_obj.lat,  geo_index_obj.lon = GeoUtils.midpoint_longest(north_lat=north_lat, west_lon=west_lon, south_lat=south_lat, east_lon=east_lon)
         else:
             raise BadRequest("Distance type not specified")
+
+        if return_location:
+            geo_loc_obj = IonObject(OT.GeospatialLocation)
+            geo_loc_obj.latitude = geo_index_obj.lat
+            geo_loc_obj.longitude = geo_index_obj.lon
+            return geo_loc_obj
+
         return geo_index_obj
 
     @staticmethod

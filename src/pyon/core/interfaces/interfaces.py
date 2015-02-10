@@ -135,7 +135,7 @@ class InterfaceAdmin:
 
             for key in objs.keys():
                 obj_type = self._create_object_type(key, objs[key], serial_num)
-                self.bulk_resources.append(obj_type)
+                #self.bulk_resources.append(obj_type)
                 serial_num += 1
 
     def store_service_interfaces(self, file=None):

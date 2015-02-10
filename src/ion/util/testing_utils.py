@@ -32,9 +32,8 @@ def create_dummy_resources(res_list, assoc_list=None, container=None):
         res_lcstate = res_obj.lcstate
         rid, _ = rr.create(res_obj, actor_id=actor_id)
         res_by_name[res_name] = rid
-        lcsm = get_restype_lcsm(res_obj.type_)
-        if lcsm and res_lcstate != lcsm.initial_state:
-            rr.set_lifecycle_state(rid, res_lcstate)
+        if "lcstate" in res_entry:
+            rr.set_lifecycle_state(rid, res_entry["lcstate"])
 
         if isinstance(res_entry, dict):
             if "org" in res_entry:

@@ -111,9 +111,9 @@ AssociationDefinitions:
 
 # Examples, Testing
   - predicate: hasTestModel
-    domain: [TestDevice]
+    domain: [TestSite, TestDevice]
     range: [TestDeviceModel]
-    docstring: References a device model for a device (test only)
+    docstring: References a device model for a device or site (test only)
   - predicate: hasTestDataset
     domain: [TestDevice]
     range: [TestDataset]

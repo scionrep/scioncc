@@ -3,7 +3,7 @@
 # List of resource types (by name) for which lifecycle concepts are applied
 # References names from below LifecycleWorkflowDefinitions
 LifecycleResourceTypes:
-  TestDevice: ResourceLCSM
+  TestInstrument: ResourceLCSM
   TestPlatform: ResourceLCSM
 
   TestSite: SimplifiedLCSM
