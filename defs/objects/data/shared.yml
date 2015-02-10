@@ -56,12 +56,6 @@ Institution:
   website: ""
 
 
-# Object representing the geospatial location in a searchable index
-GeospatialIndex:
-  lat: 0.0
-  lon: 0.0
-
-
 # Data structure for representing geospatial and vertical coordinate reference systems uniformly across resources.
 GeospatialCoordinateReferenceSystem:
   # The geospatial coordinate reference system, expressed as a URI (ideally a URL); incorporates both coordinate
@@ -114,6 +108,22 @@ GeospatialPoint:
   geospatial_longitude: 0.0
   # The accuracy of the lat/lon info, expressed in the same units as the lat/lon fields
   geospatial_horizontal_accuracy: 0.0
+
+
+# Simplified data structure for representing a geospatial point uniformly across resources.
+GeospatialLocation:
+  # Specifies the latitude in WGS84 CRS
+  latitude: 0.0
+  # Specifies the longitude in WGS84 CRS
+  longitude: 0.0
+  # Specifies a vertical position
+  elevation: 0.0
+
+
+# Object representing the geospatial location in a searchable index (deprecated)
+GeospatialIndex:
+  lat: 0.0
+  lon: 0.0
 
 
 # Data structure for representing temporal bounds uniformly across resources.

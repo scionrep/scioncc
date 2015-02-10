@@ -21,10 +21,11 @@ except ImportError:
 from putil.logging import log
 
 from pyon.core.exception import BadRequest, Conflict, NotFound, Inconsistent
-from pyon.datastore.datastore_common import DataStore
+from pyon.datastore.datastore_common import DataStore, get_obj_geospatial_bounds, get_obj_geospatial_point, \
+    get_obj_temporal_bounds, get_obj_vertical_bounds
 from pyon.datastore.datastore_query import DQ
 from pyon.datastore.postgresql.pg_util import PostgresConnectionPool, StatementBuilder, psycopg2_connect, TracingCursor
-from pyon.util.containers import create_basic_identifier, parse_ion_ts
+from pyon.util.containers import create_basic_identifier, parse_ion_ts, DotDict
 from pyon.util.tracer import CallTracer
 
 TABLE_PREFIX = "ion_"
@@ -369,31 +370,24 @@ class PostgresDataStore(DataStore):
         qual_ds_name = self._get_datastore_name(datastore_name)
         return []
 
+
     def _get_geom_value(self, col, doc):
-        """For a given geospatial column name, return the appropriate representation given a document"""
-        # TODO: This is information model dependent. Could extract somewhere
+        """For a given geospatial database column name, return the appropriate representation given a document"""
         res = None
         try:
             if col == "geom":  # Resource center point (POINT type)
-                if "geospatial_point_center" in doc:
-                    lat, lon = doc["geospatial_point_center"].get("lat", 0), doc["geospatial_point_center"].get("lon", 0)
-                    if lat != lon != 0:
-                        res = "POINT(%s %s)" % (lon, lat)   # x,y
+                present, (lat, lon, elev) = get_obj_geospatial_point(doc)
+                if present:
+                    res = "POINT(%s %s)" % (lon, lat)   # x,y
 
             elif col == "geom_loc":  # Resource bounding box (POLYGON shape, 2D)
-                geoc = None
-                if "geospatial_bounds" in doc:
-                    geoc = doc["geospatial_bounds"]
-                if geoc:
+                present, coord_list = get_obj_geospatial_bounds(doc)
+                if present:
                     try:
-                        geovals = dict(x1=float(geoc["geospatial_longitude_limit_west"]),
-                                       y1=float(geoc["geospatial_latitude_limit_south"]),
-                                       x2=float(geoc["geospatial_longitude_limit_east"]),
-                                       y2=float(geoc["geospatial_latitude_limit_north"]))
-                        if any((geovals["x1"], geovals["x2"], geovals["y1"], geovals["y2"])):
-                            res = ("POLYGON((%(x1)s %(y1)s, %(x2)s %(y1)s, %(x2)s %(y2)s, %(x1)s %(y2)s, %(x1)s %(y1)s))") % geovals
+                        coords = ", ".join("%s %s" % (x, y) for (x, y) in coord_list)
+                        res = "POLYGON((%s))" % coords
                     except ValueError as ve:
-                        log.warn("GeospatialBounds location values not parseable %s: %s", geoc, ve)
+                        log.warn("GeospatialBounds location values not parseable: %s", ve)
 
             if res:
                 log.debug("Geospatial column %s value: %s", col, res)
@@ -402,42 +396,19 @@ class PostgresDataStore(DataStore):
         return res
 
     def _get_range_value(self, col, doc):
-        """For a given range column name, return the appropriate representation given a document"""
-        # TODO: This is information model dependent. Could extract somewhere
+        """For a given range database column name, return the appropriate representation given a document"""
         res = None
         try:
             if col == "vertical_range":  # Resource vertical intent (NUMRANGE)
-                geoc = None
-                if "geospatial_bounds" in doc:
-                    geoc = doc["geospatial_bounds"]
-                if geoc:
-                    try:
-                        geovals = dict(z1=float(geoc["geospatial_vertical_min"]),
-                                       z2=float(geoc["geospatial_vertical_max"]))
-                        if any((geovals["z1"], geovals["z2"])):
-                            res = "[%s, %s]" % (geovals["z1"], geovals["z2"])
-                    except ValueError as ve:
-                        log.warn("GeospatialBounds vertical values not parseable %s: %s", geoc, ve)
+                present, (z1, z2) = get_obj_vertical_bounds(doc)
+                if present:
+                    res = "[%s, %s]" % (z1, z2)
 
             elif col == "temporal_range":  # Resource temporal intent (NUMRANGE)
-                tempc = None
-                if "nominal_datetime" in doc:
-                    # Case for DataProduct resources
-                    tempc = doc["nominal_datetime"]
-                #elif "ts_created" in doc and "ts_updated" in doc:
-                #    # All other resources.
-                #    # Values are in seconds float since epoch
-                #    tempc = dict(start_datetime=parse_ion_ts(doc["ts_created"]),
-                #                 end_datetime=parse_ion_ts(doc["ts_updated"]))
+                present, (t1, t2) = get_obj_temporal_bounds(doc)
+                if present:
+                    res = "[%s, %s]" % (t1, t2)
 
-                if tempc and tempc["start_datetime"] and tempc["end_datetime"]:
-                    try:
-                        geovals = dict(t1=float(tempc["start_datetime"]),
-                                       t2=float(tempc["end_datetime"]))
-                        if any((geovals["t1"], geovals["t2"])):
-                            res = "[%s, %s]" % (geovals["t1"], geovals["t2"])
-                    except ValueError as ve:
-                        log.warn("TemporalBounds values not parseable %s: %s", tempc, ve)
             if res:
                 log.debug("Numrange column %s value: %s", col, res)
         except Exception as ex:

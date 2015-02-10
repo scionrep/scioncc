@@ -1,0 +1,25 @@
+# The resources here are used for testing purposes.
+# They utilize various geospatial and other attribute types and also define associations
+
+TestDeviceModel: !Extends_Resource
+  attributes: {}
+
+
+TestDevice: !Extends_TaskableResource
+  location: !GeospatialLocation
+  geospatial_bounds: !GeospatialBounds
+  geospatial_crs: !GeospatialCoordinateReferenceSystem
+---
+
+TestInstrument: !Extends_TestDevice
+  firmware_version: ""
+
+
+TestPlatform: !Extends_TestDevice
+  hardware_version: ""
+
+
+TestDataset: !Extends_InformationResource
+  geospatial_bounds: !GeospatialBounds
+  geospatial_crs: !GeospatialCoordinateReferenceSystem
+  temporal_bounds: !TemporalBounds

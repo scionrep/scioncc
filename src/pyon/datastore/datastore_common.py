@@ -20,11 +20,9 @@ class DataStore(object):
     DS_EVENTS = "events"
     DS_DIRECTORY = DS_RESOURCES
     DS_STATE = "state"
-    DS_CONVERSATIONS = "conversations"
-    DS_COVERAGE = "coverage"
 
     # Enumeration of index profiles for datastores
-    DS_PROFILE_LIST = ['OBJECTS', 'RESOURCES', 'DIRECTORY', 'STATE', 'EVENTS', 'CONV', 'FILESYSTEM', 'BASIC', 'SCIDATA', 'COVERAGE']
+    DS_PROFILE_LIST = ['OBJECTS', 'RESOURCES', 'DIRECTORY', 'STATE', 'EVENTS', 'BASIC']
     DS_PROFILE = DotDict(zip(DS_PROFILE_LIST, DS_PROFILE_LIST))
     DS_PROFILE.lock()
 
@@ -34,8 +32,6 @@ class DataStore(object):
         DS_OBJECTS: DS_PROFILE.OBJECTS,
         DS_EVENTS: DS_PROFILE.EVENTS,
         DS_STATE: DS_PROFILE.STATE,
-        DS_CONVERSATIONS: DS_PROFILE.OBJECTS,
-        DS_COVERAGE: DS_PROFILE.COVERAGE,
         }
 
     def __init__(self, datastore_name=None, profile=None, config=None, container=None, scope=None, **kwargs):
@@ -114,16 +110,121 @@ class DatastoreFactory(object):
                 server_cfg = pg_cfg
             else:
                 raise BadRequest("No datastore config available!")
-                # server_cfg = dict(
-                #     type='postgresql',
-                #     host='localhost',
-                #     port=5432,
-                #     username='ion',
-                #     password=None,
-                #     admin_username=None,
-                #     admin_password=None,
-                #     default_database='postgres',
-                #     database='ion',
-                #     connection_pool_max=5)
 
         return server_cfg
+
+
+# -------------------------------------------------------------------------
+# Geospatial, temporal object utils
+
+def get_obj_geospatial_point(doc, calculate=True):
+    """Extracts a geospatial point (lat, lon, elev) from given object dict, by looking for an attribute with
+    GeospatialIndex or GeospatialPoint or GeospatialLocation type or computing the center from a bounds
+    """
+    geo_center = None
+    # TODO: Be more flexible about finding attributes with the right types
+    if "location" in doc:
+        geo_center = doc["location"]
+    if "geospatial_point_center" in doc:
+        geo_center = doc["geospatial_point_center"]
+    if not geo_center and calculate:
+        # Try to calculate center point from bounds
+        geo_bounds = get_obj_geospatial_bounds(doc, calculate=False, return_geo_bounds=True)
+        if geo_bounds:
+            try:
+                from ion.util.geo_utils import GeoUtils
+                geo_bounds_obj = DotDict(geo_bounds)
+                geo_center = GeoUtils.calc_geospatial_point_center(geo_bounds_obj)
+            except Exception:
+                log.warn("Could not calculate geospatial center point")
+    if geo_center and isinstance(geo_center, dict):
+        if "lat" in geo_center and "lon" in geo_center:
+            lat, lon = geo_center.get("lat", 0), geo_center.get("lon", 0)
+            return True, (lat, lon, 0)
+        elif "latitude" in geo_center and "longitude" in geo_center:
+            lat, lon = geo_center.get("latitude", 0), geo_center.get("longitude", 0)
+            elev = geo_center.get("elevation", 0)
+            return True, (lat, lon, elev)
+        elif "geospatial_latitude" in geo_center and "geospatial_longitude" in geo_center:
+            lat, lon = geo_center.get("geospatial_latitude", 0), geo_center.get("geospatial_longitude", 0)
+            elev = geo_center.get("geospatial_vertical_location", 0)
+            return True, (lat, lon, elev)
+    return False, (0, 0, 0)
+
+
+def get_obj_geospatial_bounds(doc, calculate=True, return_geo_bounds=False):
+    """Extracts geospatial bounds (list of x,y coordinates) from given object dict, by looking for an
+    attribute with GeospatialBounds type, or by computing from a geospatial point
+    """
+    geo_bounds = None
+    if "geospatial_bounds" in doc:
+        geo_bounds = doc["geospatial_bounds"]
+    if "bounding_box" in doc:
+        geo_bounds = doc["bounding_box"]
+    if geo_bounds and isinstance(geo_bounds, dict):
+        if "geospatial_longitude_limit_west" in geo_bounds and "geospatial_latitude_limit_south" in geo_bounds and \
+            "geospatial_longitude_limit_east" in geo_bounds and "geospatial_latitude_limit_north" in geo_bounds:
+            if return_geo_bounds:
+                return geo_bounds
+            try:
+                x1 = float(geo_bounds["geospatial_longitude_limit_west"])
+                y1 = float(geo_bounds["geospatial_latitude_limit_south"])
+                x2 = float(geo_bounds["geospatial_longitude_limit_east"])
+                y2 = float(geo_bounds["geospatial_latitude_limit_north"])
+                if not any((x1, x2, y1, y2)):
+                    return False, None
+                return True, ((x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1))
+            except ValueError as ve:
+                log.warn("GeospatialBounds values not parseable %s: %s", geo_bounds, ve)
+    if calculate:
+        # Set bounds from center point
+        present, (lat, lon, elev) = get_obj_geospatial_point(doc, False)
+        if present:
+            return True, ((lat, lon), )  # Polygon with 1 point
+
+    return False, None
+
+def get_obj_vertical_bounds(doc, calculate=True):
+    """Extracts vertical bounds (min, max) from given object dict, by looking for an
+    attribute with GeospatialBounds type, or by computing from a geospatial point
+    """
+    geo_bounds = None
+    if "geospatial_bounds" in doc:
+        geo_bounds = doc["geospatial_bounds"]
+    if "vertical_range" in doc:
+        geo_bounds = doc["vertical_range"]
+    if geo_bounds and isinstance(geo_bounds, dict):
+        if "geospatial_vertical_min" in geo_bounds and "geospatial_vertical_max" in geo_bounds:
+            try:
+                z1 = float(geo_bounds["geospatial_vertical_min"])
+                z2 = float(geo_bounds["geospatial_vertical_max"])
+                if not any((z1, z2)):
+                    return False, (0, 0)
+                return True, (z1, z2)
+            except ValueError as ve:
+                log.warn("GeospatialBounds vertical values not parseable %s: %s", geo_bounds, ve)
+    if calculate:
+        # Set bounds from center point
+        present, (lat, lon, elev) = get_obj_geospatial_point(doc, False)
+        if present:
+            return True, (elev, elev)  # Point range
+
+    return False, (0, 0)
+
+
+def get_obj_temporal_bounds(doc):
+    """Extracts a temporal bounds from given object dict, by looking for an attribute with TemporalBounds type"""
+    temp_range = None
+    if "temporal_range" in doc:
+        temp_range = doc["temporal_range"]
+    if temp_range and isinstance(temp_range, dict):
+        if "start_datetime" in temp_range and "end_datetime" in temp_range:
+            try:
+                t1 = float(temp_range["start_datetime"])
+                t2 = float(temp_range["end_datetime"])
+                if not any((t1, t2)):
+                    return False, (0, 0)
+                return True, (t1, t2)
+            except ValueError as ve:
+                log.warn("TemporalBounds values not parseable %s: %s", temp_range, ve)
+    return False, (0, 0)

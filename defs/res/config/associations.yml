@@ -109,11 +109,19 @@ AssociationDefinitions:
     range: [ServiceDefinition]
     docstring: References the ServiceDefinition (type) for a given Service (instance)
 
-# Examples
-  - predicate: hasAccount
-    domain: [BankCustomer]
-    range: [BankAccount]
-    docstring: References an account for a customer
+# Examples, Testing
+  - predicate: hasTestModel
+    domain: [TestDevice]
+    range: [TestDeviceModel]
+    docstring: References a device model for a device (test only)
+  - predicate: hasTestDataset
+    domain: [TestDevice]
+    range: [TestDataset]
+    docstring: References a dataset for a device (test only)
+  - predicate: hasTestDevice
+    domain: [TestDevice]
+    range: [TestDevice]
+    docstring: References a dataset for a device (test only)
 
 
 # This is a configuration for retrieving combinations of associations

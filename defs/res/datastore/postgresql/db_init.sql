@@ -144,7 +144,7 @@ $$
 LANGUAGE plpythonu IMMUTABLE STRICT;
 
 
--- Results in a special attribute
+-- Results in a special attribute extracted from object
 CREATE OR REPLACE FUNCTION json_specialattr(data json) RETURNS TEXT AS
 $$
 import json
@@ -199,7 +199,7 @@ $$
 LANGUAGE plpythonu IMMUTABLE STRICT;
 
 
--- Results in all attributes in one big string
+-- Results in all attributes in one big string for full text query
 CREATE OR REPLACE FUNCTION json_allattr(data json) RETURNS TEXT AS
 $$
 import json
