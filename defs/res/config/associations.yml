@@ -119,9 +119,13 @@ AssociationDefinitions:
     range: [TestDataset]
     docstring: References a dataset for a device (test only)
   - predicate: hasTestDevice
-    domain: [TestDevice]
+    domain: [TestSite, TestDevice]
     range: [TestDevice]
-    docstring: References a dataset for a device (test only)
+    docstring: References a device for a parent device or a site (test only)
+  - predicate: hasTestSite
+    domain: [TestSite]
+    range: [TestSite]
+    docstring: References a child site for a parent site (test only)
 
 
 # This is a configuration for retrieving combinations of associations

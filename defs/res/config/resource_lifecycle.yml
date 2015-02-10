@@ -3,15 +3,12 @@
 # List of resource types (by name) for which lifecycle concepts are applied
 # References names from below LifecycleWorkflowDefinitions
 LifecycleResourceTypes:
-  InstrumentDevice: ResourceLCSM
-  InstrumentAgent: ResourceLCSM
-  PlatformDevice: ResourceLCSM
-  PlatformAgent: ResourceLCSM
-  ExternalDatasetAgent: ResourceLCSM
+  TestDevice: ResourceLCSM
+  TestPlatform: ResourceLCSM
 
-  Deployment: SimplifiedLCSM
+  TestSite: SimplifiedLCSM
 
-  DataProduct: InformationResourceLCSM
+  TestDataset: InformationResourceLCSM
 
 # Definition of lifecycle workflows and specializations
 LifecycleWorkflowDefinitions:

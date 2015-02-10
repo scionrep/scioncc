@@ -1,7 +1,8 @@
 # The resources here are used for testing purposes.
-# They utilize various geospatial and other attribute types and also define associations
+# They provide various geospatial and other attribute types and also define associations and lifecycle
+# to match an observatory resource model.
 
-TestDeviceModel: !Extends_Resource
+TestDeviceModel: !Extends_AppResource
   attributes: {}
 
 
@@ -17,6 +18,13 @@ TestInstrument: !Extends_TestDevice
 
 TestPlatform: !Extends_TestDevice
   hardware_version: ""
+
+
+TestSite: !Extends_AppResource
+  location: !GeospatialLocation
+  geospatial_bounds: !GeospatialBounds
+  geospatial_crs: !GeospatialCoordinateReferenceSystem
+  temporal_bounds: !TemporalBounds
 
 
 TestDataset: !Extends_InformationResource

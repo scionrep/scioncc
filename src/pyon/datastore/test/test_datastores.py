@@ -868,8 +868,6 @@ class TestDataStores(IonIntegrationTestCase):
         return res
 
     def test_datastore_query(self):
-        raise SkipTest("Need to adjust to suitable resource types")
-
         data_store = self.ds_class(datastore_name='ion_test_ds', profile=DataStore.DS_PROFILE.RESOURCES, scope=get_sys_name())
         # Just in case previous run failed without cleaning up, delete data store
         try:
@@ -880,16 +878,16 @@ class TestDataStores(IonIntegrationTestCase):
         self.data_store = data_store
 
         self.resources = {}
-        from interface.objects import GeospatialIndex, ResourceVisibilityEnum
+        from interface.objects import GeospatialIndex, ResourceVisibilityEnum, GeospatialLocation
 
         # Create a few resources
-        plat1_obj_id = self._create_resource(RT.PlatformDevice, 'Buoy1', description='My Platform')
+        plat1_obj_id = self._create_resource(RT.TestPlatform, 'Buoy1', description='My Platform')
         aid1_obj_id = self._create_resource(RT.ActorIdentity, 'Actor1')
-        plat2_obj_id = self._create_resource(RT.PlatformDevice, 'Buoy2', visibility=ResourceVisibilityEnum.OWNER)
+        plat2_obj_id = self._create_resource(RT.TestPlatform, 'Buoy2', visibility=ResourceVisibilityEnum.OWNER)
         self._create_association(plat2_obj_id, PRED.hasOwner, aid1_obj_id)
-        plat3_obj_id = self._create_resource(RT.PlatformDevice, 'Buoy3', visibility=ResourceVisibilityEnum.OWNER)
+        plat3_obj_id = self._create_resource(RT.TestPlatform, 'Buoy3', visibility=ResourceVisibilityEnum.OWNER)
 
-        dp1_obj_id = self._create_resource(RT.PlatformSite, 'Site1', geospatial_point_center=GeospatialIndex(lat=1.0, lon=2.0))
+        dp1_obj_id = self._create_resource(RT.TestSite, 'Site1', location=GeospatialLocation(latitude=1.0, longitude=2.0))
 
         # Queries
         qb = DatastoreQueryBuilder()
@@ -920,7 +918,7 @@ class TestDataStores(IonIntegrationTestCase):
 
         # Access tests
         qb = DatastoreQueryBuilder()
-        qb.build_query(where=qb.or_(qb.and_(qb.like(qb.RA_NAME, "Buoy%"), qb.eq(qb.ATT_TYPE, RT.PlatformDevice))))
+        qb.build_query(where=qb.or_(qb.and_(qb.like(qb.RA_NAME, "Buoy%"), qb.eq(qb.ATT_TYPE, RT.TestPlatform))))
         res = data_store.find_by_query(qb.get_query())
         self.assertEquals(len(res), 1)
 

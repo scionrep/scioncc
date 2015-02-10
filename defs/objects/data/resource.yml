@@ -33,6 +33,11 @@ Resource:
 SystemResource: !Extends_Resource
 ---
 
+# Describes a resource that is described by itself, without having a physical and data representation.
+# Abstract base type.
+AppResource: !Extends_Resource
+---
+
 # Describes a resource that exists as an electronic artifact, such as science data,
 # attachments, actor identities. Abstract base type.
 InformationResource: !Extends_Resource
