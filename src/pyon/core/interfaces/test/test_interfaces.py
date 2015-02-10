@@ -33,10 +33,6 @@ class InterfaceAdminTest(IonIntegrationTestCase):
     def test_store_interfaces(self):
         self.iadm.store_interfaces()
 
-        # Validate there are entries for ObjectType
-        entries = self.rr.find_by_type("ObjectType", id_only=True)
-        self.assertGreater(len(entries), 30)
-
         # Validate there are entries for ServiceInterfaces
         entries = self.rr.find_by_type("ServiceDefinition", id_only=True)
-        self.assertGreater(len(entries), 30)
+        self.assertGreater(len(entries), 10)

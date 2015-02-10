@@ -8,7 +8,7 @@ import putil.testing
 import __main__
 from nose.plugins.attrib import attr
 
-MODULES = ['examples', 'interface', 'pyon', 'putil' ]
+MODULES = ['ion', 'pyon', 'putil' ]
 
 
 @attr('UNIT')
