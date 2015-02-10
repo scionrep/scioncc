@@ -42,6 +42,8 @@ class ConditionPoller(Thread):
                 self._on_exception(e)
     def start(self):
         super(ConditionPoller,self).start()
+
+
 class DirectoryPoller(ConditionPoller):
     """
     poll for new files added to a directory that match a wildcard pattern.
