@@ -50,6 +50,9 @@ class TestClient(RPCClient):
 class ProcessStateGateIntTest(IonIntegrationTestCase):
 
     def setUp(self):
+        from unittest import SkipTest
+        raise SkipTest("Process dispatcher currently not supported")
+
         self._start_container()
         self.container.start_rel_from_url('res/deploy/basic.yml')
 

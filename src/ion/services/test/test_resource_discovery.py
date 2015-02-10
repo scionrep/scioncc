@@ -1,183 +1,40 @@
 #!/usr/bin/env python
 
-"""Integration and Unit tests for Discovery Service"""
+"""Integration and Unit tests for resource management service """
 
 __author__ = 'Luke Campbell <LCampbell@ASAScience.com>, Michael Meisinger'
 
+from unittest import SkipTest
 from nose.plugins.attrib import attr
 from mock import Mock, patch, sentinel
 
-from pyon.util.unit_test import IonUnitTestCase
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.public import PRED, CFG, RT, OT, LCS, BadRequest, NotFound, IonObject, DotDict, ResourceQuery, EventQuery, log
 
-from ion.services.discovery_service import DiscoveryService
+from ion.services.resource_management_service import ResourceManagementService
 from ion.util.geo_utils import GeoUtils
 from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 
-from interface.services.core.idiscovery_service import DiscoveryServiceClient
-from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
+from interface.services.core.iresource_management_service import ResourceManagementServiceClient
 
 from interface.objects import GeospatialIndex, GeospatialBounds, TemporalBounds, View, CustomAttribute
 
 
-@attr('UNIT', group='dm')
-class DiscoveryUnitTest(IonUnitTestCase):
-    def setUp(self):
-        super(DiscoveryUnitTest, self).setUp()
-        mock_clients = self._create_service_mock('discovery')
-        self.discovery = DiscoveryService()
-        self.discovery.on_start()
-        self.discovery.clients = mock_clients
-        self.ds_mock = Mock()
-        self.discovery.ds_discovery._get_datastore = Mock(return_value=self.ds_mock)
-        container_mock = Mock()
-        self.discovery.ds_discovery.container = container_mock
-        container_mock.resource_registry = Mock()
-        container_mock.resource_registry.get_superuser_actors = Mock(return_value={})
-
-        self.rr_create = mock_clients.resource_registry.create
-        self.rr_read = mock_clients.resource_registry.read
-        self.rr_update = mock_clients.resource_registry.update
-        self.rr_delete = mock_clients.resource_registry.delete
-        self.rr_find_assoc = mock_clients.resource_registry.find_associations
-        self.rr_find_res = mock_clients.resource_registry.find_resources
-        self.rr_find_obj = mock_clients.resource_registry.find_objects
-        self.rr_find_assocs_mult = mock_clients.resource_registry.find_objects_mult
-        self.rr_create_assoc = mock_clients.resource_registry.create_association
-        self.rr_delete_assoc = mock_clients.resource_registry.delete_association
-
-        self.cms_create = mock_clients.catalog_management.create_catalog
-        self.cms_list_indexes = mock_clients.catalog_management.list_indexes
-
-    # --- Unit test View management
-
-    def test_create_view(self):
-        view_obj = View(name='fake_resource')
-        self.rr_create.return_value = ('res_id', 'rev_id')
-        self.rr_find_res.return_value = ([], [])
-        retval = self.discovery.create_view(view_obj)
-        self.assertEquals(retval, 'res_id')
-        self.rr_create.assert_called_once_with(view_obj)
-
-    def create_catalog_view(self):
-        self.rr_find_res.return_value = ([],[])
-        self.rr_create.return_value = ('res_id', 'rev_id')
-        self.cms_create.return_value = 'catalog_id'
-        retval = self.discovery.create_catalog_view('mock_view', fields=['name'])
-        self.assertTrue(retval=='res_id', 'Improper resource creation')
-
-    def test_create_catalog_view_exists(self):
-        self.rr_find_res.return_value = ([1], [1])
-        with self.assertRaises(BadRequest):
-            self.discovery.create_catalog_view('doesnt matter', fields=['name'])
-
-    def test_create_catalog_view_no_fields(self):
-        self.rr_find_res.return_value = ([],[])
-        self.rr_create.return_value = ('res_id', 'rev_id')
-        self.cms_create.return_value = 'catalog_id'
-        with self.assertRaises(BadRequest):
-            self.discovery.create_catalog_view('mock_view')
-
-    def test_create_catalog_view_order(self):
-        self.rr_find_res.return_value = ([],[])
-        self.rr_create.return_value = ('res_id', 'rev_id')
-        self.cms_create.return_value = 'catalog_id'
-        with self.assertRaises(BadRequest):
-            self.discovery.create_catalog_view('movk_view', fields=['name'], order=['age'])
-
-    def test_read_view(self):
-        self.rr_read.return_value = View(name='fake_resource')
-        retval = self.discovery.read_view('mock_view_id')
-        self.assertEquals(retval.name, 'fake_resource')
-
-    def test_update_view(self):
-        view_obj = View(name='fake_resource')
-        retval = self.discovery.update_view(view_obj)
-        self.assertTrue(retval)
-        self.rr_update.assert_called_once_with(view_obj)
-
-    def test_delete_view(self):
-        retval = self.discovery.delete_view('view_id')
-        self.assertTrue(retval)
-        self.rr_delete.assert_called_once_with('view_id')
-
-    # --- Unit test queries
-
-    def test_bad_query(self):
-        query = DotDict()
-        query.unknown = 'yup'
-
-        with self.assertRaises(BadRequest):
-            self.discovery.query(query)
-    
-    def test_bad_requests(self):
-        #================================
-        # Battery of broken requests
-        #================================
-        self.discovery.ds_discovery = Mock()
-        bad_requests = [
-            {},
-            {'field':"f"},
-            {'and':[]},
-            {'or':[]},
-        ]
-        for req in bad_requests:
-            with self.assertRaises(BadRequest):
-                self.discovery._discovery_request(req)
-
-    @patch('ion.services.discovery_service.QueryLanguage')
-    def test_parse_mock(self, mock_parser):
-        mock_parser().parse.return_value = 'arg'
-        self.discovery._discovery_request = Mock()
-        self.discovery._discovery_request.return_value = 'correct_value'
-        retval = self.discovery.parse('blah blah', id_only=sentinel.id_only)
-        self.discovery._discovery_request.assert_called_once_with('arg', search_args=None, query_params=None, id_only=sentinel.id_only)
-        self.assertTrue(retval=='correct_value', '%s' % retval)
-
-    def test_parse(self):
-        self.ds_mock.find_by_query = Mock(return_value=["FOO"])
-
-        search_string = "search 'serial_number' is 'abc' from 'resources_index'"
-        retval = self.discovery.parse(search_string)
-        self.discovery.ds_discovery._get_datastore.assert_called_once_with("resources")
-        self.assertEquals(retval, ["FOO"])
-
-
-    def test_tier1_request(self):
-        self.ds_mock.find_by_query = Mock(return_value=["FOO"])
-
-        query = {'query':{'field': 'name', 'value': 'foo'}}
-        retval = self.discovery._discovery_request(query)
-        self.discovery.ds_discovery._get_datastore.assert_called_once_with("resources")
-        self.assertEquals(retval, ["FOO"])
-
-    def test_tier2_request(self):
-        self.ds_mock.find_by_query = Mock(return_value=["FOO"])
-
-        query = {'query':{'field': 'name', 'value': 'foo'}, 'and':[{'field': 'lcstate', 'value': 'foo2'}]}
-        retval = self.discovery._discovery_request(query)
-        self.discovery.ds_discovery._get_datastore.assert_called_once_with("resources")
-        self.assertEquals(retval, ["FOO"])
-
-        query = {'query':{'field': 'name', 'value': 'foo'}, 'or':[{'field': 'lcstate', 'value': 'foo2'}]}
-        retval = self.discovery._discovery_request(query)
-        self.assertEquals(retval, ["FOO"])
-
-
 @attr('INT', group='dm')
 class DiscoveryQueryTest(IonIntegrationTestCase):
-    """Tests discovery in a somewhat integration environment. Only a container and a DiscoveryService instance
-    but no r2deploy and process"""
+    """Tests discovery in a somewhat integration environment. Only a container and a
+    ResourceManagementService instance but no service deployment and process"""
 
     def setUp(self):
         self._start_container()
 
-        self.discovery = DiscoveryService()
+        self.discovery = ResourceManagementService()
         self.discovery.container = self.container
-        self.discovery.on_start()
+        self.discovery.on_init()
 
         self.rr = self.container.resource_registry
+
+        raise SkipTest("Need to redo geospatial resources")
 
     def _geopt(self, x1, y1):
         return GeospatialIndex(lat=float(x1), lon=float(y1))

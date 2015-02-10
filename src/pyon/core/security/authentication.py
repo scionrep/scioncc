@@ -13,7 +13,10 @@ import os
 import datetime
 import hashlib
 
-from M2Crypto import EVP, X509
+try:
+    from M2Crypto import EVP, X509
+except ImportError:
+    pass
 
 from pyon.core.bootstrap import CFG
 from pyon.container.cc import Container

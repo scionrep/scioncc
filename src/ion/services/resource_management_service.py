@@ -1,26 +1,32 @@
 #!/usr/bin/env python
 
-__author__ = 'Stephen P. Henrie, Michael Meisinger'
+__author__ = 'Michael Meisinger, Luke Campbell'
 
 import re
 
 from pyon.agent.agent import ResourceAgentClient
 from pyon.core.bootstrap import get_service_registry
-from pyon.public import log, IonObject, iex, NotFound, BadRequest, PRED, ResourceQuery
-from pyon.core.exception import Unauthorized
+from pyon.datastore.datastore_query import QUERY_EXP_KEY, DQ
+from pyon.public import log, IonObject, Unauthorized, ResourceQuery, PRED, CFG, RT, log, BadRequest, NotFound
 from pyon.util.config import Config
 from pyon.util.containers import get_safe, named_any, get_ion_ts, is_basic_identifier
+from pyon.util.arg_check import validate_true, validate_is_instance
+
+from ion.services.ds_discovery import DatastoreDiscovery
 
 import interface.objects
-from interface.objects import AgentCapability, AgentCommandResult, CapabilityType, Resource
+from interface.objects import AgentCapability, AgentCommandResult, CapabilityType, Resource, View
 from interface.services.core.iresource_management_service import BaseResourceManagementService
 
 
 class ResourceManagementService(BaseResourceManagementService):
     """
-    The Resource Management Service is the service that manages the Resource Types and Lifecycles
-    associated with all Resources
+    Service that manages resource types and lifecycle workflows. It also provides generic
+    operations that manage any kind of resource and their lifecycle.
+    Also provides a resource discovery and query capability.
     """
+
+    MAX_SEARCH_RESULTS = CFG.get_safe('service.discovery.max_search_results', 250)
 
     def on_init(self):
         self.resource_interface = (Config(["res/config/resource_management.yml"])).data['ResourceInterface']
@@ -30,96 +36,150 @@ class ResourceManagementService(BaseResourceManagementService):
         # Keep a cache of known resource ids
         self.restype_cache = {}
 
+        self.ds_discovery = DatastoreDiscovery(self)
 
-    def create_resource_type(self, resource_type=None, object_id=""):
-        """ Should receive a ResourceType object
+    # -------------------------------------------------------------------------
+    # Search and query
+
+    def query(self, query=None, id_only=True, search_args=None):
+        """Issue a query provided in structured dict format or internal datastore query format.
+        Returns a list of resource or event objects or their IDs only.
+        Search_args may contain parameterized values.
+        See the query format definition: https://confluence.oceanobservatories.org/display/CIDev/Discovery+Service+Query+Format
         """
-        # Return Value
-        # ------------
-        # {resource_type_id: ''}
-        #
-        if not is_basic_identifier(resource_type.name):
-            raise BadRequest("Invalid resource name: %s " % resource_type.name)
-        if not object_id:
-            raise BadRequest("Object_id is missing")
+        validate_true(query, 'Invalid query')
 
-        object_type= self.clients.resource_registry.read(object_id)
-        if resource_type.name != object_type.name:
-            raise BadRequest("Resource and object name don't match: %s - %s" (resource_type.name,object_type.name))
-        resource_id, version = self.clients.resource_registry.create(resource_type)
-        self.clients.resource_registry.create_association(resource_id, PRED.hasObjectType, object_id)
-        return resource_id
+        return self._discovery_request(query, id_only, search_args=search_args, query_params=search_args)
 
-    def update_resource_type(self, resource_type=None):
-        """ Should receive a ResourceType object
+    def query_view(self, view_id='', view_name='', ext_query=None, id_only=True, search_args=None):
+        """Execute an existing query as defined within a View resource, providing additional arguments for
+        parameterized values.
+        If ext_query is provided, it will be combined with the query defined by the View.
+        Search_args may contain parameterized values.
+        Returns a list of resource or event objects or their IDs only.
         """
-        # Return Value
-        # ------------
-        # {success: true}
-        #
-        raise NotImplementedError("Currently, updating ResourceType is not supported")
+        if not view_id and not view_name:
+            raise BadRequest("Must provide argument view_id or view_name")
+        if view_id and view_name:
+            raise BadRequest("Cannot provide both arguments view_id and view_name")
+        if view_id:
+            view_obj = self.clients.resource_registry.read(view_id)
+        else:
+            view_obj = self.ds_discovery.get_builtin_view(view_name)
+            if not view_obj:
+                view_objs, _ = self.clients.resource_registry.find_resources(restype=RT.View, name=view_name)
+                if not view_objs:
+                    raise NotFound("View with name '%s' not found" % view_name)
+                view_obj = view_objs[0]
 
-    def read_resource_type(self, resource_type_id=''):
-        """ Should return a ResourceType object
-        """
-        # Return Value
-        # ------------
-        # resource_type: {}
-        #
-        if not resource_type_id:
-            raise BadRequest("The resource_type_id parameter is missing")
-        return self.clients.resource_registry.read(resource_type_id)
+        if view_obj.type_ != RT.View:
+            raise BadRequest("Argument view_id is not a View resource")
+        view_query = view_obj.view_definition
+        if not QUERY_EXP_KEY in view_query:
+            raise BadRequest("Unknown View query format")
 
-    def delete_resource_type(self, resource_type_id='', object_type_id=''):
-        """method docstring
-        """
-        # Return Value
-        # ------------
-        # {success: true}
-        #
-        if not resource_type_id:
-            raise BadRequest("The resource_type_id parameter is missing")
-        if not object_type_id:
-            raise BadRequest("The object_type_id parameter is missing")
-        association_id = self.clients.resource_registry.get_association(resource_type_id, PRED.hasObjectType, object_type_id)
-        self.clients.resource_registry.delete_association(association_id)
-        return self.clients.resource_registry.delete(resource_type_id)
+        # Get default query params and override them with provided args
+        param_defaults = {param.name: param.default for param in view_obj.view_parameters}
+        query_params = param_defaults
+        if view_obj.param_values:
+            query_params.update(view_obj.param_values)
+        if search_args:
+            query_params.update(search_args)
 
-    def create_resource_lifecycle(self, resource_lifecycle=None):
-        """ Should receive a ResourceLifeCycle object
-        """
-        # Return Value
-        # ------------
-        # {resource_lifecycle_id: ''}
-        #
-        raise NotImplementedError("Currently not supported")
+        # Merge ext_query into query
+        if ext_query:
+            if ext_query["where"] and view_query["where"]:
+                view_query["where"] = [DQ.EXP_AND, [view_query["where"], ext_query["where"]]]
+            else:
+                view_query["where"] = view_query["where"] or ext_query["where"]
+            if ext_query["order_by"]:
+                # Override ordering if present
+                view_query["where"] = ext_query["order_by"]
 
-    def update_resource_lifecycle(self, resource_lifecycle=None):
-        """ Should receive a ResourceLifeCycle object
-        """
-        # Return Value
-        # ------------
-        # {success: true}
-        #
-        raise NotImplementedError("Currently not supported")
+            # Other query settings
+            view_qargs = view_query["query_args"]
+            ext_qargs = ext_query["query_args"]
+            view_qargs["id_only"] = ext_qargs.get("id_only", view_qargs["id_only"])
+            view_qargs["limit"] = ext_qargs.get("limit", view_qargs["limit"])
+            view_qargs["skip"] = ext_qargs.get("skip", view_qargs["skip"])
 
-    def read_resource_lifecycle(self, resource_lifecycle_id=''):
-        """ Should return a ResourceLifeCycle object
-        """
-        # Return Value
-        # ------------
-        # resource_lifecycle: {}
-        #
-        raise NotImplementedError("Currently not supported")
+        return self._discovery_request(view_query, id_only=id_only,
+                                       search_args=search_args, query_params=query_params)
 
-    def delete_resource_lifecycle(self, resource_lifecycle_id=''):
-        """method docstring
-        """
-        # Return Value
-        # ------------
-        # {success: true}
-        #
-        raise NotImplementedError("Currently not supported")
+    def _discovery_request(self, query=None, id_only=True, search_args=None, query_params=None):
+        search_args = search_args or {}
+        if not query:
+            raise BadRequest('No request query provided')
+
+        if QUERY_EXP_KEY in query and self.ds_discovery:
+            query.setdefault("query_args", {})["id_only"] = id_only
+            # Query in datastore query format (dict)
+            log.debug("Executing datastore query: %s", query)
+
+        elif 'query' not in query:
+            raise BadRequest('Unsupported request. %s' % query)
+
+        # if count requested, run id_only query without limit/skip
+        count = search_args.get("count", False)
+        if count:
+            # Only return the count of ID only search
+            query.pop("limit", None)
+            query.pop("skip", None)
+            res = self.ds_discovery.execute_query(query, id_only=True, query_args=search_args, query_params=query_params)
+            return [len(res)]
+
+        # TODO: Not all queries are permissible by all users
+
+        # Execute the query
+        query_results = self.ds_discovery.execute_query(query, id_only=id_only,
+                                                        query_args=search_args, query_params=query_params)
+
+        # Strip out unwanted object attributes for size
+        filtered_res = self._strip_query_results(query_results, id_only=id_only, search_args=search_args)
+
+        return filtered_res
+
+    def _strip_query_results(self, query_results, id_only, search_args):
+        # Filter the results for smaller result size
+        attr_filter = search_args.get("attribute_filter", [])
+        if type(attr_filter) not in (list, tuple):
+            raise BadRequest("Illegal argument type: attribute_filter")
+
+        if not id_only and attr_filter:
+            filtered_res = [dict(__noion__=True, **{k: v for k, v in obj.__dict__.iteritems() if k in attr_filter or k in {"_id", "type_"}}) for obj in query_results]
+            return filtered_res
+        return query_results
+
+
+    # -------------------------------------------------------------------------
+    # View management (CRUD)
+
+    def create_view(self, view=None):
+        if view is None or not isinstance(view, View):
+            raise BadRequest("Illegal argument: view")
+
+        # view_objs, _ = self.clients.resource_registry.find_resources(restype=RT.View, name=view.name)
+        # if view_objs:
+        #     raise BadRequest("View with name '%s' already exists" % view.name)
+
+        view_id, _ = self.clients.resource_registry.create(view)
+        return view_id
+
+    def read_view(self, view_id=''):
+        view_res = self.clients.resource_registry.read(view_id)
+        if not isinstance(view_res, View):
+            raise BadRequest("Resource %s is not a View" % view_id)
+        return view_res
+
+    def update_view(self, view=None):
+        if view is None or not isinstance(view, View):
+            raise BadRequest("Illegal argument: view")
+        self.clients.resource_registry.update(view)
+        return True
+
+    def delete_view(self, view_id=''):
+        self.clients.resource_registry.delete(view_id)
+        return True
 
     # -------------------------------------------------------------------------
     # Generic resource interface
@@ -127,10 +187,6 @@ class ResourceManagementService(BaseResourceManagementService):
     def create_resource(self, resource=None):
         """Creates an arbitrary resource object via its defined create function, so that it
         can successively can be accessed via the agent interface.
-
-        @param resource    Resource
-        @retval resource_id    str
-        @throws BadRequest    if object passed has _id or _rev attribute
         """
         if not isinstance(resource, Resource):
             raise BadRequest("Can only create resources, not type %s" % type(resource))
@@ -148,11 +204,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def update_resource(self, resource=None):
         """Updates an existing resource via the configured service operation.
-
-        @param resource    Resource
-        @throws BadRequest    if object does not have _id or _rev attribute
-        @throws NotFound    object with specified id does not exist
-        @throws Conflict    object not based on latest persisted object version
         """
         if not isinstance(resource, Resource):
             raise BadRequest("Can only update resources, not type %s" % type(resource))
@@ -167,10 +218,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def read_resource(self, resource_id=''):
         """Returns an existing resource via the configured service operation.
-
-        @param resource_id    str
-        @retval resource    Resource
-        @throws NotFound    object with specified id does not exist
         """
         res_type = self._get_resource_type(resource_id)
         res_interface = self._get_type_interface(res_type)
@@ -183,9 +230,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def delete_resource(self, resource_id=''):
         """Deletes an existing resource via the configured service operation.
-
-        @param resource_id    str
-        @throws NotFound    object with specified id does not exist
         """
         res_type = self._get_resource_type(resource_id)
         res_interface = self._get_type_interface(res_type)
@@ -277,13 +321,6 @@ class ResourceManagementService(BaseResourceManagementService):
         """Alter object lifecycle according to given transition event. Throws exception
         if resource object does not exist or given transition_event is unknown/illegal.
         The new life cycle state after applying the transition is returned.
-
-        @param resource_id    str
-        @param transition_event    str
-        @retval lcstate    str
-        @throws NotFound    resource object does not exist
-        @throws BadRequest    transition event unknown or illegal in current state; resource type has no lifecycle
-        @throws Conflict    race condition while trying to update
         """
         res_type = self._get_resource_type(resource_id)
         res_interface = self._get_type_interface(res_type)
@@ -296,11 +333,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def get_lifecycle_events(self, resource_id=''):
         """For a given resource, return a list of possible lifecycle transition events.
-
-        @param resource_id    str
-        @retval transition_events    list
-        @throws NotFound    resource object does not exist
-        @throws BadRequest    transition event unknown or illegal in current state; resource type has no lifecycle
         """
         pass
 
@@ -311,26 +343,12 @@ class ResourceManagementService(BaseResourceManagementService):
         """Initiate a negotiation with this agent. The subject of this negotiation is the given
         ServiceAgreementProposal. The response is either a new ServiceAgreementProposal as counter-offer,
         or the same ServiceAgreementProposal indicating the offer has been accepted.
-        NEEDS REFINEMENT.
-
-        @param resource_id    str
-        @param sap_in    ServiceAgreementProposal
-        @retval sap_out    ServiceAgreementProposal
         """
         pass
 
     def get_capabilities(self, resource_id='', current_state=True):
         """Introspect for agent capabilities.
-        @param resource_id The id of the resource agent.
-        @param current_state Flag indicating to return capabilities for current
-        state only (default True).
-        @retval List of AgentCapabilities objects.
-
-        @param resource_id    str
-        @param current_state    bool
-        @retval capability_list    list
         """
-
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
             rac = ResourceAgentClient(resource_id=resource_id)
@@ -351,19 +369,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def execute_resource(self, resource_id='', command=None):
         """Execute command on the resource represented by agent.
-        @param resource_id The id of the resource agennt.
-        @param command An AgentCommand containing the command.
-        @retval result An AgentCommandResult containing the result.
-        @throws BadRequest if the command was malformed.
-        @throws NotFound if the command is not available in current state.
-        @throws ResourceError if the resource produced an error during execution.
-
-        @param resource_id    str
-        @param command    AgentCommand
-        @retval result    AgentCommandResult
-        @throws BadRequest    if the command was malformed.
-        @throws NotFound    if the command is not implemented in the agent.
-        @throws ResourceError    if the resource produced an error.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -387,16 +392,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def get_resource(self, resource_id='', params=None):
         """Return the value of the given resource parameter.
-        @param resource_id The id of the resource agennt.
-        @param params A list of parameters names to query.
-        @retval A dict of parameter name-value pairs.
-        @throws BadRequest if the command was malformed.
-        @throws NotFound if the resource does not support the parameter.
-
-        @param resource_id    str
-        @param params    list
-        @retval result    AgentCommandResult
-        @throws NotFound    if the parameter does not exist.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -418,18 +413,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def set_resource(self, resource_id='', params=None):
         """Set the value of the given resource parameters.
-        @param resource_id The id of the resource agent.
-        @param params A dict of resource parameter name-value pairs.
-        @throws BadRequest if the command was malformed.
-        @throws NotFound if a parameter is not supported by the resource.
-        @throws ResourceError if the resource encountered an error while setting
-        the parameters.
-
-        @param resource_id    str
-        @param params    dict
-        @throws BadRequest    if the command was malformed.
-        @throws NotFound    if the parameter does not exist.
-        @throws ResourceError    if the resource failed while trying to set the parameter.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -447,13 +430,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def get_resource_state(self, resource_id=''):
         """Return the current resource specific state, if available.
-        @param resource_id The id of the resource agennt.
-        @retval A str containing the current resource specific state.
-
-        @param resource_id    str
-        @retval result    str
-        @throws NotFound    if the resource does not utilize a specific state machine.
-        @throws ResourceError    if the resource failed while trying to get the state.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -464,12 +440,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def ping_resource(self, resource_id=''):
         """Ping the resource.
-        @param resource_id The id of the resource agennt.
-        @retval A str containing a string representation of the resource and
-        timestamp.
-
-        @param resource_id    str
-        @retval result    str
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -481,17 +451,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def execute_agent(self, resource_id='', command=None):
         """Execute command on the agent.
-        @param resource_id The id of the resource agennt.
-        @param command An AgentCommand containing the command.
-        @retval result An AgentCommandResult containing the result.
-        @throws BadRequest if the command was malformed.
-        @throws NotFound if the command is not available in current state.
-
-        @param resource_id    str
-        @param command    AgentCommand
-        @retval result    AgentCommandResult
-        @throws BadRequest    if the command was malformed.
-        @throws NotFound    if the command is not implemented in the agent.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -502,17 +461,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def get_agent(self, resource_id='', params=None):
         """Return the value of the given agent parameters.
-        @param resource_id The id of the resource agennt.
-        @param params A list of parameters names to query.
-        @retval A dict of parameter name-value pairs.
-        @throws BadRequest if the command was malformed.
-        @throws NotFound if the agent does not support the parameter.
-
-        @param resource_id    str
-        @param params    list
-        @retval result    AgentCommandResult
-        @throws BadRequest    if the command was malformed.
-        @throws NotFound    if the parameter does not exist.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -523,15 +471,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def set_agent(self, resource_id='', params=None):
         """Set the value of the given agent parameters.
-        @param resource_id The id of the resource agennt.
-        @param params A dict of resource parameter name-value pairs.
-        @throws BadRequest if the command was malformed.
-        @throws NotFound if a parameter is not supported by the resource.
-
-        @param resource_id    str
-        @param params    dict
-        @throws BadRequest    if the command was malformed.
-        @throws NotFound    if the parameter does not exist.
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -542,11 +481,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def get_agent_state(self, resource_id=''):
         """Return the current resource agent common state.
-        @param resource_id The id of the resource agennt.
-        @retval A str containing the current agent state.
-
-        @param resource_id    str
-        @retval result    str
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -557,12 +491,6 @@ class ResourceManagementService(BaseResourceManagementService):
 
     def ping_agent(self, resource_id=''):
         """Ping the agent.
-        @param resource_id The id of the resource agennt.
-        @retval A str containing a string representation of the agent
-        and a timestamp.
-
-        @param resource_id    str
-        @retval result    str
         """
         res_type = self._get_resource_type(resource_id)
         if self._has_agent(res_type):
@@ -684,7 +612,6 @@ class ResourceManagementService(BaseResourceManagementService):
         except Exception as ex:
             log.exception("_call_target exception")
             raise ex  #Should to pass it back because when called by the Service Gateway, the error message in the exception is required
-
 
     def _get_call_args(self, func_arg_str, resource_id, res_type, value=None, cmd_args=None):
         args = []

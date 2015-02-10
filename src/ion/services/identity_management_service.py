@@ -5,7 +5,7 @@ __author__ = 'Thomas R. Lennan, Stephen Henrie, Michael Meisinger'
 from uuid import uuid4
 import bcrypt
 
-from pyon.core.security.authentication import Authentication
+#from pyon.core.security.authentication import Authentication
 from pyon.public import log, RT, OT, Inconsistent, NotFound, BadRequest, get_ion_ts_millis, Unauthorized
 
 from interface.objects import SecurityToken, TokenTypeEnum, Credentials
@@ -23,7 +23,7 @@ class IdentityManagementService(BaseIdentityManagementService):
 
     def on_init(self):
         self.rr = self.clients.resource_registry
-        self.authentication = Authentication()
+        #self.authentication = Authentication()
 
     def create_actor_identity(self, actor_identity=None):
         self._validate_resource_obj("actor_identity", actor_identity, RT.ActorIdentity, checks="noid,name")

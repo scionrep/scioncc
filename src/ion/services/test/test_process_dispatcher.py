@@ -1,7 +1,10 @@
+#!/usr/bin/env python
+
 import uuid
 from gevent import queue
 from datetime import datetime, timedelta
 
+from unittest import SkipTest
 from mock import Mock, patch, DEFAULT
 from nose.plugins.attrib import attr
 
@@ -17,8 +20,7 @@ from interface.objects import ProcessDefinition, ProcessSchedule, ProcessTarget,
     ProcessStateEnum, ProcessQueueingMode
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
-from ion.services.process_dispatcher_service import ProcessDispatcherService,\
-    PDLocalBackend, Notifier
+from ion.services.process_dispatcher_service import ProcessDispatcherService, PDLocalBackend, Notifier
 
 
 # NOTE: much of the Process Dispatcher functionality is tested directly in the
@@ -102,127 +104,6 @@ class ProcessStateWaiter(object):
                 return
 
 
-@attr('UNIT', group='cei')
-class ProcessDispatcherServiceLocalTest(PyonTestCase):
-    """Tests the local backend of the PD
-    """
-
-    def setUp(self):
-        self.pd_service = ProcessDispatcherService()
-        self.pd_service.container = DotDict()
-        self.pd_service.container['spawn_process'] = Mock()
-        self.pd_service.container['id'] = 'mock_container_id'
-        self.pd_service.container['proc_manager'] = DotDict()
-        self.pd_service.container['resource_registry'] = Mock()
-        self.pd_service.container.proc_manager['terminate_process'] = Mock()
-        self.pd_service.container.proc_manager['procs'] = {}
-
-        self.mock_cc_spawn = self.pd_service.container.spawn_process
-        self.mock_cc_terminate = self.pd_service.container.proc_manager.terminate_process
-        self.mock_cc_procs = self.pd_service.container.proc_manager.procs
-
-        self.pd_service.init()
-        self.assertIsInstance(self.pd_service.backend, PDLocalBackend)
-        self.pd_service.backend.rr = self.mock_rr = Mock()
-        self.pd_service.backend.event_pub = self.mock_event_pub = Mock()
-
-    def test_create_schedule(self):
-
-        backend = self.pd_service.backend
-
-        proc_def = DotDict()
-        proc_def['name'] = "someprocess"
-        proc_def['executable'] = {'module': 'my_module', 'class': 'class'}
-        self.mock_rr.read.return_value = proc_def
-        self.mock_cc_spawn.return_value = '123'
-
-        pid = self.pd_service.create_process("fake-process-def-id")
-
-        # not used for anything in local mode
-        proc_schedule = DotDict()
-
-        configuration = {"some": "value"}
-
-        if backend.SPAWN_DELAY:
-
-            with patch("gevent.spawn_later") as mock_gevent:
-                self.pd_service.schedule_process("fake-process-def-id",
-                    proc_schedule, configuration, pid)
-
-                self.assertTrue(mock_gevent.called)
-
-                self.assertEqual(mock_gevent.call_args[0][0], backend.SPAWN_DELAY)
-                self.assertEqual(mock_gevent.call_args[0][1], backend._inner_spawn)
-                spawn_args = mock_gevent.call_args[0][2:]
-
-            # now call the delayed spawn directly
-            backend._inner_spawn(*spawn_args)
-
-        else:
-            self.pd_service.schedule_process("fake-process-def-id", proc_schedule,
-                configuration, pid)
-
-        self.assertTrue(pid.startswith(proc_def.name) and pid != proc_def.name)
-        self.assertEqual(self.mock_cc_spawn.call_count, 1)
-        call_args, call_kwargs = self.mock_cc_spawn.call_args
-        self.assertFalse(call_args)
-
-        # name should be def name followed by a uuid
-        name = call_kwargs['name']
-        assert name.startswith(proc_def['name'])
-        self.assertEqual(len(call_kwargs), 5)
-        self.assertEqual(call_kwargs['module'], 'my_module')
-        self.assertEqual(call_kwargs['cls'], 'class')
-        self.assertEqual(call_kwargs['process_id'], pid)
-
-        called_config = call_kwargs['config']
-        self.assertEqual(called_config, configuration)
-
-        # PENDING followed by RUNNING
-        self.assertEqual(self.mock_event_pub.publish_event.call_count, 2)
-
-        process = self.pd_service.read_process(pid)
-        self.assertEqual(process.process_id, pid)
-        self.assertEqual(process.process_state, ProcessStateEnum.RUNNING)
-
-    def test_read_process_notfound(self):
-        with self.assertRaises(NotFound):
-            self.pd_service.read_process("processid")
-
-    def test_schedule_process_notfound(self):
-        proc_schedule = DotDict()
-        configuration = {}
-
-        self.mock_rr.read.side_effect = NotFound()
-
-        with self.assertRaises(NotFound):
-            self.pd_service.schedule_process("not-a-real-process-id",
-                proc_schedule, configuration)
-
-        self.mock_rr.read.assert_called_once_with("not-a-real-process-id")
-
-    def test_local_cancel(self):
-        pid = self.pd_service.create_process("fake-process-def-id")
-
-        ok = self.pd_service.cancel_process(pid)
-
-        self.assertTrue(ok)
-        self.mock_cc_terminate.assert_called_once_with(pid)
-
-
-class FakeDashiNotFoundError(Exception):
-    pass
-
-
-class FakeDashiBadRequestError(Exception):
-    pass
-
-
-class FakeDashiWriteConflictError(Exception):
-    pass
-
-
-
 class TestProcess(BaseService):
     """Test process to deploy via PD
     """
@@ -287,11 +168,13 @@ class TestClient(RPCClient):
 class ProcessDispatcherServiceIntTest(IonIntegrationTestCase):
 
     def setUp(self):
+        raise SkipTest("Process dispatcher currently not supported")
         self._start_container()
         self.container.start_rel_from_url('res/deploy/basic.yml')
 
         self.rr_cli = ResourceRegistryServiceClient()
         self.pd_cli = ProcessDispatcherServiceClient()
+
 
         self.process_definition = ProcessDefinition(name='test_process')
         self.process_definition.executable = {'module': 'ion.services.test.test_process_dispatcher',

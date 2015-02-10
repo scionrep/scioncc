@@ -69,11 +69,7 @@ apps:
 #    processapp: [process_dispatcher, ion.services.process_dispatcher_service, ProcessDispatcherService]
 #    bootlevel: 10
 
-  - name: discovery
-    processapp: [discovery, ion.services.discovery_service, DiscoveryService]
-    bootlevel: 10
-
-  #The bootstrap for loading policy should be the final bootstrap process.
+  # The bootstrap for loading policy should be the final bootstrap process.
   - name: policy_bootstrap
     processapp: [policy_bootstrap, ion.processes.bootstrap.bootstrapper, Bootstrapper]
     bootlevel: 29

@@ -245,7 +245,7 @@ process:
 # ----------------------------------------------------------------------------------
 # The "service" root entry
 service:
-  discovery:
+  resource_management:
     max_search_results: 250
 
   service_gateway:

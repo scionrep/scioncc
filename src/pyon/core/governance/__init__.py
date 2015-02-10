@@ -120,22 +120,6 @@ def find_roles_by_actor(actor_id=None):
 
     return role_dict
 
-def get_web_authentication_actor():
-    """
-    Returns the ION System Actor defined in the Resource Registry
-    @return:
-    """
-    try:
-        gov_controller = bootstrap.container_instance.governance_controller
-        web_actor, _ = gov_controller.rr.find_resources(RT.ActorIdentity,name=get_safe(gov_controller.CFG, "system.web_authentication_actor", "web_authentication"), id_only=False)
-        if not web_actor:
-            return None
-
-        return web_actor[0]
-
-    except Exception, e:
-        log.error(e)
-        return None
 
 def get_system_actor():
     """
@@ -153,6 +137,7 @@ def get_system_actor():
     except Exception, e:
         log.error(e)
         return None
+
 
 def is_system_actor(actor_id):
     """
