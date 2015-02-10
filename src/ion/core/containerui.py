@@ -91,14 +91,7 @@ def process_index():
             "<li><a href='/restypes'><b>Browse Resource Registry and Resource Objects</b></a>",
             "<ul>",
             "<li>Org: <a href='/list/Org'>Org</a>, <a href='/list/UserRole'>UserRole</a></li>",
-            "<li>Users: <a href='/list/UserInfo'>UserInfo</a>, <a href='/list/ActorIdentity'>ActorIdentity</a>, <a href='/list/UserCredentials'>UserCredentials</a></li>",
-            "<li>Observatory: <a href='/list/Observatory'>Observatory</a>, <a href='/list/Subsite'>Subsite</a>, <a href='/list/Deployment'>Deployment</a></li>",
-            "<li>Platforms: <a href='/list/PlatformDevice'>PlatformDevice</a>, <a href='/list/PlatformSite'>PlatformSite</a>, <a href='/list/PlatformModel'>PlatformModel</a>, <a href='/list/PlatformAgent'>PlatformAgent</a>, <a href='/list/PlatformAgentInstance'>PlatformAgentInstance</a></li>",
-            "<li>Instruments: <a href='/list/InstrumentDevice'>InstrumentDevice</a>, <a href='/list/InstrumentSite'>InstrumentSite</a>, <a href='/list/InstrumentModel'>InstrumentModel</a>, <a href='/list/InstrumentAgent'>InstrumentAgent</a>, <a href='/list/InstrumentAgentInstance'>InstrumentAgentInstance</a></li>",
-            "<li>External Data: <a href='/list/ExternalDataset'>ExternalDataset</a>, <a href='/list/ExternalDataProvider'>ExternalDataProvider</a>, <a href='/list/ExternalDatasetModel'>ExternalDatasetModel</a>, <a href='/list/ExternalDatasetAgent'>ExternalDatasetAgent</a>, <a href='/list/ExternalDatasetAgentInstance'>ExternalDatasetAgentInstance</a></li>",
-            "<li>Data: <a href='/list/DataProduct'>DataProduct</a>, <a href='/list/Dataset'>Dataset</a></li>",
-            "<li>Coverage: <a href='/list/ParameterContext'>ParameterContext</a>, <a href='/list/ParameterDictionary'>ParameterDictionary</a>, <a href='/list/ParameterFunction'>ParameterFunction</a>, <a href='/list/StreamDefinition'>StreamDefinition</a></li>",
-            "<li>Streaming: <a href='/list/DataProcessDefinition'>DataProcessDefinition</a>, <a href='/list/DataProcess'>DataProcess</a>, <a href='/list/DataProducer'>DataProducer</a>, <a href='/list/Stream'>Stream</a>, <a href='/list/Subscription'>Subscription</a></li>",
+            "<li>Users: <a href='/list/ActorIdentity'>ActorIdentity</a></li>",
             "<li>Execution: <a href='/list/ProcessDefinition'>ProcessDefinition</a>, <a href='/list/Process'>Process</a>, <a href='/list/Service'>Service</a>, <a href='/list/ServiceDefinition'>ServiceDefinition</a>, <a href='/list/CapabilityContainer'>CapabilityContainer</a></li>",
             "<li>Exchange: <a href='/list/ExchangeSpace'>ExchangeSpace</a>, <a href='/list/ExchangePoint'>ExchangePoint</a>, <a href='/list/ExchangeName'>ExchangeName</a>, <a href='/list/ExchangeBroker'>ExchangeBroker</a></li>",
             "<li>Governance: <a href='/list/Commitment'>Commitment</a>, <a href='/list/Negotiation'>Negotiation</a>, <a href='/list/Policy'>Policy</a></li>",
@@ -426,72 +419,6 @@ def build_commands(resource_id, restype):
     options = zip(state_list, state_list)
     args = [('select', 'lcstate', options)]
     fragments.append(build_command("Change Lifecycle State", "/cmd/set_lcs?rid=%s" % resource_id, args))
-
-
-    if restype == "InstrumentAgentInstance" or restype == "PlatformAgentInstance" or restype == "ExternalDatasetAgentInstance":
-        fragments.append(build_command("Start Agent", "/cmd/start_agent?rid=%s" % resource_id))
-        fragments.append(build_command("Stop Agent", "/cmd/stop_agent?rid=%s" % resource_id))
-
-    elif restype == "InstrumentDevice":
-        fragments.append(build_command("Start Agent", "/cmd/start_agent?rid=%s" % resource_id))
-        fragments.append(build_command("Stop Agent", "/cmd/stop_agent?rid=%s" % resource_id))
-
-        options = [('initialize', 'RESOURCE_AGENT_EVENT_INITIALIZE'),
-                   ('go_active', 'RESOURCE_AGENT_EVENT_GO_ACTIVE'),
-                   ('run', 'RESOURCE_AGENT_EVENT_RUN'),
-                   ('acquire_sample', 'DRIVER_EVENT_ACQUIRE_SAMPLE'),
-                   ('start_autosample', 'DRIVER_EVENT_START_AUTOSAMPLE'),
-                   ('stop_autosample', 'DRIVER_EVENT_STOP_AUTOSAMPLE'),
-                   ('go_direct_access', 'RESOURCE_AGENT_EVENT_GO_DIRECT_ACCESS'),
-                   ('go_command', 'RESOURCE_AGENT_EVENT_GO_COMMAND'),
-                   ('go_inactive', 'RESOURCE_AGENT_EVENT_GO_INACTIVE'),
-                   ('reset', 'RESOURCE_AGENT_EVENT_RESET'),
-                  ]
-
-        args = [('select', 'agentcmd', options)]
-        fragments.append(build_command("Agent Command", "/cmd/agent_execute?rid=%s" % resource_id, args))
-
-    elif restype == "PlatformDevice":
-        fragments.append(build_command("Start Agent", "/cmd/start_agent?rid=%s" % resource_id))
-        fragments.append(build_command("Stop Agent", "/cmd/stop_agent?rid=%s" % resource_id))
-
-        options = [('initialize', 'RESOURCE_AGENT_EVENT_INITIALIZE'),
-                   ('go_active', 'RESOURCE_AGENT_EVENT_GO_ACTIVE'),
-                   ('run', 'RESOURCE_AGENT_EVENT_RUN'),
-                   ('acquire_sample', 'DRIVER_EVENT_ACQUIRE_SAMPLE'),
-                   ('start_autosample', 'DRIVER_EVENT_START_AUTOSAMPLE'),
-                   ('stop_autosample', 'DRIVER_EVENT_STOP_AUTOSAMPLE'),
-                   ('go_direct_access', 'RESOURCE_AGENT_EVENT_GO_DIRECT_ACCESS'),
-                   ('go_command', 'RESOURCE_AGENT_EVENT_GO_COMMAND'),
-                   ('go_inactive', 'RESOURCE_AGENT_EVENT_GO_INACTIVE'),
-                   ('reset', 'RESOURCE_AGENT_EVENT_RESET'),
-                  ]
-        args = [('select', 'agentcmd', options)]
-        fragments.append(build_command("Agent Command", "/cmd/agent_execute?rid=%s" % resource_id, args))
-
-    elif restype == "DataProcess":
-        fragments.append(build_command("Start Process", "/cmd/start_process?rid=%s" % resource_id))
-        fragments.append(build_command("Stop Process", "/cmd/stop_process?rid=%s" % resource_id))
-
-    elif restype == "DataProduct":
-        fragments.append(build_command("Latest Ingest", "/cmd/last_granule?rid=%s" % resource_id))
-
-    elif restype == "Deployment":
-        pass
-#        res_list,_ = Container.instance.resource_registry.find_resources(RT.InstrumentSite, id_only=False)
-#        if res_list:
-#            options = [(res.name, res._id) for res in res_list]
-#            args = [('select','deploy',options)]
-#            fragments.append(build_command("Set Deployment", "/cmd/deploy?rid=%s" % resource_id, args))
-#
-#        res_list,_ = Container.instance.resource_registry.find_objects(resource_id, PRED.hasDeployment, RT.InstrumentSite, id_only=False)
-#        if res_list:
-#            options = [(res.name, res._id) for res in res_list]
-#            args = [('select','deploy_prim',options)]
-#            fragments.append(build_command("Deploy Primary", "/cmd/deploy_prim?rid=%s" % resource_id, args))
-
-    if restype in ["Org", "Observatory", "Subsite", "PlatformSite", "InstrumentSite", "PlatformDevice", "InstrumentDevice"]:
-        fragments.append(build_command("Show Sites and Status", "/cmd/sites?rid=%s" % resource_id))
 
 
     fragments.append("</table>")

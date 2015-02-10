@@ -17,7 +17,6 @@ from pyon.public import PRED, CFG, RT, log, BadRequest, get_ion_actor_id, Resour
 from interface.objects import View
 
 DATASTORE_MAP = {"resources_index": DataStore.DS_RESOURCES,
-                 "data_products_index": DataStore.DS_RESOURCES,
                  "events_index": DataStore.DS_EVENTS,
                  }
 
@@ -110,14 +109,6 @@ class DatastoreDiscovery(object):
                 break
         if where is None:
             raise BadRequest("Query had no matcher")
-
-        if index == "data_products_index":
-            filter_types = ["DataProduct", "DataProcess", "Deployment", "InstrumentDevice", "InstrumentModel",
-                            "InstrumentAgentInstance", "InstrumentAgent", "PlatformDevice", "PlatformModel",
-                            "PlatformAgentInstance", "PlatformAgent", "PlatformSite", "Observatory", "UserRole",
-                            "Org", "Attachment", "ExternalDatasetAgent", "ExternalDatasetAgentInstance",
-                            "Asset", "EventDuration"]
-            where = qb.and_(where, qb.in_(DQ.ATT_TYPE, *filter_types), qb.neq(DQ.RA_LCSTATE, "DELETED"))
 
         order_by = None
         if order:
@@ -307,15 +298,6 @@ class DatastoreDiscovery(object):
         view_obj = View(name=view_name)
         if view_name == "resources_index":
             rq = ResourceQuery()
-            view_obj.view_definition = rq.get_query()
-            return view_obj
-        elif view_name == "data_products_index":
-            rq = ResourceQuery()
-            rq.set_filter(rq.filter_type(["DataProduct", "DataProcess", "Deployment", "InstrumentDevice", "InstrumentModel",
-                            "InstrumentAgentInstance", "InstrumentAgent", "PlatformDevice", "PlatformModel",
-                            "PlatformAgentInstance", "PlatformAgent", "PlatformSite", "Observatory", "UserRole",
-                            "Org", "Attachment", "ExternalDatasetAgent", "ExternalDatasetAgentInstance",
-                            "Asset", "EventDuration"]))
             view_obj.view_definition = rq.get_query()
             return view_obj
         elif view_name == "events_index":

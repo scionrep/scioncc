@@ -150,8 +150,7 @@ class ResourceAgent(BaseResourceAgent, StatefulProcessMixin):
         self.resource_id = None
         
         # The Resource Type of the target resource object -
-        # ex. InstrumentDevice or PlatformDevice
-        # Must be set by Implementing Class        
+        # Must be set by Implementing Class
         self.resource_type = None
 
         # Event publisher.

@@ -436,11 +436,6 @@ class ResourceQueryTest(IonIntegrationTestCase):
         self.assertEquals(len(result), 1)
         self.assertEquals(result[0].name, "Site1")
 
-        rq = ResourceQuery()
-        rq.set_filter(rq.filter_type(RT.TestSite))
-        result = self.discovery.query_view(view_name="data_products_index", id_only=False, ext_query=rq.get_query())
-        self.assertEquals(len(result), 0)
-
 
         # --- Events setup
 

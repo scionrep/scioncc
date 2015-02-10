@@ -118,6 +118,10 @@ AssociationDefinitions:
     domain: [TestDevice]
     range: [TestDataset]
     docstring: References a dataset for a device (test only)
+  - predicate: hasTestSource
+    domain: [TestDataset]
+    range: [TestDevice, TestSite]
+    docstring: References a dataset for a device (test only)
   - predicate: hasTestDevice
     domain: [TestSite, TestDevice]
     range: [TestDevice]
