@@ -4,11 +4,10 @@
 
 __author__ = 'Thomas R. Lennan, Michael Meisinger'
 
-
 from pyon.core.bootstrap import get_sys_name, CFG
+from pyon.core.exception import BadRequest
 from pyon.datastore.datastore_common import DatastoreFactory, DataStore
 from pyon.util.log import log
-from pyon.util.arg_check import validate_true
 
 
 class DatastoreManager(object):
@@ -52,7 +51,8 @@ class DatastoreManager(object):
         @param profile  One of known constants determining the use of the store
         @param config  Override config to use
         """
-        validate_true(ds_name, 'ds_name must be provided')
+        if not ds_name:
+            raise BadRequest("ds_name must be provided")
         if (ds_name, profile) in self._datastores:
             log.debug("get_datastore(): Found instance of store '%s' (profile=%s)" % (ds_name, profile))
             return self._datastores[(ds_name, profile)]

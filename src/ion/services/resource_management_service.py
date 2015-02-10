@@ -10,7 +10,6 @@ from pyon.datastore.datastore_query import QUERY_EXP_KEY, DQ
 from pyon.public import log, IonObject, Unauthorized, ResourceQuery, PRED, CFG, RT, log, BadRequest, NotFound
 from pyon.util.config import Config
 from pyon.util.containers import get_safe, named_any, get_ion_ts, is_basic_identifier
-from pyon.util.arg_check import validate_true, validate_is_instance
 
 from ion.services.ds_discovery import DatastoreDiscovery
 
@@ -47,7 +46,8 @@ class ResourceManagementService(BaseResourceManagementService):
         Search_args may contain parameterized values.
         See the query format definition: https://confluence.oceanobservatories.org/display/CIDev/Discovery+Service+Query+Format
         """
-        validate_true(query, 'Invalid query')
+        if not query:
+            raise BadRequest("Invalid query")
 
         return self._discovery_request(query, id_only, search_args=search_args, query_params=search_args)
 

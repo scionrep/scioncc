@@ -10,7 +10,6 @@ import gevent
 
 from pyon.core.exception import BadRequest
 from pyon.net.endpoint import Publisher, Subscriber
-from pyon.util.arg_check import validate_is_instance
 from pyon.util.log import log
 from pyon.ion.service import BaseService
 from interface.objects import StreamRoute
@@ -33,7 +32,8 @@ class StreamPublisher(Publisher):
         @param routing_key    The routing key to be used in lieu of stream_route or stream_id
         '''
         super(StreamPublisher, self).__init__()
-        validate_is_instance(process, BaseService, 'No valid process provided.')
+        if not isinstance(process, BaseService):
+            raise BadRequest('No valid process provided.')
         #--------------------------------------------------------------------------------
         # The important part of publishing is the stream_route and there are three ways
         # to the stream route
@@ -57,7 +57,8 @@ class StreamPublisher(Publisher):
                 self.stream_route = stream_route
         else:
             self.stream_route = stream_route
-        validate_is_instance(self.stream_route, StreamRoute, 'No valid stream route provided to publisher.')
+        if not isinstance(self.stream_route, StreamRoute):
+            raise BadRequest('No valid stream route provided to publisher.')
 
         self.container = process.container
         self.xp = self.container.ex_manager.create_xp(self.stream_route.exchange_point)
@@ -101,7 +102,8 @@ class StreamSubscriber(Subscriber):
         @param exchange_name The subscribing queue name.
         @param callback      The callback to execute upon receipt of a packet.
         '''
-        validate_is_instance(process, BaseService, 'No valid process was provided.')
+        if not isinstance(process, BaseService):
+            raise BadRequest('No valid process was provided.')
         self.container = process.container
         self.xn = self.container.ex_manager.create_xn_queue(exchange_name)
         self.started = False
@@ -154,7 +156,8 @@ class StandaloneStreamPublisher(Publisher):
         super(StandaloneStreamPublisher, self).__init__()
         from pyon.container.cc import Container
         self.stream_id = stream_id
-        validate_is_instance(stream_route, StreamRoute, 'stream route is not valid')
+        if not isinstance(stream_route, StreamRoute):
+            raise BadRequest('stream route is not valid')
         self.stream_route = stream_route
 
         self.xp = Container.instance.ex_manager.create_xp(stream_route.exchange_point)
