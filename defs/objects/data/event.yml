@@ -180,6 +180,11 @@ InformationContentAccessedEvent: !Extends_InformationContentEvent
   access_params: {}
 
 
+# Seems to be needed/used only by transforms when an error is encountered
+ExceptionEvent: !Extends_Event
+  exception_type: ""
+  exception_message: ""
+
 
 # ------------------------------------------------------------------------------------
 # Policy / Governance Event
@@ -329,6 +334,3 @@ ContainerManagementRequest: !Extends_Event
 ContainerManagementResult: !Extends_Event
   action: !ContainerManagementAction
   outcome: ""
----
-
-AgProRemoteEvent: !Extends_Event

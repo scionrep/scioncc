@@ -155,6 +155,8 @@ class TestProcessRPCClient(PyonTestCase):
     @patch('pyon.net.endpoint.RPCClient.create_endpoint')
     def test_create_endpoint(self, mockce):
         prpc = ProcessRPCClient(process=sentinel.process)
+        sentinel.process.container = Mock()
+        sentinel.process.container.create_xn_service = Mock(return_value=sentinel.to_name)
         prpc.create_endpoint(to_name=sentinel.to_name)
 
         mockce.assert_called_once_with(prpc, sentinel.to_name, None, process=sentinel.process)

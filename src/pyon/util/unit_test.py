@@ -95,21 +95,21 @@ class PyonTestCase(unittest.TestCase):
                 setattr(mock_service, func_name, mock_func)
         return clients
 
-    # Assuming your service is the only subclass of the Base Service
-    def test_verify_service(self):
-        if not getattr(self, 'base_service', None):
-            raise unittest.SkipTest('Not implementing an Ion Service')
-        from zope.interface.verify import verifyClass
-        base_service = self.base_service
-        implemented_service = base_service.__subclasses__()[0]
-        iface = list(implementedBy(base_service))[0]
-        verifyClass(iface, implemented_service)
-        # Check if defined functions in Base Service are all implemented
-        difference = set(func_names(base_service)) - set(func_names(implemented_service)) - set(['__init__'])
-        if difference:
-            self.fail('Following function declarations in %s do not exist in %s : %s' %
-                    (iface, implemented_service,
-                        list(difference)))
+    # # Assuming your service is the only subclass of the Base Service
+    # def test_verify_service(self):
+    #     if not getattr(self, 'base_service', None):
+    #         raise unittest.SkipTest('Not implementing an Ion Service')
+    #     from zope.interface.verify import verifyClass
+    #     base_service = self.base_service
+    #     implemented_service = base_service.__subclasses__()[0]
+    #     iface = list(implementedBy(base_service))[0]
+    #     verifyClass(iface, implemented_service)
+    #     # Check if defined functions in Base Service are all implemented
+    #     difference = set(func_names(base_service)) - set(func_names(implemented_service)) - set(['__init__'])
+    #     if difference:
+    #         self.fail('Following function declarations in %s do not exist in %s : %s' %
+    #                 (iface, implemented_service,
+    #                     list(difference)))
 
     def patch_cfg(self, cfg_obj_or_str, *args, **kwargs):
         """

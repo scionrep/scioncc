@@ -25,7 +25,7 @@ class ResourceManagementService(BaseResourceManagementService):
     Also provides a resource discovery and query capability.
     """
 
-    MAX_SEARCH_RESULTS = CFG.get_safe('service.discovery.max_search_results', 250)
+    MAX_SEARCH_RESULTS = CFG.get_safe('service.resource_management.max_search_results', 250)
 
     def on_init(self):
         self.resource_interface = (Config(["res/config/resource_management.yml"])).data['ResourceInterface']

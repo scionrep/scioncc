@@ -479,7 +479,7 @@ def handle_stream_exception(iorigin="stream_exception"):
             except StreamException as e:
                 info = "".join(traceback.format_tb(sys.exc_info()[2]))
                 pub = EventPublisher(event_type="ExceptionEvent")
-                pub.publish_event(origin=iorigin, description="stream exception event", exception_type=str(type(e)), message=info)
+                pub.publish_event(origin=iorigin, description="stream exception event", exception_type=str(type(e)), exception_message=info)
         return wrapped
     return real_decorator
 

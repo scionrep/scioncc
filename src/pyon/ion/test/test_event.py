@@ -408,29 +408,21 @@ class TestEventRepository(IonUnitTestCase):
 
     def test_event_persist(self):
         events = [{'_id': '778dcc0811bd4b518ffd1ef873f3f457',
-                   'base_types': ['Event'],
+                   'base_types': ['Event', 'ResourceEvent'],
                    'description': 'Event to deliver the status of instrument.',
                    'origin': 'instrument_1',
                    'origin_type': 'PlatformDevice',
-                   'status': 1,
                    'sub_type': 'input_voltage',
-                   'time_stamps': [2.0, 2.0],
                    'ts_created': '1364121284585',
-                   'type_': 'DeviceStatusEvent',
-                   'valid_values': [-100, 100],
-                   'values': [110.0, 111.0]},
+                   'type_': 'ResourceLifecycleEvent'},
                   {'_id': 'b40731684e41418082e1727f3cf61026',
-                   'base_types': ['Event'],
+                   'base_types': ['Event', 'ResourceEvent'],
                    'description': 'Event to deliver the status of instrument.',
                    'origin': 'instrument_1',
                    'origin_type': 'PlatformDevice',
-                   'status': 1,
                    'sub_type': 'input_voltage',
-                   'time_stamps': [2.0, 2.0],
                    'ts_created': '1364121284609',
-                   'type_': 'DeviceStatusEvent',
-                   'valid_values': [-100, 100],
-                   'values': [110.0, 111.0]}]
+                   'type_': 'ResourceModifiedEvent'}]
 
         dsm = DatastoreManager()
         ds = dsm.get_datastore(DataStore.DS_EVENTS, DataStore.DS_PROFILE.EVENTS)
@@ -449,7 +441,6 @@ class TestEventRepository(IonUnitTestCase):
         events_r = event_repo.find_events(origin=event1_dict["origin"])
         self.assertEquals(len(events_r), 1)
         event1_read = events_r[0][2]
-        self.assertEquals(event1_read.time_stamps, event1_dict["time_stamps"])
 
         # Store one event with ID
         event2_dict = events[1].copy()
@@ -472,8 +463,8 @@ class TestEventRepository(IonUnitTestCase):
         event2_obj = IonObject(event2_type, **event2_dict)
 
         event_repo.put_events([event1_obj, event2_obj])
-        events_r = event_repo.find_events(event_type='DeviceStatusEvent')
-        self.assertEquals(len(events_r), 4)
+        events_r = event_repo.find_events(event_type='ResourceModifiedEvent')
+        self.assertEquals(len(events_r), 2)
 
 
 @attr('INT', group='event')
