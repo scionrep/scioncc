@@ -384,12 +384,6 @@ class PostgresDataStore(DataStore):
                 geoc = None
                 if "geospatial_bounds" in doc:
                     geoc = doc["geospatial_bounds"]
-                elif "constraint_list" in doc:
-                    # Find the first one - alternatively could expand a bbox
-                    for cons in doc["constraint_list"]:
-                        if isinstance(cons, dict) and cons.get("type_", None) == "GeospatialBounds":
-                            geoc = cons
-                            break
                 if geoc:
                     try:
                         geovals = dict(x1=float(geoc["geospatial_longitude_limit_west"]),
@@ -416,12 +410,6 @@ class PostgresDataStore(DataStore):
                 geoc = None
                 if "geospatial_bounds" in doc:
                     geoc = doc["geospatial_bounds"]
-                elif "constraint_list" in doc:
-                    # Find the first one - alternatively could expand a bbox
-                    for cons in doc["constraint_list"]:
-                        if isinstance(cons, dict) and cons.get("type_", None) == "GeospatialBounds":
-                            geoc = cons
-                            break
                 if geoc:
                     try:
                         geovals = dict(z1=float(geoc["geospatial_vertical_min"]),
@@ -436,13 +424,6 @@ class PostgresDataStore(DataStore):
                 if "nominal_datetime" in doc:
                     # Case for DataProduct resources
                     tempc = doc["nominal_datetime"]
-                elif "constraint_list" in doc:
-                    # Case for Deployment resources
-                    # Find the first one - alternatively could expand a bbox
-                    for cons in doc["constraint_list"]:
-                        if isinstance(cons, dict) and cons.get("type_", None) == "TemporalBounds":
-                            tempc = cons
-                            break
                 #elif "ts_created" in doc and "ts_updated" in doc:
                 #    # All other resources.
                 #    # Values are in seconds float since epoch
