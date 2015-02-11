@@ -6,12 +6,14 @@ from mock import patch
 from unittest import SkipTest
 import unittest
 import os
+from copy import deepcopy
 from gevent import greenlet, spawn
 
 from pyon.container.cc import Container
 from pyon.core import bootstrap
 from pyon.core.bootstrap import bootstrap_pyon, CFG
 from pyon.core.interfaces.interfaces import InterfaceAdmin
+from pyon.util.containers import DotDict, dict_merge
 from pyon.util.log import log
 from pyon.util.file_sys import FileSystem
 
@@ -172,6 +174,17 @@ class IonIntegrationTestCase(unittest.TestCase):
 
         FileSystem._clean(CFG)
 
+
+    @staticmethod
+    def _get_alt_cfg(cfg_merge):
+        cfg_clone = deepcopy(CFG)
+        dict_merge(cfg_clone, cfg_merge, inplace=True)
+        return DotDict(**cfg_clone)
+
+    def patch_alt_cfg(self, cfg_obj_or_str, cfg_merge):
+        """Patches given CFG (DotDict) based on system CFG with given dict merged"""
+        alt_cfg = self._get_alt_cfg(cfg_merge)
+        self.patch_cfg(cfg_obj_or_str, alt_cfg)
 
     def patch_cfg(self, cfg_obj_or_str, *args, **kwargs):
         """

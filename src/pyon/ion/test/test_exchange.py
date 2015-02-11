@@ -64,9 +64,6 @@ class TestExchangeManager(PyonTestCase):
         self.ex_manager.get_transport = Mock()
         self.ex_manager.container.resource_registry.find_resources = Mock(return_value=[["id"], ["foo"]])
 
-    def test_verify_service(self, mockmessaging):
-        PyonTestCase.test_verify_service(self)
-
     @patch.dict('pyon.ion.exchange.CFG',
                 exchange=_make_exchange_cfg())
     def test_start_with_no_connections(self, mockmessaging):
@@ -357,15 +354,18 @@ class TestExchangeManagerInt(IonIntegrationTestCase):
         self.assertNotIn('secondary', self.container.ex_manager._nodes)
 
     @patch.dict('pyon.ion.exchange.CFG',
-                server={'amqp':CFG.server.amqp, 'postgresql':CFG.server.postgresql, 'amqp_fail':fail_bad_user_cfg, 'amqp_fail2':fail_bad_port_cfg},
-                exchange=_make_exchange_cfg(primary=_make_broker_cfg(server='amqp'),
-                                            secondary=_make_broker_cfg(server='amqp_fail'),
-                                            thirdly=_make_broker_cfg(server='amqp_fail2')))
+                PyonTestCase._get_alt_cfg(
+                    {'server': {'amqp_fail': fail_bad_user_cfg,
+                                'amqp_fail2': fail_bad_port_cfg,
+                                'amqp_priv': ""},
+                     'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp'),
+                                                    secondary=_make_broker_cfg(server='amqp_fail'),
+                                                    thirdly=_make_broker_cfg(server='amqp_fail2')) }))
     def test_start_stop_with_one_success_and_multiple_failures(self):
         self._start_container()
 
         self.assertEquals(len(self.container.ex_manager._nodes), 1)
-        self.assertIn('primary', self.container.ex_manager._nodes)
+        self.assertIn('system_broker', self.container.ex_manager._nodes)
         self.assertNotIn('secondary', self.container.ex_manager._nodes)
 
     @patch.dict('pyon.ion.exchange.CFG',
@@ -386,19 +386,21 @@ class TestExchangeManagerInt(IonIntegrationTestCase):
     def test_start_stop_with_bad_host_failure(self):
         self.assertRaises(ExchangeManagerError, self._start_container)
 
-    def test_privileged_transport_dying_means_fail_fast(self):
-        self._start_container()
-
-        self.container.fail_fast = Mock()
-
-        name = str(uuid4())[0:6]
-        bind = str(uuid4())[0:6]
-
-        xn = self.container.ex_manager.create_xn_queue(name)
-        self.assertRaises(TransportError, xn.unbind, bind)
-
-        self.assertEquals(self.container.fail_fast.call_count, 1)
-        self.assertIn("ExManager privileged transport", self.container.fail_fast.call_args[0][0])
+    # def test_privileged_transport_dying_means_fail_fast(self):
+    #     self._start_container()
+    #
+    #     self.container.fail_fast = Mock()
+    #
+    #     name = str(uuid4())[0:6]
+    #     bind = str(uuid4())[0:6]
+    #
+    #     xn = self.container.ex_manager.create_xn_queue(name)
+    #     xn.unbind(bind)
+    #
+    #     self.assertRaises(TransportError, xn.unbind, bind)
+    #
+    #     self.assertEquals(self.container.fail_fast.call_count, 1)
+    #     self.assertIn("ExManager privileged transport", self.container.fail_fast.call_args[0][0])
 
     @patch.dict('pyon.ion.exchange.CFG',
                 server={'amqp':CFG.server.amqp, 'postgresql':CFG.server.postgresql},
@@ -409,6 +411,7 @@ class TestExchangeManagerInt(IonIntegrationTestCase):
         self.assertEquals(self.container.node, self.container.ex_manager.default_node)
         self.assertEquals(len(self.container.ex_manager._nodes), 1)
         self.assertEquals(len(self.container.ex_manager._priv_nodes), 1)
+
 
 @attr('UNIT', group='exchange')
 class TestExchangeObjects(PyonTestCase):
@@ -427,9 +430,10 @@ class TestExchangeObjects(PyonTestCase):
         self.ex_manager._get_xs_obj = Mock(return_value=None)
 
         # patch for setUp and test
-        self.patch_cfg('pyon.ion.exchange.CFG',
-                       {'container':{'exchange':{'auto_register':False}},
-                        'exchange':_make_exchange_cfg()})
+        # self.patch_cfg('pyon.ion.exchange.CFG',
+        #                {'container':{'exchange':{'auto_register':False}},
+        #                 'exchange':_make_exchange_cfg()})
+        self.patch_alt_cfg('pyon.ion.exchange.CFG', {'container':{'exchange':{'auto_register':False}}})
 
         # start ex manager
         self.ex_manager.start()
@@ -513,7 +517,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_create_xp(self):
         xp      = self.ex_manager.create_xp(sentinel.xp)
-        exstr   = "%s.%s.xp.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
+        exstr   = "%s.%s.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
 
         self.assertEquals(xp._exchange, sentinel.xp)
         self.assertEquals(xp._xs, self.ex_manager.default_xs)
@@ -535,7 +539,7 @@ class TestExchangeObjects(PyonTestCase):
         xs_exstr = '%s.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
 
         xp = self.ex_manager.create_xp(sentinel.xp, xs)
-        xp_exstr = '%s.xp.%s' % (xs_exstr, str(sentinel.xp))
+        xp_exstr = '%s.%s' % (xs_exstr, str(sentinel.xp))
 
         # check mappings
         self.assertIn(sentinel.xp, self.ex_manager.xn_by_name)
@@ -545,7 +549,7 @@ class TestExchangeObjects(PyonTestCase):
 
     def test_delete_xp(self):
         xp      = self.ex_manager.create_xp(sentinel.xp)
-        exstr   = "%s.%s.xp.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
+        exstr   = "%s.%s.%s" % (get_sys_name(), self.ex_manager.default_xs._exchange, str(sentinel.xp))
 
         self.assertIn(sentinel.xp, self.ex_manager.xn_by_name)
 
@@ -653,13 +657,11 @@ class TestExchangeObjects(PyonTestCase):
 @attr('INT', group='exchange')
 class TestExchangeObjectsInt(IonIntegrationTestCase):
     def setUp(self):
-        raise unittest.SkipTest("Fixme - hangs - probably CFG patch issue")
-        self.patch_cfg('pyon.ion.exchange.CFG', {'container':{'profile':"res/profile/development.yml",
-                                                              'datastore':CFG['container']['datastore'],
-                                                              'exchange':{'auto_register': False}},
-                                                 'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp'),
-                                                                                other=_make_broker_cfg(server='amqp', join_xs=['other'])),
-                                                 'server':CFG['server']})
+        self.patch_alt_cfg('pyon.ion.exchange.CFG',
+                           {'container':{'exchange':{'auto_register': False}},
+                            'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp'),
+                                                           other=_make_broker_cfg(server='amqp', join_xs=['other']))})
+
         self._start_container()
 
     def test_rpc_with_xn(self):
@@ -691,8 +693,7 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
         # did we get back what we expected?
         self.assertEquals(ret, 'BACK:hi there')
 
-    def xtest_create_xn_on_diff_broker(self):
-        raise unittest.SkipTest("Fixme - hangs")
+    def test_create_xn_on_diff_broker(self):
         xs = self.container.create_xs('other')
         self.assertEquals(xs.node, self.container.ex_manager._nodes['other'])
 
@@ -705,11 +706,7 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
         # @TODO: name collisions in xn_by_name/RR with same name/different XS?
         # should likely raise error
 
-    def xtest_pubsub_with_xp(self):
-        raise unittest.SkipTest("not done yet")
-
-    def xtest_consume_one_message_at_a_time(self):
-        raise unittest.SkipTest("Fixeme - hangs")
+    def test_consume_one_message_at_a_time(self):
 
         # see also pyon.net.test.test_channel:TestChannelInt.test_consume_one_message_at_a_time
 
@@ -820,17 +817,15 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
 @attr('INT', group='exchange')
 class TestExchangeObjectsIntWithLocal(TestExchangeObjectsInt):
     def setUp(self):
-        raise unittest.SkipTest("Fixme - hangs - probably CFG patch issue")
-        self.patch_cfg('pyon.ion.exchange.CFG', {'container':{'profile':"res/profile/development.yml",
-                                                              'datastore':CFG['container']['datastore'],
-                                                              'exchange':{'auto_register': False}},
-                                                 'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp')),
-                                                 'server':CFG['server']})
+        self.patch_alt_cfg('pyon.ion.exchange.CFG',
+                           {'container':{'exchange':{'auto_register': False}},
+                            'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp'))})
+
         self._start_container()
 
 
 @attr('INT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', {'container':{'capability':{'profile':"res/profile/development.yml"},'exchange':{'auto_register': False}}})
+@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'exchange':{'auto_register': False}}}))
 class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
     """
     Tests creation and deletion of things on the broker.
@@ -901,8 +896,8 @@ class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
         self.assertNotIn(xn.queue, self.container.ex_manager.list_queues())
 
 @attr('INT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', {'container':{'exchange':{'auto_register': False,
-                                                               'names':{'durable':True}}}})
+@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'exchange':{'auto_register': False,
+                                                                                         'names':{'durable':True}}}}))
 class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
     def setUp(self):
         self._start_container()
@@ -984,7 +979,8 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
         self.assertFalse(filtered[0])       # not durable, even tho config says base ones are
 
 @attr('UNIT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', {'container':{'exchange':{'auto_register': False, 'management':{'username':'user', 'password':'pass', 'port':'port'}}}})
+@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'exchange':{'auto_register': False,
+                                                                                         'management':{'username':'user', 'password':'pass', 'port':'port'}}}}))
 class TestManagementAPI(PyonTestCase):
     def setUp(self):
         self.ex_manager = ExchangeManager(Mock())

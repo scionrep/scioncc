@@ -2,13 +2,15 @@
 
 """Unit test base class and utils"""
 
+from copy import deepcopy
+import os
 from mock import Mock, mocksignature, patch, DEFAULT
 import unittest
-
 from zope.interface import implementedBy
+
 from pyon.core.bootstrap import IonObject, bootstrap_pyon, get_service_registry, CFG
+from pyon.util.containers import dict_merge, DotDict
 from pyon.util.file_sys import FileSystem
-import os
 
 bootstrap_pyon()
 
@@ -110,6 +112,21 @@ class PyonTestCase(unittest.TestCase):
     #         self.fail('Following function declarations in %s do not exist in %s : %s' %
     #                 (iface, implemented_service,
     #                     list(difference)))
+
+    def _breakpoint(self, scope=None, global_scope=None):
+        from pyon.util.breakpoint import breakpoint
+        breakpoint(scope=scope, global_scope=global_scope)
+
+    @staticmethod
+    def _get_alt_cfg(cfg_merge):
+        cfg_clone = deepcopy(CFG)
+        dict_merge(cfg_clone, cfg_merge, inplace=True)
+        return DotDict(**cfg_clone)
+
+    def patch_alt_cfg(self, cfg_obj_or_str, cfg_merge):
+        """Patches given CFG (DotDict) based on system CFG with given dict merged"""
+        alt_cfg = self._get_alt_cfg(cfg_merge)
+        self.patch_cfg(cfg_obj_or_str, alt_cfg)
 
     def patch_cfg(self, cfg_obj_or_str, *args, **kwargs):
         """

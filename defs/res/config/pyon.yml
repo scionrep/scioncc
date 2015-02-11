@@ -130,6 +130,7 @@ container:
   objects:
     validate:
       setattr: False
+      interceptor: True
 
   timeout:
     start_listener: 30.0
