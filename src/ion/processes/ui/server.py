@@ -13,6 +13,7 @@ from flask.ext.socketio import SocketIO, SocketIOServer
 from pyon.public import StandaloneProcess, log, BadRequest, OT, get_ion_ts_millis
 from pyon.util.containers import named_any
 from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth
+
 from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
 
 
@@ -21,8 +22,6 @@ DEFAULT_WEB_SERVER_PORT = 4000
 DEFAULT_SESSION_TIMEOUT = 600
 
 CFG_PREFIX = "process.ui_server"
-JSON = "application/json"
-HTML = "text/html"
 
 # Initialize the main  Flask app
 app = Flask("ui_server")
@@ -38,6 +37,7 @@ class UIServer(StandaloneProcess):
         global ui_instance
         ui_instance = self
 
+        # Main references to basic components (if initialized)
         self.http_server = None
         self.socket_io = None
         self.service_gateway = None
@@ -57,11 +57,14 @@ class UIServer(StandaloneProcess):
         self.extensions = self.CFG.get_safe(CFG_PREFIX + ".extensions") or []
         self.extension_objs = []
 
+        # TODO: What about https?
+        self.base_url = "http://%s:%s" % (self.server_hostname, self.server_port)
+
         self.idm_client = IdentityManagementServiceProcessClient(process=self)
 
         # One time setup
         if self.server_enabled:
-            app.secret_key = self.server_secret or self.__class__.__name__   # Enables sessions
+            app.secret_key = self.server_secret or self.__class__.__name__   # Enables encrypted session cookies
 
             if self.server_debug:
                 app.debug = True
@@ -73,6 +76,7 @@ class UIServer(StandaloneProcess):
                 from ion.services.service_gateway import ServiceGateway, sg_blueprint
                 self.service_gateway = ServiceGateway(process=self, config=self.CFG, response_class=app.response_class)
                 app.register_blueprint(sg_blueprint)
+                log.info("UI Server: service gateway started on %s%s", self.base_url, self.service_gateway.url_prefix)
 
             for ext_cls in self.extensions:
                 cls = named_any(ext_cls)
@@ -80,11 +84,13 @@ class UIServer(StandaloneProcess):
 
             for ext_obj in self.extension_objs:
                 ext_obj.on_init(self, app)
+            if self.extensions:
+                log.info("UI Server: %s extensions initialized", len(self.extensions))
 
             # Start the web server
             self.start_service()
 
-            log.info("Started UI Server on %s:%s" % (self.server_hostname, self.server_port))
+            log.info("Started UI Server on %s" % self.base_url)
 
         else:
             log.warn("UI Server disabled in config")
@@ -98,7 +104,6 @@ class UIServer(StandaloneProcess):
             self.stop_service()
 
         if self.server_socket_io:
-            self.socket_io = SocketIO(app)
             self.http_server = WSGIServer((self.server_hostname, self.server_port),
                                           app,
                                           log=None)

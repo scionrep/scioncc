@@ -33,11 +33,11 @@ Python packages and environment management:
 Linux (Ubuntu) Prerequisites
 ============================
 
-See lib/install/install_ubuntu.sh
+See misc/install/install_ubuntu.sh
 Note: Only run this file on a new VM if you know what you are doing.
 Check that no errors occurred during dependencies install.
 
-Then follow manual steps in lib/install/install_ubuntu.txt
+Then follow manual steps in misc/install/install_ubuntu.txt
 
 
 Common Installation
@@ -45,9 +45,9 @@ Common Installation
 
 Setup a virtualenv to run the SciON capability container:
     > mkvirtualenv --no-site-packages scion
-    > pip install setuptools --upgrade
 
-Install numpy to the virtualenv
+Install special virtualenv dependencies:
+    > pip install setuptools --upgrade
     > pip install numpy==1.7.1
 
 Clone scioncc (this repository) in your code directory:

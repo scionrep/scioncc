@@ -8,6 +8,12 @@ import traceback
 import flask
 from flask import request, jsonify
 import sys
+import json
+import simplejson
+
+
+CONT_TYPE_JSON = "application/json"
+CONT_TYPE_HTML = "text/html"
 
 
 class UIExtension(object):
@@ -20,7 +26,19 @@ class UIExtension(object):
 
 
 # -------------------------------------------------------------------------
-# UI Helpers
+# Content encoding helpers
+
+# Set standard json functions
+json_dumps = json.dumps
+json_loads = simplejson.loads   # Faster loading than regular json
+
+def encode_ion_object(obj):
+    return obj.__dict__
+
+
+# -------------------------------------------------------------------------
+# UI helpers
+
 
 def build_json_response(result_obj):
     status = 200
