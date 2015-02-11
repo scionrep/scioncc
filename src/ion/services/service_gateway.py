@@ -30,6 +30,12 @@ from interface.services.core.iorg_management_service import OrgManagementService
 from interface.objects import Attachment, ProcessDefinition
 
 
+CFG_PREFIX = "service.service_gateway"
+DEFAULT_USER_CACHE_SIZE = 2000
+DEFAULT_EXPIRY = "0"
+
+SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
+
 GATEWAY_RESPONSE = "result"
 GATEWAY_ERROR = "error"
 GATEWAY_ERROR_EXCEPTION = "exception"
@@ -39,13 +45,8 @@ GATEWAY_ERROR_TRACE = "trace"
 # Stuff for specifying other return types
 RETURN_MIMETYPE_PARAM = "return_mimetype"
 
-CFG_PREFIX = "service.service_gateway"
-DEFAULT_USER_CACHE_SIZE = 2000
-DEFAULT_EXPIRY = "0"
-SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
-
 # Flask blueprint for service gateway routes
-sg_blueprint = Blueprint("service_gateway", __name__)
+sg_blueprint = Blueprint("service_gateway", __name__, static_folder=None)
 # Singleton instance of service gateway
 sg_instance = None
 

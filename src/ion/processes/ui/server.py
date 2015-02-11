@@ -24,8 +24,8 @@ DEFAULT_GATEWAY_PREFIX = "/service"
 
 CFG_PREFIX = "process.ui_server"
 
-# Initialize the main  Flask app
-app = Flask("ui_server")
+# Initialize the main Flask app
+app = Flask("ui_server", static_folder=None, template_folder=None)
 ui_instance = None
 
 
