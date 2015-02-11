@@ -14,7 +14,7 @@ class AuthenticationTest(PyonTestCase):
         pass
 
     @skip("Authentication test CERTIFICATE expired - please fix me!!")
-    def test_authentication(self):
+    def xtest_authentication(self):
         private_key = """
 -----BEGIN RSA PRIVATE KEY-----
 MIICXQIBAAKBgQDELieVJmWlcD1qfumxhraYailqB9Wd9emCLtSDPRRNAbSvOrTd

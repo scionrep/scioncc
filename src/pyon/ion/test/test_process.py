@@ -504,7 +504,7 @@ class ProcessTest(PyonTestCase):
         self.assertEquals(ar, p._heartbeat_op)
 
     def test_heartbeat_current_op_over_limit(self):
-        self.patch_cfg('pyon.ion.process.CFG', {'cc':{'timeout':{'heartbeat_proc_count_threshold':2}}})
+        self.patch_cfg('pyon.ion.process.CFG', {'container':{'timeout':{'heartbeat_proc_count_threshold':2}}})
 
         svc = self._make_service()
         p = IonProcessThread(name=sentinel.name, listeners=[], service=svc)

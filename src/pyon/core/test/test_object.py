@@ -52,7 +52,7 @@ class ObjectTest(IonIntegrationTestCase):
         obj._validate
 
     @unittest.skip("no more recursive encoding on set")
-    def test_recursive_encoding(self):
+    def xtest_recursive_encoding(self):
         obj = self.registry.new('SampleObject')
         a_dict = {'1':u"♣ Temporal Domain ♥",
                   u'2Ĕ':u"A test data product Ĕ ∆",

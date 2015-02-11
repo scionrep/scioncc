@@ -580,10 +580,6 @@ class TestRecvChannel(PyonTestCase):
 @patch('pyon.net.channel.SendChannel')
 class TestPublisherChannel(PyonTestCase):
 
-    # @TODO: have to do this because i'm patching the class, anything to be done?
-    def test_verify_service(self, mocksendchannel):
-        PyonTestCase.test_verify_service(self)
-
     def test_init(self, mocksendchannel):
         pubchan = PublisherChannel()
 
@@ -606,10 +602,6 @@ class TestPublisherChannel(PyonTestCase):
 @attr('UNIT')
 @patch('pyon.net.channel.SendChannel')
 class TestBidirClientChannel(PyonTestCase):
-
-    # @TODO: have to do this because i'm patching the class, anything to be done?
-    def test_verify_service(self, mocksendchannel):
-        PyonTestCase.test_verify_service(self)
 
     def setUp(self):
         self.ch = BidirClientChannel()
