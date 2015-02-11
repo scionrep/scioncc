@@ -28,10 +28,8 @@ class TestUIServer(IonIntegrationTestCase):
         self.idm_client = IdentityManagementServiceClient()
 
         self.ui_server_proc = self.container.proc_manager.procs_by_name["ui_server"]
-        port = self.ui_server_proc.server_port
-        sg_prefix = self.ui_server_proc.service_gateway.url_prefix
-        self.ui_base_url = "http://localhost:%s" % (port, )
-        self.sg_base_url = self.ui_base_url + sg_prefix
+        self.ui_base_url = self.ui_server_proc.base_url
+        self.sg_base_url = self.ui_server_proc.gateway_base_url
 
     def test_ui_server(self):
         actor_identity_obj = ActorIdentity(name="John Doe")

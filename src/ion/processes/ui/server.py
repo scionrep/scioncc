@@ -20,6 +20,7 @@ from interface.services.core.iidentity_management_service import IdentityManagem
 DEFAULT_WEB_SERVER_HOSTNAME = ""
 DEFAULT_WEB_SERVER_PORT = 4000
 DEFAULT_SESSION_TIMEOUT = 600
+DEFAULT_GATEWAY_PREFIX = "/service"
 
 CFG_PREFIX = "process.ui_server"
 
@@ -53,12 +54,14 @@ class UIServer(StandaloneProcess):
         self.server_secret = self.CFG.get_safe(CFG_PREFIX + ".security.secret") or ""
         self.session_timeout = int(self.CFG.get_safe(CFG_PREFIX + ".security.session_timeout") or DEFAULT_SESSION_TIMEOUT)
 
-        self.has_service_gateway = self.CFG.get_safe(CFG_PREFIX + ".service_gateway") is True
+        self.has_service_gateway = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.enabled") is True
+        self.service_gateway_prefix = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.url_prefix") or DEFAULT_GATEWAY_PREFIX
         self.extensions = self.CFG.get_safe(CFG_PREFIX + ".extensions") or []
         self.extension_objs = []
 
         # TODO: What about https?
         self.base_url = "http://%s:%s" % (self.server_hostname, self.server_port)
+        self.gateway_base_url = None
 
         self.idm_client = IdentityManagementServiceProcessClient(process=self)
 
@@ -74,9 +77,10 @@ class UIServer(StandaloneProcess):
 
             if self.has_service_gateway:
                 from ion.services.service_gateway import ServiceGateway, sg_blueprint
+                self.gateway_base_url = self.base_url + self.service_gateway_prefix
                 self.service_gateway = ServiceGateway(process=self, config=self.CFG, response_class=app.response_class)
-                app.register_blueprint(sg_blueprint)
-                log.info("UI Server: service gateway started on %s%s", self.base_url, self.service_gateway.url_prefix)
+                app.register_blueprint(sg_blueprint, url_prefix=self.service_gateway_prefix)
+                log.info("UI Server: Service Gateway started on %s", self.gateway_base_url)
 
             for ext_cls in self.extensions:
                 cls = named_any(ext_cls)
@@ -90,10 +94,10 @@ class UIServer(StandaloneProcess):
             # Start the web server
             self.start_service()
 
-            log.info("Started UI Server on %s" % self.base_url)
+            log.info("UI Server: Started server on %s" % self.base_url)
 
         else:
-            log.warn("UI Server disabled in config")
+            log.warn("UI Server: Server disabled in config")
 
     def on_quit(self):
         self.stop_service()

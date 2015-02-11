@@ -40,8 +40,6 @@ GATEWAY_ERROR_TRACE = "trace"
 RETURN_MIMETYPE_PARAM = "return_mimetype"
 
 CFG_PREFIX = "service.service_gateway"
-DEFAULT_SG_ROUTE = "/service"
-SG_URL_PREFIX = CFG.get_safe(CFG_PREFIX + ".url_prefix") or DEFAULT_SG_ROUTE
 DEFAULT_USER_CACHE_SIZE = 2000
 DEFAULT_EXPIRY = "0"
 SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
@@ -67,7 +65,7 @@ class ServiceGateway(object):
         self.config = config
         self.response_class = response_class
 
-        self.url_prefix = SG_URL_PREFIX
+        self.gateway_base_url = process.gateway_base_url
         self.develop_mode = self.config.get_safe(CFG_PREFIX + ".develop_mode") is True
 
         # Optional list of trusted originators can be specified in config.
@@ -602,7 +600,7 @@ def custom_403(error):
 # Service calls
 
 # ROUTE: Get version information about this copy of coi-services
-@sg_blueprint.route((SG_URL_PREFIX + "/") if SG_URL_PREFIX else "/")
+@sg_blueprint.route("/")
 def sg_index():
     return sg_instance.sg_index()
 
@@ -612,37 +610,37 @@ def sg_index():
 #   http://hostname:port/service/request/resource_registry/find_resources?restype=TestInstrument&id_only=False
 # Also accepts arguments form encoded and as JSON; example
 #   curl --data "payload={"params": { "restype": "TestInstrument", "name": "", "id_only": true } }" http://localhost:4000/service/request/resource_registry/find_resources
-@sg_blueprint.route(SG_URL_PREFIX + "/request", methods=["GET", "POST"])
-@sg_blueprint.route(SG_URL_PREFIX + "/request/<service_name>/<operation>", methods=["GET", "POST"])
+@sg_blueprint.route("/request", methods=["GET", "POST"])
+@sg_blueprint.route("/request/<service_name>/<operation>", methods=["GET", "POST"])
 def process_gateway_request(service_name=None, operation=None):
     return sg_instance.process_gateway_request(service_name, operation)
 
 
 # ROUTE: Returns a json object for a specified resource type with all default values.
-@sg_blueprint.route(SG_URL_PREFIX + "/resource_type_schema/<resource_type>")
+@sg_blueprint.route("/resource_type_schema/<resource_type>")
 def get_resource_schema(resource_type):
     return sg_instance.get_resource_schema(resource_type)
 
 
 # ROUTE: Get attachment for a specific attachment id
-@sg_blueprint.route(SG_URL_PREFIX + "/attachment/<attachment_id>", methods=["GET"])
+@sg_blueprint.route("/attachment/<attachment_id>", methods=["GET"])
 def get_attachment(attachment_id):
     return sg_instance.get_attachment(attachment_id)
 
 
 # ROUTE:
-@sg_blueprint.route(SG_URL_PREFIX + "/attachment", methods=["POST"])
+@sg_blueprint.route("/attachment", methods=["POST"])
 def create_attachment():
     return sg_instance.create_attachment()
 
 
 # ROUTE:
-@sg_blueprint.route(SG_URL_PREFIX + "/attachment/<attachment_id>", methods=["DELETE"])
+@sg_blueprint.route("/attachment/<attachment_id>", methods=["DELETE"])
 def delete_attachment(attachment_id):
     return sg_instance.delete_attachment(attachment_id)
 
 
 # ROUTE: Get version information about this copy of coi-services
-@sg_blueprint.route(SG_URL_PREFIX + "/version")
+@sg_blueprint.route("/version")
 def get_version_info():
     return sg_instance.get_version_info()
