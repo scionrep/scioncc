@@ -79,8 +79,8 @@ class UIServer(StandaloneProcess):
                 from ion.services.service_gateway import ServiceGateway, sg_blueprint
                 self.gateway_base_url = self.base_url + self.service_gateway_prefix
                 self.service_gateway = ServiceGateway(process=self, config=self.CFG, response_class=app.response_class)
+
                 app.register_blueprint(sg_blueprint, url_prefix=self.service_gateway_prefix)
-                log.info("UI Server: Service Gateway started on %s", self.gateway_base_url)
 
             for ext_cls in self.extensions:
                 cls = named_any(ext_cls)
@@ -108,20 +108,20 @@ class UIServer(StandaloneProcess):
             self.stop_service()
 
         if self.server_socket_io:
-            self.http_server = WSGIServer((self.server_hostname, self.server_port),
-                                          app,
-                                          log=None)
-            self.http_server.start()
-        else:
             self.http_server = SocketIOServer((self.server_hostname, self.server_port),
                                               app.wsgi_app,
                                               resource='socket.io',
                                               log=None)
             self.http_server._gl = gevent.spawn(self.http_server.serve_forever)
-            #run_with_reloader()
+        else:
+            self.http_server = WSGIServer((self.server_hostname, self.server_port),
+                                          app,
+                                          log=None)
+            self.http_server.start()
 
         if self.service_gateway:
             self.service_gateway.start()
+            log.info("UI Server: Service Gateway started on %s", self.gateway_base_url)
 
         for ext_obj in self.extension_objs:
             ext_obj.on_start()
