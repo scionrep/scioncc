@@ -18,6 +18,7 @@ sudo apt-get install -y git-core
 sudo apt-get install -y ipython
 sudo apt-get install -y libevent-1.4-2
 sudo apt-get install -y libevent-dev
+sudo apt-get install -y libffi-dev
 sudo apt-get install -y libfreetype6-dev
 sudo apt-get install -y libperl5.18
 sudo apt-get install -y libpgm-5.1-0
@@ -42,6 +43,7 @@ sudo apt-get install -y pyflakes
 sudo apt-get install -y python
 sudo apt-get install -y python-all-dev
 sudo apt-get install -y python-apt
+sudo apt-get install -y python-bcrypt
 sudo apt-get install -y python-gevent
 sudo apt-get install -y python-greenlet
 sudo apt-get install -y python-pip

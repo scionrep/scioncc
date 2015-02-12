@@ -24,9 +24,9 @@ log = logging.getLogger('pycc')
 # SEE: http://groups.google.com/group/gevent/browse_thread/thread/6223805ffcd5be22?pli=1
 #
 
-version = "2.0"     # TODO: extract version info from the code (tag/commit)
+version = "3.0"     # TODO: extract version info from the code (tag/commit)
 description = '''
-pyon (OOINet capability container) v%s
+pyon (SciON capability container) v%s
 ''' % (version)
 
 # See below __main__ for STEP 1
@@ -62,7 +62,7 @@ def entry():
     opts, extra = parser.parse_known_args()
     args, kwargs = parse_args(extra)
 
-    print "pycc: OOINet Container starter with command line options:" , str(opts)
+    print "pycc: SciON Container starter with command line options:", str(opts)
 
     # -o or --nomanhole implies --noshell
     if opts.nomanhole:
@@ -215,10 +215,10 @@ def main(opts, *args, **kwargs):
 
             # build connect str
             connect_str = "-q -H %s -P %s -u %s -p %s -V %s" % (pyon_config.get_safe('server.amqp_priv.host', pyon_config.get_safe('server.amqp.host', 'localhost')),
-                                                                   pyon_config.get_safe('container.exchange.management.port', '55672'),
-                                                                   pyon_config.get_safe('container.exchange.management.username', 'guest'),
-                                                                   pyon_config.get_safe('container.exchange.management.password', 'guest'),
-                                                                   '/')
+                                                                pyon_config.get_safe('container.exchange.management.port', '15672'),
+                                                                pyon_config.get_safe('container.exchange.management.username', 'guest'),
+                                                                pyon_config.get_safe('container.exchange.management.password', 'guest'),
+                                                                '/')
 
             from putil.rabbithelper import clean_by_sysname
             deleted_exchanges, deleted_queues = clean_by_sysname(connect_str, bootstrap.get_sys_name())
@@ -319,7 +319,6 @@ def main(opts, *args, **kwargs):
             return False
 
     def _exists_ipython_dir():
-        # Fix OOIION-1124:
         # When multiple containers are started in parallel, all start an embedded IPython shell/manhole.
         # There exists a race condition between the IPython creating the default $HOME/.python dir
         # leading to an error.

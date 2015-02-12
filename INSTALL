@@ -55,12 +55,20 @@ Clone scioncc (this repository) in your code directory:
     > git clone git@github.com:scionrep/scioncc.git
 
 Use buildout to install the python package dependencies with:
-    > python bootstrap.py -v 2.2.0
+    > python bootstrap.py -v 2.3.1
     > bin/buildout
 
 Generate service definition interfaces and abstract base classes:
     > bin/generate_interfaces
     Note: These will be placed in the interfaces/ subdirectory.
+
+Optional: You can establish a buildout cache by adding
+    > mkdir ~/.buildout
+    > vim ~/.buildout/default.cfg
+# Paste this into file and edit home directory
+[buildout]
+eggs-directory = /Users/username/.buildout/eggs
+download-cache = /Users/username/.buildout/dlcache
 
 
 RUN-TIME DEPENDENCIES

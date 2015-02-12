@@ -15,7 +15,7 @@ def read(fname):
 if sys.platform == 'darwin':
     os.environ['C_INCLUDE_PATH'] = '/usr/local/include'
 
-version = '0.0.1.dev0'
+version = '3.0.0.dev0'
 
 setup(  name='scioncc',
         version=version,
@@ -65,7 +65,7 @@ setup(  name='scioncc',
             'httplib2==0.9',
             'zope.interface==4.1.1',
             'psycopg2==2.5.4',
-            'python-daemon==1.6',
+            'python-daemon==2.0.5',
             'ipython==0.13.0',
             'readline==6.2.4.1',
             'ndg-xacml==0.5.1',
@@ -86,7 +86,5 @@ setup(  name='scioncc',
             'xlwt==0.7.5',
             'pyproj==1.9.4'            # For geospatial
             #'M2Crypto==0.22.3',
-            #'pyzmq==2.2.0',
-            #'gevent_zeromq==0.2.5',
         ],
      )

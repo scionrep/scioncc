@@ -30,6 +30,7 @@ git config --global core.editor vim
 
 
 # Install virtualenv and code
+# Note: an older version of these tools may install under /usr/local/bin/virtualenvwrapper
 cd
 mkdir .virtualenvs
 vim .profile
