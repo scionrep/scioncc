@@ -20,7 +20,7 @@ version = '3.0.0.dev0'
 setup(  name='scioncc',
         version=version,
         description='Scientific Observatory Network Capability Container',
-        long_description=read('../README'),
+        long_description=read('README'),
         url='www.github.com/scionrep/scioncc',
         download_url='https://github.com/scionrep/scioncc/releases',
         license='BSD',
@@ -39,9 +39,9 @@ setup(  name='scioncc',
                     'Topic :: Scientific/Engineering',
                     'Topic :: Software Development',
                     'Topic :: Software Development :: Libraries :: Application Frameworks'],
-        packages=find_packages(''),
-        #packages=find_packages('src'),
-        #package_dir={'': 'src'},
+        packages=find_packages('src', ),
+        package_dir={'': 'src'},
+        package_data={'': ['*.xml']},
         entry_points={
             'console_scripts': [
                 'pycc=scripts.pycc:entry',
@@ -53,7 +53,6 @@ setup(  name='scioncc',
             },
         dependency_links=[],
         test_suite='pyon',
-        package_data={'': ['*.xml']},
         install_requires=[
             'setuptools',
             'greenlet==0.4.5',
@@ -68,23 +67,25 @@ setup(  name='scioncc',
             'python-daemon==2.0.5',
             'ipython==0.13.0',
             'readline==6.2.4.1',
-            'ndg-xacml==0.5.1',
+            'ndg-xacml==0.5.1',        # For policy rule engine
             'requests==2.4.3',
             'psutil==2.1.3',
             'Flask==0.10.1',
             'flask-socketio==0.4.1',
             'python-dateutil==2.2',
-            'bcrypt==1.0.1',
+            'bcrypt==1.0.1',           # For password authentication
+
             # Test support
             'nose==1.1.2',
             'mock==0.8',
             'webtest==2.0.17',         # For service gateway test
+
             # Check if all these are needed
-            'graypy==0.2.11',          # For utilities
+            'graypy==0.2.11',          # For production logging
             'ntplib==0.3.2',
-            'xlrd==0.9.3',
-            'xlwt==0.7.5',
-            'pyproj==1.9.4'            # For geospatial
-            #'M2Crypto==0.22.3',
+            'xlrd==0.9.3',             # For Excel file read (dev tools)
+            'xlwt==0.7.5',             # For Excel file write (dev tools)
+            'pyproj==1.9.4'            # For geospatial calculations
+            #'M2Crypto==0.22.3',        # For X.509 certificates (currently unused)
         ],
      )
