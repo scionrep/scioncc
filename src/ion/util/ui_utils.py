@@ -65,7 +65,8 @@ def get_arg(arg_name, default="", is_mult=False):
 
 
 def get_auth():
-    return dict(actor_id=flask.session.get("actor_id", ""),
+    return dict(user_id=flask.session.get("actor_id", ""),
+                actor_id=flask.session.get("actor_id", ""),
                 username=flask.session.get("username", ""),
                 full_name=flask.session.get("full_name", ""),
                 attributes=flask.session.get("attributes", {}),

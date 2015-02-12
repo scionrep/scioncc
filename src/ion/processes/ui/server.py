@@ -6,10 +6,10 @@ service gateway and web sockets"""
 __author__ = 'Michael Meisinger, Stephen Henrie'
 
 from flask import Flask
+from flask_socketio import SocketIO, SocketIOServer
 import gevent
 from gevent.wsgi import WSGIServer
 
-from flask.ext.socketio import SocketIO, SocketIOServer
 from pyon.public import StandaloneProcess, log, BadRequest, OT, get_ion_ts_millis
 from pyon.util.containers import named_any
 from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth
@@ -113,6 +113,7 @@ class UIServer(StandaloneProcess):
                                               resource='socket.io',
                                               log=None)
             self.http_server._gl = gevent.spawn(self.http_server.serve_forever)
+            log.info("UI Server: Providing web sockets (socket.io) server")
         else:
             self.http_server = WSGIServer((self.server_hostname, self.server_port),
                                           app,
