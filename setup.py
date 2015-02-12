@@ -17,6 +17,7 @@ if sys.platform == 'darwin':
 
 version = '3.0.0.dev0'
 
+# See http://pythonhosted.org/setuptools/setuptools.html
 setup(  name='scioncc',
         version=version,
         description='Scientific Observatory Network Capability Container',
@@ -39,9 +40,9 @@ setup(  name='scioncc',
                     'Topic :: Scientific/Engineering',
                     'Topic :: Software Development',
                     'Topic :: Software Development :: Libraries :: Application Frameworks'],
-        packages=find_packages('src', ),
+        packages=find_packages('src'),
         package_dir={'': 'src'},
-        package_data={'': ['*.xml']},
+        package_data={'': ['*.xml', '*.yml']},
         entry_points={
             'console_scripts': [
                 'pycc=scripts.pycc:entry',
@@ -52,7 +53,7 @@ setup(  name='scioncc',
                 ]
             },
         dependency_links=[],
-        test_suite='pyon',
+        #zip_safe=False,
         install_requires=[
             'setuptools',
             'greenlet==0.4.5',
@@ -88,4 +89,10 @@ setup(  name='scioncc',
             'pyproj==1.9.4'            # For geospatial calculations
             #'M2Crypto==0.22.3',        # For X.509 certificates (currently unused)
         ],
+        extras_require={
+            'scidata': [
+                'Pydap==3.3.RC1',
+                'netCDF4==1.0.9',
+            ],
+        }
      )

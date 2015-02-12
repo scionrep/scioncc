@@ -95,7 +95,7 @@ Clean outdated code (*.pyc files and generated interfaces):
     > bin/generate_interface
 
 To drop Postgres databases:
-    > bin/clean_db SYSNAME    # E.g. ion, scion or other sysname
+    > bin/clear_db SYSNAME    # E.g. ion, scion or other sysname
 
 Development environment:
     A good IDE is PyCharm (free community edition works). Just configure:

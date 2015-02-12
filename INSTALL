@@ -3,8 +3,11 @@ SciON INSTALLATION
 ==================
 
 
-Mac OS Prerequisites
-====================
+PREREQUISITES
+=============
+
+MAC OS:
+-------
 
 Install homebrew package manager
     > /usr/bin/ruby <(curl -fsSkL raw.github.com/mxcl/homebrew/go)
@@ -27,11 +30,10 @@ Python packages and environment management:
 
     > easy_install --upgrade virtualenv
     > easy_install --upgrade virtualenvwrapper
-    Note: This require Mac's XCode with installed command line tools
+    Note: This requires Mac's XCode with installed command line tools
 
-
-Linux (Ubuntu) Prerequisites
-============================
+LINUX (UBUNTU):
+---------------
 
 See misc/install/install_ubuntu.sh
 Note: Only run this file on a new VM if you know what you are doing.
@@ -40,7 +42,7 @@ Check that no errors occurred during dependencies install.
 Then follow manual steps in misc/install/install_ubuntu.txt
 
 
-Common Installation
+COMMON INSTALLATION
 ===================
 
 Setup a virtualenv to run the SciON capability container:
@@ -57,6 +59,10 @@ Clone scioncc (this repository) in your code directory:
 Use buildout to install the python package dependencies with:
     > python bootstrap.py -v 2.3.1
     > bin/buildout
+
+Add current directory to PYTHONPATH (you can add this to your ~/.profile or
+    bash_profile):
+    > export PYTHONPATH=.
 
 Generate service definition interfaces and abstract base classes:
     > bin/generate_interfaces
@@ -88,11 +94,3 @@ RABBITMQ (MESSAGE BROKER):
     > rabbitmq-server
     Ubuntu Linux:
     > sudo service rabbitmq-server start
-
-
-SOURCE PATH:
-
-Add the current directory to your PYTHONPATH for an easier time running
-scripts. Add the following line to your ~/.profile (create it if it
-doesn't exist, or use bash_profile if you already have that):
-    > export PYTHONPATH=.
