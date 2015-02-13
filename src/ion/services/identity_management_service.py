@@ -109,7 +109,7 @@ class IdentityManagementService(BaseIdentityManagementService):
     def set_actor_credentials(self, actor_id='', username='', password=''):
         if not username:
             raise BadRequest("Invalid username")
-        self._check_pwd_policy(password)
+        IdentityUtils.check_password_policy(password)
         actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         cred_obj = None
         for cred in actor_obj.credentials:
@@ -130,7 +130,7 @@ class IdentityManagementService(BaseIdentityManagementService):
     def set_user_password(self, username='', password=''):
         if not username:
             raise BadRequest("Invalid username")
-        self._check_pwd_policy(password)
+        IdentityUtils.check_password_policy(password)
         actor_id = self.find_actor_identity_by_username(username)
         actor_obj = self.read_actor_identity(actor_id)
 
@@ -148,8 +148,8 @@ class IdentityManagementService(BaseIdentityManagementService):
     def _generate_password_hash(self, cred_obj, password):
         if not cred_obj or cred_obj.type_ != OT.Credentials:
             raise BadRequest("Invalid cred_obj")
-        cred_obj.identity_provider = "AgProX"
-        cred_obj.authentication_service = "AgProX IdM"
+        cred_obj.identity_provider = "SciON"
+        cred_obj.authentication_service = "SciON IdM"
         cred_obj.password_salt = bcrypt.gensalt()
         cred_obj.password_hash = bcrypt.hashpw(password, cred_obj.password_salt)
 
@@ -172,12 +172,6 @@ class IdentityManagementService(BaseIdentityManagementService):
             raise NotFound("Invalid password")
 
         return actor_obj._id
-
-    def _check_pwd_policy(self, password):
-        if not password or type(password) is not str:
-            raise BadRequest("Invalid type")
-        if len(password) < 3:
-            raise BadRequest("Password too short")
 
     # -------------------------------------------------------------------------
     # Identity details (user profile) handling
@@ -306,3 +300,16 @@ class IdentityManagementService(BaseIdentityManagementService):
         actor_tokens = []
         raise NotImplementedError("TODO")
         return actor_tokens
+
+
+class IdentityUtils(object):
+    
+    @classmethod
+    def check_password_policy(cls, password, id_provider=None):
+        """Checks if given password passes the establshed password policy for identity provider"""
+        # TODO: Make configurable
+        if not password or type(password) is not str:
+            raise BadRequest("Invalid type")
+        if len(password) < 3:
+            raise BadRequest("Password too short")
+    
