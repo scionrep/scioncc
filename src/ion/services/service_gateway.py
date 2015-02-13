@@ -515,6 +515,7 @@ class ServiceGateway(object):
             # Only support basic strings for these optional params for now
             svc_params["optional_args"] = {arg: str(req_op_args[arg]) for arg in optional_args}
 
+        #log.info("Service params: %s" % svc_params)
         return svc_params
 
     def _get_gateway_headers(self):
@@ -692,6 +693,10 @@ class ServiceGateway(object):
 # Checks to see if the remote_addr in the request is in the list of specified trusted addresses, if any.
 @sg_blueprint.before_request
 def is_trusted_request():
+    if sg_instance.develop_mode:
+        print "----------------------------------------------------------------------------------"
+        print "URL:", request.url
+
     if request.remote_addr is not None:
         log.debug("%s from: %s: %s", request.method, request.remote_addr, request.url)
 

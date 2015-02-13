@@ -303,7 +303,7 @@ class IdentityManagementService(BaseIdentityManagementService):
 
 
 class IdentityUtils(object):
-    
+
     @classmethod
     def check_password_policy(cls, password, id_provider=None):
         """Checks if given password passes the establshed password policy for identity provider"""
