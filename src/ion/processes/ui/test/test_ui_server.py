@@ -3,6 +3,7 @@
 __author__ = 'Michael Meisiger'
 
 from nose.plugins.attrib import attr
+import json
 import requests
 
 from pyon.util.int_test import IonIntegrationTestCase
@@ -105,6 +106,43 @@ class TestUIServer(IonIntegrationTestCase):
         resp = session.get(self.sg_base_url + "/request/resource_registry/read/" + actor_id)
         resp_json = self._assert_json_response(resp, None)
         self.assertIn("type_", resp_json["result"])
+
+        # TEST: REST API
+        resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity")
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn(actor_id, [o["_id"] for o in resp_json["result"]])
+        num_actors = len(resp_json["result"])
+
+        resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity/" + actor_id)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn("type_", resp_json["result"])
+
+        other_actor_obj = ActorIdentity(name="Jane Foo")
+        other_actor_obj.details = None
+        payload = dict(payload=json.dumps(dict(data=other_actor_obj.__dict__)))
+        resp = session.post(self.sg_base_url + "/rest/identity_management/actor_identity", data=payload)
+        resp_json = self._assert_json_response(resp, None)
+        other_actor_id = resp_json["result"]
+
+        resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity")
+        resp_json = self._assert_json_response(resp, None)
+        self.assertEquals(len(resp_json["result"]), num_actors + 1)
+
+        resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity/" + other_actor_id)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn("type_", resp_json["result"])
+        self.assertEquals(other_actor_id, resp_json["result"]["_id"])
+
+        resp_json["result"]["name"] = "Jane Long"
+        payload = dict(payload=json.dumps(dict(data=resp_json["result"])))
+        resp = session.put(self.sg_base_url + "/rest/identity_management/actor_identity/" + other_actor_id, data=payload)
+        resp_json = self._assert_json_response(resp, None)
+
+        resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity/" + other_actor_id)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn("type_", resp_json["result"])
+        self.assertEquals("Jane Long", resp_json["result"]["name"])
+
 
     def _assert_json_response(self, resp, result, status=200):
         self.assertIn("application/json", resp.headers["content-type"])

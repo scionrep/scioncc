@@ -36,6 +36,7 @@ DEFAULT_EXPIRY = "0"
 
 SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
 
+GATEWAY_FORM_JSON = "payload"
 GATEWAY_RESPONSE = "result"
 GATEWAY_ERROR = "error"
 GATEWAY_ERROR_EXCEPTION = "exception"
@@ -144,51 +145,106 @@ class ServiceGateway(object):
         """
         # TODO make this service smarter to respond to the mime type in the request data (ie. json vs text)
         try:
-            # TODO: Extract service name and op from request data
-            if not service_name:
-                if self.develop_mode:
-                    # Return a list of available services
-                    result = dict(available_services=get_service_registry().services.keys())
-                    return self.gateway_json_response(result)
-                else:
-                    raise BadRequest("Service name missing")
-            service_name = str(service_name)
-
-            if not operation:
-                if self.develop_mode:
-                    # Return a list of available operations
-                    result = dict(available_operations=[])
-                    return self.gateway_json_response(result)
-                else:
-                    raise BadRequest("Service operation missing")
-            operation = str(operation)
-
-            # Apply service white list and black list for initial protection and get service client
-            target_client = self.get_secure_service_client(service_name)
-
-            # Retrieve json data from HTTP Post payload
-            json_params = None
-            if request.method == "POST":
-                payload = request.form["payload"]
-                # debug only
-                #payload = "{"params": { "restype": "TestInstrument", "name": "", "id_only": false } }"
-                json_params = json_loads(str(payload))
-
-            param_list = self.create_parameter_list(service_name, target_client, operation, json_params, id_param)
-
-            # Validate requesting user and expiry and add governance headers
-            ion_actor_id, expiry = self.get_governance_info_from_request(json_params)
-            ion_actor_id, expiry = self.validate_request(ion_actor_id, expiry)
-            param_list["headers"] = self.build_message_headers(ion_actor_id, expiry)
-
-            client = target_client(process=self.process)
-            method_call = getattr(client, operation)
-            result = method_call(**param_list)
-
+            result = self._make_service_request(service_name, operation, id_param)
             return self.gateway_json_response(result)
 
         except Exception as ex:
             return self.gateway_error_response(ex)
+
+    def rest_gateway_request(self, service_name, res_type, id_param=None):
+        """
+        Makes a REST style call to a SciON service operation via messaging.
+        Get with ID returns the resource, POST without ID creates, PUT with ID updates
+        and GET without ID returns the collection.
+        """
+        try:
+            if not service_name:
+                raise BadRequest("Service name missing")
+            service_name = str(service_name)
+            if not res_type:
+                raise BadRequest("Resource type missing")
+            res_type = str(res_type)
+
+            if request.method == "GET" and id_param:
+                operation = "read_" + res_type
+                return self.process_gateway_request(service_name, operation, id_param)
+            elif request.method == "GET":
+                ion_res_type = "".join(x.title() for x in res_type.split('_'))
+                res = self._make_service_request("resource_registry", "find_resources", ion_res_type)
+                if len(res) == 2:
+                    return self.gateway_json_response(res[0])
+                raise BadRequest("Unexpected find_resources result")
+            elif request.method == "PUT":
+                operation = "update_" + res_type
+                obj = self._extract_payload_data()
+                if not obj:
+                    raise BadRequest("Argument object not found")
+                if id_param:
+                    obj._id = id_param
+                return self.process_gateway_request(service_name, operation, obj)
+            elif request.method == "POST":
+                operation = "create_" + res_type
+                obj = self._extract_payload_data()
+                if not obj:
+                    raise BadRequest("Argument object not found")
+                return self.process_gateway_request(service_name, operation, obj)
+            else:
+                raise BadRequest("Bad REST request")
+        except Exception as ex:
+            return self.gateway_error_response(ex)
+
+    def _extract_payload_data(self):
+        payload = request.form[GATEWAY_FORM_JSON]
+        json_params = json_loads(str(payload))
+        if "data" in json_params and is_ion_object_dict(json_params["data"]):
+            obj = self.create_ion_object(json_params["data"])
+            return obj
+
+    def _make_service_request(self, service_name=None, operation=None, id_param=None):
+        """
+        Executes a secure call to a SciON service operation via messaging.
+        """
+        if not service_name:
+            if self.develop_mode:
+                # Return a list of available services
+                result = dict(available_services=get_service_registry().services.keys())
+                return result
+            else:
+                raise BadRequest("Service name missing")
+        service_name = str(service_name)
+
+        if not operation:
+            if self.develop_mode:
+                # Return a list of available operations
+                result = dict(available_operations=[])
+                return result
+            else:
+                raise BadRequest("Service operation missing")
+        operation = str(operation)
+
+        # Apply service white list and black list for initial protection and get service client
+        target_client = self.get_secure_service_client(service_name)
+
+        # Retrieve json data from HTTP Post payload
+        json_params = None
+        if request.method == "POST":
+            payload = request.form[GATEWAY_FORM_JSON]
+            # debug only
+            #payload = "{"params": { "restype": "TestInstrument", "name": "", "id_only": false } }"
+            json_params = json_loads(str(payload))
+
+        param_list = self.create_parameter_list(service_name, target_client, operation, json_params, id_param)
+
+        # Validate requesting user and expiry and add governance headers
+        ion_actor_id, expiry = self.get_governance_info_from_request(json_params)
+        ion_actor_id, expiry = self.validate_request(ion_actor_id, expiry)
+        param_list["headers"] = self.build_message_headers(ion_actor_id, expiry)
+
+        client = target_client(process=self.process)
+        method_call = getattr(client, operation)
+        result = method_call(**param_list)
+
+        return result
 
     def get_resource_schema(self, resource_type):
         try:
@@ -214,7 +270,7 @@ class ServiceGateway(object):
 
     def create_attachment(self):
         try:
-            payload = request.form["payload"]
+            payload = request.form[GATEWAY_FORM_JSON]
             json_params = json_loads(str(payload))
 
             ion_actor_id, expiry = self.get_governance_info_from_request(json_params)
@@ -432,6 +488,8 @@ class ServiceGateway(object):
         if isinstance(given_value, unicode):
             # Handle strings differently because of unicode
             given_value = given_value.encode("utf8")
+        if isinstance(given_value, IonObjectBase) and arg_default is None:
+            return given_value
 
         if decode:
             if isinstance(arg_default, str):
@@ -458,7 +516,7 @@ class ServiceGateway(object):
             if real_params:
                 fill_par = real_params[0]
                 fill_pos = method_args[0].index(fill_par)
-                arg_val = self._get_typed_arg_value(id_param, method_args[3][fill_pos])
+                arg_val = self._get_typed_arg_value(id_param, method_args[3][fill_pos-1])
                 param_list[fill_par] = arg_val
                 return param_list
 
@@ -629,13 +687,22 @@ def sg_index():
 # ROUTE: Make a service request
 # Accepts arguments passed as query string parameters; like:
 #   http://hostname:port/service/request/resource_registry/find_resources?restype=TestInstrument&id_only=False
-# Also accepts arguments form encoded and as JSON; example
+# Also accepts arguments form encoded and as JSON; example:
 #   curl --data "payload={"params": { "restype": "TestInstrument", "name": "", "id_only": true } }" http://localhost:4000/service/request/resource_registry/find_resources
 @sg_blueprint.route("/request", methods=["GET", "POST"])
 @sg_blueprint.route("/request/<service_name>/<operation>", methods=["GET", "POST"])
 @sg_blueprint.route("/request/<service_name>/<operation>/<id_param>", methods=["GET", "POST"])
 def process_gateway_request(service_name=None, operation=None, id_param=None):
     return sg_instance.process_gateway_request(service_name, operation, id_param)
+
+
+# ROUTE: Make a service request in REST style
+# Arguments to POST, PUT must be form encoded and as JSON; example:
+#   curl --data "payload={"data": { "type_": "TestInstrument", "name": "" } }" http://localhost:4000/service/rest/service/res_type
+@sg_blueprint.route("/rest/<service_name>/<res_type>", methods=["GET", "POST"])
+@sg_blueprint.route("/rest/<service_name>/<res_type>/<id_param>", methods=["GET", "PUT"])
+def rest_gateway_request(service_name, res_type, id_param=None):
+    return sg_instance.rest_gateway_request(service_name, res_type, id_param)
 
 
 # ROUTE: Returns a json object for a specified resource type with all default values.
