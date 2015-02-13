@@ -102,6 +102,10 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertIn(actor_id, resp_json["result"][0])
 
+        resp = session.get(self.sg_base_url + "/request/resource_registry/read/" + actor_id)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn("type_", resp_json["result"])
+
     def _assert_json_response(self, resp, result, status=200):
         self.assertIn("application/json", resp.headers["content-type"])
         if status:

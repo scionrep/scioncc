@@ -138,9 +138,9 @@ class ServiceGateway(object):
     def sg_index(self):
         return self.gateway_json_response(SG_IDENTIFICATION)
 
-    def process_gateway_request(self, service_name=None, operation=None):
+    def process_gateway_request(self, service_name=None, operation=None, id_param=None):
         """
-        Makes a secure call to a SciON service via messaging.
+        Makes a secure call to a SciON service operation via messaging.
         """
         # TODO make this service smarter to respond to the mime type in the request data (ie. json vs text)
         try:
@@ -174,7 +174,7 @@ class ServiceGateway(object):
                 #payload = "{"params": { "restype": "TestInstrument", "name": "", "id_only": false } }"
                 json_params = json_loads(str(payload))
 
-            param_list = self.create_parameter_list(service_name, target_client, operation, json_params)
+            param_list = self.create_parameter_list(service_name, target_client, operation, json_params, id_param)
 
             # Validate requesting user and expiry and add governance headers
             ion_actor_id, expiry = self.get_governance_info_from_request(json_params)
@@ -425,7 +425,23 @@ class ServiceGateway(object):
 
         return headers
 
-    def create_parameter_list(self, service_name, target_client, operation, json_params):
+    def _get_typed_arg_value(self, given_value, arg_default, decode=True):
+        """Returns an argument value, based on a given value and default (type)
+        TODO: Type coercion based on argument expected type from schema
+        """
+        if isinstance(given_value, unicode):
+            # Handle strings differently because of unicode
+            given_value = given_value.encode("utf8")
+
+        if decode:
+            if isinstance(arg_default, str):
+                return str(given_value)
+            else:
+                return ast.literal_eval(given_value)
+        else:
+            return given_value
+
+    def create_parameter_list(self, service_name, target_client, operation, json_params, id_param=None):
         """Build parameter list dynamically from service operation definition, using
         either body json params or URL params"""
 
@@ -435,6 +451,17 @@ class ServiceGateway(object):
 
         param_list = {}
         method_args = inspect.getargspec(getattr(target_client, operation))
+
+        if id_param:
+            # Shorthand: if one argument is given, fill the first service argument
+            real_params = [arg for arg in method_args[0] if arg not in {"self", "headers", "timeout"}]
+            if real_params:
+                fill_par = real_params[0]
+                fill_pos = method_args[0].index(fill_par)
+                arg_val = self._get_typed_arg_value(id_param, method_args[3][fill_pos])
+                param_list[fill_par] = arg_val
+                return param_list
+
         for (arg_index, arg) in enumerate(method_args[0]):
             if arg == "self":
                 continue  # skip self
@@ -442,16 +469,7 @@ class ServiceGateway(object):
                 if arg in request.args:
                     # Keep track of which query_string_parms are left after processing
                     del optional_args[arg]
-
-                    # Handle strings differently because of unicode
-                    if isinstance(method_args[3][arg_index-1], str):
-                        if isinstance(request.args[arg], unicode):
-                            param_list[arg] = str(request.args[arg].encode("utf8"))
-                        else:
-                            param_list[arg] = str(request.args[arg])
-                    else:
-                        # TODO: Type coercion based on argument expected type
-                        param_list[arg] = ast.literal_eval(str(request.args[arg]))
+                    param_list[arg] = self._get_typed_arg_value(request.args[arg], method_args[3][arg_index-1])
             else:
                 if arg in json_params["params"]:
                     object_params = json_params["params"][arg]
@@ -459,6 +477,8 @@ class ServiceGateway(object):
                         param_list[arg] = self.create_ion_object(object_params)
                     else:
                         # Not an ION object so handle as a simple type then.
+                        param_list[arg] = self._get_typed_arg_value(json_params["params"][arg],
+                                                                    method_args[3][arg_index-1], decode=False)
                         if isinstance(json_params["params"][arg], unicode):
                             param_list[arg] = str(json_params["params"][arg].encode("utf8"))
                         else:
@@ -613,8 +633,9 @@ def sg_index():
 #   curl --data "payload={"params": { "restype": "TestInstrument", "name": "", "id_only": true } }" http://localhost:4000/service/request/resource_registry/find_resources
 @sg_blueprint.route("/request", methods=["GET", "POST"])
 @sg_blueprint.route("/request/<service_name>/<operation>", methods=["GET", "POST"])
-def process_gateway_request(service_name=None, operation=None):
-    return sg_instance.process_gateway_request(service_name, operation)
+@sg_blueprint.route("/request/<service_name>/<operation>/<id_param>", methods=["GET", "POST"])
+def process_gateway_request(service_name=None, operation=None, id_param=None):
+    return sg_instance.process_gateway_request(service_name, operation, id_param)
 
 
 # ROUTE: Returns a json object for a specified resource type with all default values.
