@@ -7,8 +7,8 @@ import json
 import requests
 
 from pyon.util.int_test import IonIntegrationTestCase
-
 from pyon.public import PRED, RT, BadRequest, NotFound, CFG
+from ion.util.ui_utils import CONT_TYPE_JSON
 
 from interface.services.core.iidentity_management_service import IdentityManagementServiceClient
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
@@ -103,6 +103,24 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertIn(actor_id, resp_json["result"][0])
 
+        # Request as POST with JSON data
+        payload = dict(data=json.dumps(dict(params=dict(restype="ActorIdentity", id_only=True))))
+        resp = session.post(self.sg_base_url + "/request/resource_registry/find_resources", data=payload)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn(actor_id, resp_json["result"][0])
+
+        # Request as POST with JSON data and no params
+        payload = dict(data=json.dumps(dict(restype="ActorIdentity", id_only=True)))
+        resp = session.post(self.sg_base_url + "/request/resource_registry/find_resources", data=payload)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn(actor_id, resp_json["result"][0])
+
+        # Request as POST with params as form data
+        payload = dict(restype="ActorIdentity", id_only=True)
+        resp = session.post(self.sg_base_url + "/request/resource_registry/find_resources", data=payload)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn(actor_id, resp_json["result"][0])
+
         resp = session.get(self.sg_base_url + "/request/resource_registry/read/" + actor_id)
         resp_json = self._assert_json_response(resp, None)
         self.assertIn("type_", resp_json["result"])
@@ -117,9 +135,10 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertIn("type_", resp_json["result"])
 
+        # Form encoded create request
         other_actor_obj = ActorIdentity(name="Jane Foo")
         other_actor_obj.details = None
-        payload = dict(payload=json.dumps(dict(data=other_actor_obj.__dict__)))
+        payload = dict(data=json.dumps(other_actor_obj.__dict__))
         resp = session.post(self.sg_base_url + "/rest/identity_management/actor_identity", data=payload)
         resp_json = self._assert_json_response(resp, None)
         other_actor_id = resp_json["result"]
@@ -133,8 +152,9 @@ class TestUIServer(IonIntegrationTestCase):
         self.assertIn("type_", resp_json["result"])
         self.assertEquals(other_actor_id, resp_json["result"]["_id"])
 
+        # Form encoded update request
         resp_json["result"]["name"] = "Jane Long"
-        payload = dict(payload=json.dumps(dict(data=resp_json["result"])))
+        payload = dict(data=json.dumps(resp_json["result"]))
         resp = session.put(self.sg_base_url + "/rest/identity_management/actor_identity/" + other_actor_id, data=payload)
         resp_json = self._assert_json_response(resp, None)
 
@@ -142,6 +162,18 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertIn("type_", resp_json["result"])
         self.assertEquals("Jane Long", resp_json["result"]["name"])
+
+        # JSON enconded request
+        resp_json["result"]["name"] = "Jane Dunn"
+        payload = json.dumps(resp_json["result"])
+        resp = session.put(self.sg_base_url + "/rest/identity_management/actor_identity/" + other_actor_id, data=payload,
+                           headers={'Content-Type': CONT_TYPE_JSON})
+        resp_json = self._assert_json_response(resp, None)
+
+        resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity/" + other_actor_id)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn("type_", resp_json["result"])
+        self.assertEquals("Jane Dunn", resp_json["result"]["name"])
 
 
     def _assert_json_response(self, resp, result, status=200):

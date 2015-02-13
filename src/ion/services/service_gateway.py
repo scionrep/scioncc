@@ -36,7 +36,8 @@ DEFAULT_EXPIRY = "0"
 
 SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
 
-GATEWAY_FORM_JSON = "payload"
+GATEWAY_ARG_PARAMS = "params"
+GATEWAY_ARG_JSON = "data"
 GATEWAY_RESPONSE = "result"
 GATEWAY_ERROR = "error"
 GATEWAY_ERROR_EXCEPTION = "exception"
@@ -194,11 +195,20 @@ class ServiceGateway(object):
             return self.gateway_error_response(ex)
 
     def _extract_payload_data(self):
-        payload = request.form[GATEWAY_FORM_JSON]
-        json_params = json_loads(str(payload))
-        if "data" in json_params and is_ion_object_dict(json_params["data"]):
-            obj = self.create_ion_object(json_params["data"])
-            return obj
+        request_obj = None
+        if request.headers.get("content-type", "").startswith(CONT_TYPE_JSON):
+            if request.data:
+                request_obj = json_loads(request.data)
+        elif request.form:
+            # Form encoded
+            if GATEWAY_ARG_JSON in request.form:
+                payload = request.form[GATEWAY_ARG_JSON]
+                request_obj = json_loads(str(payload))
+
+        if request_obj and is_ion_object_dict(request_obj):
+            request_obj = self.create_ion_object(request_obj)
+
+        return request_obj
 
     def _make_service_request(self, service_name=None, operation=None, id_param=None):
         """
@@ -225,21 +235,17 @@ class ServiceGateway(object):
         # Apply service white list and black list for initial protection and get service client
         target_client = self.get_secure_service_client(service_name)
 
-        # Retrieve json data from HTTP Post payload
-        json_params = None
-        if request.method == "POST":
-            payload = request.form[GATEWAY_FORM_JSON]
-            # debug only
-            #payload = "{"params": { "restype": "TestInstrument", "name": "", "id_only": false } }"
-            json_params = json_loads(str(payload))
+        # Get service request arguments and operation parameter values request
+        req_args = self._get_request_args()
 
-        param_list = self.create_parameter_list(service_name, target_client, operation, json_params, id_param)
+        param_list = self.create_parameter_list(service_name, target_client, operation, req_args, id_param)
 
         # Validate requesting user and expiry and add governance headers
-        ion_actor_id, expiry = self.get_governance_info_from_request(json_params)
+        ion_actor_id, expiry = self.get_governance_info_from_request(req_args)
         ion_actor_id, expiry = self.validate_request(ion_actor_id, expiry)
         param_list["headers"] = self.build_message_headers(ion_actor_id, expiry)
 
+        # Make service operation call
         client = target_client(process=self.process)
         method_call = getattr(client, operation)
         result = method_call(**param_list)
@@ -258,7 +264,6 @@ class ServiceGateway(object):
             return self.gateway_error_response(ex)
 
     def get_attachment(self, attachment_id):
-
         try:
             # Create client to interface
             attachment = self.rr_client.read_attachment(attachment_id, include_content=True)
@@ -270,14 +275,14 @@ class ServiceGateway(object):
 
     def create_attachment(self):
         try:
-            payload = request.form[GATEWAY_FORM_JSON]
+            payload = request.form[GATEWAY_ARG_JSON]
             json_params = json_loads(str(payload))
 
-            ion_actor_id, expiry = self.get_governance_info_from_request(json_params)
-            ion_actor_id, expiry = self.validate_request(ion_actor_id, expiry)
-            headers = self.build_message_headers(ion_actor_id, expiry)
+            actor_id, expiry = self.get_governance_info_from_request(json_params)
+            actor_id, expiry = self.validate_request(actor_id, expiry)
+            headers = self.build_message_headers(actor_id, expiry)
 
-            data_params = json_params["params"]
+            data_params = json_params[GATEWAY_ARG_PARAMS]
             resource_id = str(data_params.get("resource_id", ""))
             fil = request.files["file"]
             content = fil.read()
@@ -347,27 +352,6 @@ class ServiceGateway(object):
             return True
 
         return requesting_address in self.trusted_originators
-
-    def get_secure_service_client(self, service_name):
-        """Checks whether the service indicated by given service_name exists and/or
-        is exposed after white and black listing.
-        """
-        if self.service_whitelist:
-            if service_name not in self.service_whitelist:
-                raise Unauthorized("Service access not permitted")
-        if self.service_blacklist:
-            if service_name in self.service_blacklist:
-                raise Unauthorized("Service access not permitted")
-
-        # Retrieve service definition
-        target_service = get_service_registry().get_service_by_name(service_name)
-        if not target_service:
-            raise BadRequest("The requested service (%s) is not available" % service_name)
-        # Find the concrete client class for making the RPC calls.
-        if not target_service.client:
-            raise Inconsistent("Cannot find a client class for the specified service: %s" % service_name)
-        target_client = target_service.client
-        return target_client
 
     def get_governance_info_from_request(self, json_params=None):
         # Default values for governance headers.
@@ -440,11 +424,125 @@ class ServiceGateway(object):
     # -------------------------------------------------------------------------
     # Service call (messaging) helpers
 
+    def _get_request_args(self):
+        """Extracts service request arguments from HTTP request. Supports various
+        methods and forms of encoding. Separates arguments for special parameters
+        from service operation parameters.
+        Returns a dict with the service request arguments, containing key params
+        with the actual values for the service operation parameters.
+        """
+        request_args = {}
+        if request.method == "POST" or request.method == "PUT":
+            # Use only body args and ignore any args from query string
+            if request.headers.get("content-type", "").startswith(CONT_TYPE_JSON):
+                if request.data:
+                    request_args = json_loads(request.data)
+                    if GATEWAY_ARG_PARAMS not in request_args:
+                        request_args = {GATEWAY_ARG_PARAMS: request_args}
+            elif request.form:
+                # Form encoded
+                if GATEWAY_ARG_JSON in request.form:
+                    payload = request.form[GATEWAY_ARG_JSON]
+                    request_args = json_loads(str(payload))
+                    if GATEWAY_ARG_PARAMS not in request_args:
+                        request_args = {GATEWAY_ARG_PARAMS: request_args}
+                else:
+                    request_args = {GATEWAY_ARG_PARAMS: request.form.to_dict(flat=True)}
+            else:
+                # No args found in body
+                request_args = {GATEWAY_ARG_PARAMS: {}}
+
+        elif request.method == "GET":
+            REQ_ARGS_SPECIAL = {"authtoken", "timeout", "headers"}
+            args_dict = request.args.to_dict(flat=True)
+            request_args = {k: request.args[k] for k in args_dict if k in REQ_ARGS_SPECIAL}
+            req_params = {k: request.args[k] for k in args_dict if k not in REQ_ARGS_SPECIAL}
+            request_args[GATEWAY_ARG_PARAMS] = req_params
+
+        #log.info("Request args: %s" % request_args)
+        return request_args
+
+    def _get_typed_arg_value(self, given_value, arg_default):
+        """Returns an argument value, based on a given value and default (type)
+        TODO: Type coercion based on argument expected type from schema
+        """
+        if isinstance(given_value, unicode):
+            # Convert all unicode to str in UTF-8
+            given_value = given_value.encode("utf8")  # Returns str
+
+        if isinstance(given_value, IonObjectBase) and arg_default is None:
+            return given_value
+        elif isinstance(arg_default, str):
+            return str(given_value)
+        elif isinstance(given_value, str):
+            # TODO: Better use coercion to expected type here
+            return ast.literal_eval(given_value)
+        elif is_ion_object_dict(given_value):
+            return self.create_ion_object(given_value)
+        else:
+            return given_value
+
+    def create_parameter_list(self, service_name, target_client, operation, request_args, id_param=None):
+        """Build service call parameter list dynamically from service operation definition
+        """
+        svc_params = {}
+        method_args = inspect.getargspec(getattr(target_client, operation))
+        svc_op_param_list = method_args[0]
+        svc_op_param_defaults = method_args[3]  # Note: this has one less (no self)
+
+        if id_param:
+            # Shorthand: if one argument is given, fill the first service argument
+            real_params = [param for param in svc_op_param_list if param not in {"self", "headers", "timeout"}]
+            if real_params:
+                fill_par = real_params[0]
+                fill_pos = svc_op_param_list.index(fill_par)
+                arg_val = self._get_typed_arg_value(id_param, svc_op_param_defaults[fill_pos-1])
+                svc_params[fill_par] = arg_val
+                return svc_params
+
+        request_args = request_args or {}
+        req_op_args = request_args.get(GATEWAY_ARG_PARAMS, None) or {}
+        for (param_idx, param_name) in enumerate(svc_op_param_list):
+            if param_name == "self":
+                continue
+            if param_name in req_op_args:
+                svc_params[param_name] = self._get_typed_arg_value(req_op_args[param_name], method_args[3][param_idx-1])
+            elif "timeout" in request_args:
+                svc_params[param_name] = float(request_args["timeout"])
+
+        optional_args = [param for param in req_op_args if param not in svc_params]
+        if optional_args and "optional_args" in svc_op_param_list:
+            # Only support basic strings for these optional params for now
+            svc_params["optional_args"] = {arg: str(req_op_args[arg]) for arg in optional_args}
+
+        return svc_params
+
     def _get_gateway_headers(self):
         """Returns the headers that the service gateway uses to make service calls on behalf of itself
          (not a user passing through), e.g. for identity management purposes"""
         return {MSG_HEADER_ACTOR: self.name,
                 MSG_HEADER_VALID: DEFAULT_EXPIRY}
+
+    def get_secure_service_client(self, service_name):
+        """Checks whether the service indicated by given service_name exists and/or
+        is exposed after white and black listing.
+        """
+        if self.service_whitelist:
+            if service_name not in self.service_whitelist:
+                raise Unauthorized("Service access not permitted")
+        if self.service_blacklist:
+            if service_name in self.service_blacklist:
+                raise Unauthorized("Service access not permitted")
+
+        # Retrieve service definition
+        target_service = get_service_registry().get_service_by_name(service_name)
+        if not target_service:
+            raise BadRequest("The requested service (%s) is not available" % service_name)
+        # Find the concrete client class for making the RPC calls.
+        if not target_service.client:
+            raise Inconsistent("Cannot find a client class for the specified service: %s" % service_name)
+        target_client = target_service.client
+        return target_client
 
     def build_message_headers(self, actor_id, expiry):
         """Returns the headers that the service gateway uses to make service calls on behalf of a
@@ -480,74 +578,6 @@ class ServiceGateway(object):
         headers[MSG_HEADER_ROLES] = role_header
 
         return headers
-
-    def _get_typed_arg_value(self, given_value, arg_default, decode=True):
-        """Returns an argument value, based on a given value and default (type)
-        TODO: Type coercion based on argument expected type from schema
-        """
-        if isinstance(given_value, unicode):
-            # Handle strings differently because of unicode
-            given_value = given_value.encode("utf8")
-        if isinstance(given_value, IonObjectBase) and arg_default is None:
-            return given_value
-
-        if decode:
-            if isinstance(arg_default, str):
-                return str(given_value)
-            else:
-                return ast.literal_eval(given_value)
-        else:
-            return given_value
-
-    def create_parameter_list(self, service_name, target_client, operation, json_params, id_param=None):
-        """Build parameter list dynamically from service operation definition, using
-        either body json params or URL params"""
-
-        # This is a bit of a hack - should use decorators to indicate which
-        # parameter is the dict that acts like kwargs
-        optional_args = request.args.to_dict(flat=True)
-
-        param_list = {}
-        method_args = inspect.getargspec(getattr(target_client, operation))
-
-        if id_param:
-            # Shorthand: if one argument is given, fill the first service argument
-            real_params = [arg for arg in method_args[0] if arg not in {"self", "headers", "timeout"}]
-            if real_params:
-                fill_par = real_params[0]
-                fill_pos = method_args[0].index(fill_par)
-                arg_val = self._get_typed_arg_value(id_param, method_args[3][fill_pos-1])
-                param_list[fill_par] = arg_val
-                return param_list
-
-        for (arg_index, arg) in enumerate(method_args[0]):
-            if arg == "self":
-                continue  # skip self
-            if not json_params:
-                if arg in request.args:
-                    # Keep track of which query_string_parms are left after processing
-                    del optional_args[arg]
-                    param_list[arg] = self._get_typed_arg_value(request.args[arg], method_args[3][arg_index-1])
-            else:
-                if arg in json_params["params"]:
-                    object_params = json_params["params"][arg]
-                    if is_ion_object_dict(object_params):
-                        param_list[arg] = self.create_ion_object(object_params)
-                    else:
-                        # Not an ION object so handle as a simple type then.
-                        param_list[arg] = self._get_typed_arg_value(json_params["params"][arg],
-                                                                    method_args[3][arg_index-1], decode=False)
-                        if isinstance(json_params["params"][arg], unicode):
-                            param_list[arg] = str(json_params["params"][arg].encode("utf8"))
-                        else:
-                            param_list[arg] = json_params["params"][arg]
-
-        # Send any optional_args if there are any and allowed
-        if len(optional_args) > 0 and "optional_args" in method_args[0]:
-            # Only support basic strings for these optional params for now
-            param_list["optional_args"] = {arg: str(request.args[arg]) for arg in optional_args}
-
-        return param_list
 
     def create_ion_object(self, object_params):
         """Create and initialize an ION object from a dictionary of parameters coming via HTTP,

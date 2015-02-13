@@ -93,7 +93,7 @@ def is_ion_object(_def):
 
 def is_ion_object_dict(obj):
     try:
-        if "type_" in obj:
+        if "type_" in obj and obj["type_"]:
             return True
     except Exception:
         pass
