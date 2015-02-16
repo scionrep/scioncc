@@ -11,7 +11,7 @@ import gevent
 from gevent.wsgi import WSGIServer
 
 from pyon.public import StandaloneProcess, log, BadRequest, OT, get_ion_ts_millis
-from pyon.util.containers import named_any
+from pyon.util.containers import named_any, current_time_millis
 from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth
 
 from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
@@ -172,6 +172,9 @@ class UIServer(StandaloneProcess):
     def get_session(self):
         try:
             user_info = get_auth()
+            if 0 < int(user_info.get("valid_until", 0)) * 1000 < current_time_millis():
+                clear_auth()
+                user_info = get_auth()
             return build_json_response(user_info)
         except Exception:
             return build_json_error()
