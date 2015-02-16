@@ -30,6 +30,8 @@ def main():
                         help='Read configuration from YAML files instead of datastore - Default')
     parser.add_argument('-rd', '--read_from_datastore', action='store_true',
                         help='Read configuration from datastore.')
+    parser.add_argument('-c', '--no_check', action='store_true',
+                        help='Do not check import all source modules')
     opts = parser.parse_args()
 
     print "generate_interfaces: ION interface generator with options:" , str(opts)

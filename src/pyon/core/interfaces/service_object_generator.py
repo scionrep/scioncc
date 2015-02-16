@@ -526,11 +526,15 @@ class ServiceObjectGenerator:
             with open(sigfile, 'w') as f:
                 f.write(yaml.dump(svc_signatures))
 
-            # Load interface base classes
-            self.load_mods("interface/services", True)
-            base_subtypes = self.find_subtypes(BaseService)
-            # Load impl classes
-            self.load_mods("ion", False)
+            if not opts.no_check:
+                print "generate_interfaces: Checking that all code modules compile"
+                # Load service base classes
+                self.load_mods("interface/services", True)
+                base_subtypes = self.find_subtypes(BaseService)
+
+                # Load scion code modules
+                self.load_mods("pyon", False)
+                self.load_mods("ion", False)
 
             # write client public file
             # @TODO: reenable when 'as' directory goes away

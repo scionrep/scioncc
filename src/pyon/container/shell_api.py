@@ -227,9 +227,9 @@ def spawn(proc, procname=None):
 
 def start_mx():
     from pyon.public import CFG
-    port = CFG.get_safe('container.flask_webapp.port',8080)
-    container.spawn_process("ContainerUI", "ion.core.containerui", "ContainerUI")
-    print "pycc: Container UI started ... listening on http://localhost:%s" % port
+    port = CFG.get_safe('process.admin_ui.web_server.port', 8080)
+    container.spawn_process("admin_ui", "ion.processes.ui.admin_ui", "AdminUI")
+    print "pycc: SciON Admin UI started ... listening on http://localhost:%s" % port
 
 
 def ionhelp():

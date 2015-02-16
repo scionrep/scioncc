@@ -34,19 +34,7 @@ loggers:
 #  pyon.datastore:
 #    level: DEBUG
 
-  ion.processes.bootstrap.ion_loader:
-    level: DEBUG
-
-  ion.processes.bootstrap.ooi_loader:
-    level: DEBUG
-
   ion.util.datastore:
-    level: DEBUG
-
-  ion.agents:
-    level: DEBUG
-
-  ion.agents.data:
     level: DEBUG
 
   rpc:
@@ -54,9 +42,6 @@ loggers:
 
   ndg:
     level: ERROR
-
-  coverage_model:
-    level: WARNING
 
   tracer:
     level: DEBUG

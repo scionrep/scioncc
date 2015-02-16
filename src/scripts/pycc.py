@@ -274,9 +274,8 @@ def main(opts, *args, **kwargs):
 
         if opts.mx:
             from pyon.public import CFG
-            port = CFG.get_safe('container.flask_webapp.port',8080)
-            container.spawn_process("ContainerUI", "ion.core.containerui", "ContainerUI")
-            print "pycc: Container UI started ... listening on http://localhost:%s" % port
+            port = CFG.get_safe('process.admin_ui.web_server.port', 8080)
+            container.spawn_process("admin_ui", "ion.processes.ui.admin_ui", "AdminUI")
 
         if opts.signalparent:
             import signal
@@ -400,9 +399,6 @@ def main(opts, *args, **kwargs):
             import gevent
             import random
             gevent.sleep(random.random() * 3.0)  # Introduce a random delay to make conflict less likely
-
-        from gevent_zeromq import monkey_patch
-        monkey_patch()
 
         # patch in device:
         # gevent-zeromq does not support devices, which block in the C layer.

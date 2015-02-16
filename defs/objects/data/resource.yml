@@ -53,19 +53,6 @@ TaskableResource: !Extends_Resource
 ExecutableResource: !Extends_InformationResource
 ---
 
-
-# Defines a type of system known resource.
-ResourceType: !Extends_InformationResource
-
-
-# Specifies a particular resource life-cycle workflow.
-ResourceLifeCycle: !Extends_InformationResource
-  # Type in which the definition is represented
-  definition_type: ""
-  # The definition of the resource life-cycle workflow (varies by type).
-  definition: {}
-
-
 # Enumerates the representation type for an attachment. Possible values are:
 # ASCII: the content is ASCII, e.g. JSON or BASE64 encoded by the application;
 # BLOB: the content is a binary;

@@ -93,7 +93,6 @@ server:
 # The "container" root entry defines settings for the current Pyon container
 container:
   # Capability profile to use (assumes a file in res/profile/<name>.yml unless a path is specified)
-  # NOTE: This can affect the configuration if there is a config section in the profile file
   profile: development   # Profile for development purposes
 
   datastore:
@@ -146,12 +145,6 @@ container:
   filesystem:
     force_clean: False
     root: /tmp/ion
-
-  containerui:
-    web_server:
-      port: 8080
-    association_graph: False    # Show D3 graph of associations
-    read_only: False            # Run in read-only mode
 
   tracer:
     enabled: False        # Enable the database class and message tracer in container
@@ -227,6 +220,12 @@ process:
     persist_blacklist:
     - event_type: TimerEvent
     - event_type: SchedulerEvent
+
+  admin_ui:                  # Config for admin UI, started with --mx option
+    web_server:
+      port: 8080
+    association_graph: False    # Show D3 graph of associations
+    read_only: False            # Run in read-only mode
 
   ui_server:
     server:

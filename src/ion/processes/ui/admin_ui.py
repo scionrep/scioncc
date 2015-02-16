@@ -1,30 +1,29 @@
 #!/usr/bin/env python
 
-__author__ = 'Michael Meisinger'
+"""Web UI providing development views and actions"""
 
+__author__ = 'Michael Meisinger'
 
 import collections, traceback, datetime, time, yaml
 import flask, ast, pprint
-from flask import Flask, request, abort, session, render_template
+from flask import Flask, request, abort
 from gevent.wsgi import WSGIServer
 import json
 
-from pyon.core.exception import NotFound, Inconsistent, BadRequest, Unauthorized
 from pyon.core.object import IonObjectBase
 from pyon.core.registry import getextends, model_classes
-from pyon.public import Container, StandaloneProcess, log, PRED, RT, IonObject, CFG
-from pyon.util.containers import named_any
+from pyon.public import Container, StandaloneProcess, log, PRED, RT, IonObject, CFG, NotFound, Inconsistent, BadRequest, Unauthorized, named_any
 
 from interface import objects
 
 
-#Initialize the flask app
-app = Flask(__name__, template_folder="static/templates")
+# Initialize the flask app
+app = Flask(__name__)
 
-DEFAULT_WEB_SERVER_HOSTNAME = ""
+DEFAULT_WEB_SERVER_HOSTNAME = "localhost"
 DEFAULT_WEB_SERVER_PORT = 8080
 
-containerui_instance = None
+adminui_instance = None
 
 standard_types = ['str', 'int', 'bool', 'float', 'list', 'dict']
 standard_resattrs = ['name', 'description', 'lcstate', 'availability', 'visibility', 'ts_created', 'ts_updated', 'alt_ids']
@@ -33,8 +32,10 @@ EDIT_IGNORE_TYPES = ['list', 'dict', 'bool']
 standard_eventattrs = ['origin', 'ts_created', 'description']
 date_fieldnames = ['ts_created', 'ts_updated']
 
+CFG_PREFIX = "process.admin_ui"
 
-class ContainerUI(StandaloneProcess):
+
+class AdminUI(StandaloneProcess):
     """
     A simple Web UI to introspect the container and the ION datastores.
     """
@@ -42,15 +43,15 @@ class ContainerUI(StandaloneProcess):
 
         self.http_server = None
         self.server_hostname = DEFAULT_WEB_SERVER_HOSTNAME
-        self.server_port = self.CFG.get_safe('container.containerui.web_server.port', DEFAULT_WEB_SERVER_PORT)
+        self.server_port = self.CFG.get_safe(CFG_PREFIX + '.web_server.port', DEFAULT_WEB_SERVER_PORT)
         self.web_server_enabled = True
         self.logging = None
         self.interaction_observer = None
         app.secret_key = self.__class__.__name__   # Enables sessions (for mscweb)
 
         #retain a pointer to this object for use in ProcessRPC calls
-        global containerui_instance
-        containerui_instance = self
+        global adminui_instance
+        adminui_instance = self
 
         #Start the gevent web server unless disabled
         if self.web_server_enabled:
@@ -86,35 +87,33 @@ def process_index():
         from pyon.core.bootstrap import get_sys_name
         default_ds_server = CFG.get_safe("container.datastore.default_server", "postgresql")
         fragments = [
-            "<h1>Welcome to Container Management UI</h1>",
+            "<h1>SciON Admin UI</h1>",
             "<p><ul>",
             "<li><a href='/restypes'><b>Browse Resource Registry and Resource Objects</b></a>",
             "<ul>",
-            "<li>Org: <a href='/list/Org'>Org</a>, <a href='/list/UserRole'>UserRole</a></li>",
-            "<li>Users: <a href='/list/ActorIdentity'>ActorIdentity</a></li>",
-            "<li>Execution: <a href='/list/ProcessDefinition'>ProcessDefinition</a>, <a href='/list/Process'>Process</a>, <a href='/list/Service'>Service</a>, <a href='/list/ServiceDefinition'>ServiceDefinition</a>, <a href='/list/CapabilityContainer'>CapabilityContainer</a></li>",
-            "<li>Exchange: <a href='/list/ExchangeSpace'>ExchangeSpace</a>, <a href='/list/ExchangePoint'>ExchangePoint</a>, <a href='/list/ExchangeName'>ExchangeName</a>, <a href='/list/ExchangeBroker'>ExchangeBroker</a></li>",
+            "<li>Org/Users: <a href='/list/Org'>Org</a>, <a href='/list/UserRole'>UserRole</a>, <a href='/list/ActorIdentity'>ActorIdentity</a></li>",
+            "<li>Computing: <a href='/list/Process'>Process</a>, <a href='/list/ProcessDefinition'>ProcessDefinition</a>, <a href='/list/Service'>Service</a>, <a href='/list/ServiceDefinition'>ServiceDefinition</a>, <a href='/list/CapabilityContainer'>CapabilityContainer</a></li>",
+            "<li>Messaging: <a href='/list/ExchangeSpace'>ExchangeSpace</a>, <a href='/list/ExchangePoint'>ExchangePoint</a>, <a href='/list/ExchangeName'>ExchangeName</a>, <a href='/list/ExchangeBroker'>ExchangeBroker</a></li>",
             "<li>Governance: <a href='/list/Commitment'>Commitment</a>, <a href='/list/Negotiation'>Negotiation</a>, <a href='/list/Policy'>Policy</a></li>",
             "</ul></li>",
             "<li><a href='/events'><b>Browse Events</b></a></li>",
             "<li><a href='/viewobj'><b>View Objects</b></a></li>",
             "<li><a href='/viewstate'><b>View Process State</b></a></li>",
-            "<li><a href='/dir'><b>Browse ION Directory</b></a></li>",
+            "<li><a href='/dir'><b>Browse SciON Directory</b></a></li>",
             #"<li><a href='/mscweb'><b>Show system messages (MSCWeb)</b></a>",
             #"<ul>",
             #"<li><a href='/mscaction/stop'>Stop system message recording</a></li>",
             #"</ul></li>",
-            "<li><a href='http://localhost:3000'><b>ION Web UI (if running)</b></a></li>",
-            "<li><a href='http://" + CFG.get_safe("server.amqp.host") + ":55672/'><b>RabbitMQ Management UI V2.x (if running)</b></a></li>",
-            "<li><a href='http://localhost:15672/'><b>RabbitMQ Management UI V3.x (if running)</b></a></li>",
+            "<li><a href='http://localhost:4000'><b>Application Web UI (if running)</b></a></li>",
+            "<li><a href='http://" + CFG.get_safe("server.amqp.host") + ":15672/'><b>RabbitMQ Management UI (if running)</b></a></li>",
             "<li><a href='http://localhost:9001/'><b>Supervisord UI (if running)</b></a></li>",
             "</ul></p>",
             "<h2>System and Container Properties</h2>",
             "<p><table>",
             "<tr><th>Property</th><th>Value</th></tr>",
-            "<tr><td>system.name</td><td>%s</td></tr>" % get_sys_name(),
-            "<tr><td>Broker</td><td>%s</td></tr>" % "%s:%s" % (CFG.server.amqp.host, CFG.server.amqp.port),
-            "<tr><td>Datastore</td><td>%s</td></tr>" % "%s:%s" % (CFG.get_safe("server.%s.host" % default_ds_server), CFG.get_safe("server.%s.port" % default_ds_server)),
+            "<tr><td>system.name (sysname)</td><td>%s</td></tr>" % get_sys_name(),
+            "<tr><td>Message Broker</td><td>%s</td></tr>" % "%s:%s" % (CFG.server.amqp.host, CFG.server.amqp.port),
+            "<tr><td>Database</td><td>%s</td></tr>" % "%s:%s" % (CFG.get_safe("server.%s.host" % default_ds_server), CFG.get_safe("server.%s.port" % default_ds_server)),
             "<tr><td>Container ID</td><td>%s</td></tr>" % Container.instance.id,
             "<tr><td>Read-Only</td><td>%s</td></tr>" % is_read_only(),
             "</table></p>",
@@ -358,7 +357,7 @@ def build_associations(resid):
 
     fragments.append("<h2>Associations</h2>")
     fragments.append("<div id='chart'></div>")
-    if CFG.get_safe('container.containerui.association_graph', True):
+    if CFG.get_safe(CFG_PREFIX + 'i.association_graph', True):
         #----------- Build the visual using javascript --------------#
         fragments.append("<script type='text/javascript' src='http://mbostock.github.com/d3/d3.v2.js'></script>   ")
         fragments.append("<script type='text/javascript' src='/static/tree-interactive.js'></script>")
@@ -920,7 +919,7 @@ def process_tree(resid):
 # ----------------------------------------------------------------------------------------
 
 def is_read_only():
-    return CFG.get_safe('container.containerui.read_only', False)
+    return CFG.get_safe(CFG_PREFIX + '.read_only', False)
 
 def build_type_link(restype):
     return build_link(restype, "/list/%s" % restype)
