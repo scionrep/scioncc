@@ -1,10 +1,9 @@
 name: process_dispatcher
 
 docstring: |
-  Service to create, read, update and delete process definitions. Process definitions
-  represent executables with information about parameterization, execution constraints and
-  packaging that go along. This service also schedules process definitions for execution
-  on execution engines and cancels executing processes.
+  Service to create, read, update and delete process definitions and processes,
+  and manage process execution.  Process definitions represent executables.
+  Processes represent the executing code within the system.
 
 spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+CEI+OV+Process+Dispatcher+Service
 

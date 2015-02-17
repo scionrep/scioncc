@@ -1,7 +1,7 @@
 name: directory
 
 docstring: |
-  Provides a directory of services and other resources specific to an Org.
+  Provides a lookup directory of important information of an Org.
 
 dependencies: []
 

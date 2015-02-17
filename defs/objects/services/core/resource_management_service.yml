@@ -1,8 +1,7 @@
 name: resource_management
 
 docstring: |
-  Service that manages resource types and lifecycle workflows. It also provides generic
-  operations that manage any kind of resource and their lifecycle.
+  Service that manages resources and their lifecycle.
   Also provides a resource discovery and query capability.
 
 dependencies: [resource_registry]
