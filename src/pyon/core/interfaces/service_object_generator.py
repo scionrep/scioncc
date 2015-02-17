@@ -1042,8 +1042,8 @@ class ServiceObjectGenerator:
             os.unlink(reportfile)
         except:
             pass
-        print " Writing service implementation validation report to '" + reportfile + "'"
-        if self.opts.dryrun:
+        if not self.opts.dryrun:
+            print " Writing service implementation validation report to '" + reportfile + "'"
             with open(reportfile, 'w') as f:
                 f.write(validation_results)
 

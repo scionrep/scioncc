@@ -357,7 +357,7 @@ def build_associations(resid):
 
     fragments.append("<h2>Associations</h2>")
     fragments.append("<div id='chart'></div>")
-    if CFG.get_safe(CFG_PREFIX + 'i.association_graph', True):
+    if CFG.get_safe(CFG_PREFIX + '.association_graph', True):
         #----------- Build the visual using javascript --------------#
         fragments.append("<script type='text/javascript' src='http://mbostock.github.com/d3/d3.v2.js'></script>   ")
         fragments.append("<script type='text/javascript' src='/static/tree-interactive.js'></script>")

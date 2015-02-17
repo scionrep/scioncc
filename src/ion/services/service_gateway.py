@@ -725,6 +725,7 @@ def sg_index():
 # Also accepts arguments form encoded and as JSON; example:
 #   curl --data "payload={"params": { "restype": "TestInstrument", "name": "", "id_only": true } }" http://localhost:4000/service/request/resource_registry/find_resources
 @sg_blueprint.route("/request", methods=["GET", "POST"])
+@sg_blueprint.route("/request/<service_name>", methods=["GET", "POST"])
 @sg_blueprint.route("/request/<service_name>/<operation>", methods=["GET", "POST"])
 @sg_blueprint.route("/request/<service_name>/<operation>/<id_param>", methods=["GET", "POST"])
 def process_gateway_request(service_name=None, operation=None, id_param=None):
