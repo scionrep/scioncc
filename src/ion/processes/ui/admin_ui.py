@@ -80,12 +80,26 @@ class AdminUI(StandaloneProcess):
 
 # ----------------------------------------------------------------------------------------
 
+def _get_resmenu_extension():
+    resmenu_ext = CFG.get_safe(CFG_PREFIX + '.menu.extensions')
+    if not resmenu_ext:
+        return ""
+    ext_str = ""
+    for ext in resmenu_ext:
+        if isinstance(ext, basestring):
+            ext = ext.split(",")
+        ext_str += "<li>%s: %s</li>\n" % (ext[0], ", ".join("<a href='/list/%s'>%s</a>" % (rex, rex) for rex in ext[1:]))
+    return ext_str
+
 @app.route('/', methods=['GET', 'POST'])
 def process_index():
     try:
         from pyon.public import CFG
         from pyon.core.bootstrap import get_sys_name
         default_ds_server = CFG.get_safe("container.datastore.default_server", "postgresql")
+
+
+
         fragments = [
             "<h1>SciON Admin UI</h1>",
             "<p><ul>",
@@ -95,6 +109,7 @@ def process_index():
             "<li>Computing: <a href='/list/Process'>Process</a>, <a href='/list/ProcessDefinition'>ProcessDefinition</a>, <a href='/list/Service'>Service</a>, <a href='/list/ServiceDefinition'>ServiceDefinition</a>, <a href='/list/CapabilityContainer'>CapabilityContainer</a></li>",
             "<li>Messaging: <a href='/list/ExchangeSpace'>ExchangeSpace</a>, <a href='/list/ExchangePoint'>ExchangePoint</a>, <a href='/list/ExchangeName'>ExchangeName</a>, <a href='/list/ExchangeBroker'>ExchangeBroker</a></li>",
             "<li>Governance: <a href='/list/Commitment'>Commitment</a>, <a href='/list/Negotiation'>Negotiation</a>, <a href='/list/Policy'>Policy</a></li>",
+            _get_resmenu_extension(),
             "</ul></li>",
             "<li><a href='/events'><b>Browse Events</b></a></li>",
             "<li><a href='/viewobj'><b>View Objects</b></a></li>",
