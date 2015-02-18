@@ -209,8 +209,8 @@ class BootstrapExchange(BootstrapPlugin):
             # pattern "<sysname>.<service_name><hex>"
 
         # leftover queues now
-        for queue in rem_queues:
-            log.warn("Unknown queue: %s", queue)
+        if rem_queues:
+            log.info("Unknown queues: %s", ", ".join(rem_queues))
 
         #
         # EMPTY SERVICE QUEUES

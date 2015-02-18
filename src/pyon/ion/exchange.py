@@ -514,7 +514,7 @@ class ExchangeManager(object):
 
     def _create_xn(self, xn_type, name, xs=None, declare=True, **kwargs):
         xs = xs or self.default_xs
-        log.info("ExchangeManager._create_xn: type: %s, name=%s, xs=%s, kwargs=%s", xn_type, name, xs, kwargs)
+        log.debug("ExchangeManager._create_xn: type: %s, name=%s, xs=%s, kwargs=%s", xn_type, name, xs, kwargs)
 
         # @TODO: based on xs/xp
         node_name, node = self._get_node_for_xs(xs._exchange)   # feels wrong
