@@ -186,16 +186,24 @@ class BootstrapExchange(BootstrapPlugin):
 
         proc_objs, _ = rr.find_resources(RT.Process, id_only=False)
         current_proc_names = [p.name for p in proc_objs]
+        cont_objs, _ = rr.find_resources(RT.CapabilityContainer, id_only=False)
+        current_containers = [c.name for c in cont_objs]
 
         # PROCESS QUEUES + SERVICE QUEUES - not yet represented by resource
         proc_queues = set()
         svc_queues = set()
 
         for queue in list(rem_queues):
-            # PROCESS QUEUES: proc manager spawned
-            # pattern "<sysname>.<root_xs>.<containerid>.<pid>"
             pieces = queue.split(".")
 
+            # CC AGENT QUEUES
+            if pieces[-1].startswith("cc_agent_") and pieces[-1][9:] in current_containers:
+                proc_queues.add(queue)
+                rem_queues.remove(queue)
+                continue
+
+            # PROCESS QUEUES: proc manager spawned
+            # pattern "<sysname>.<root_xs>.<containerid>.<pid>"
             if len(pieces) > 3 and pieces[-1].isdigit():
                 if "%s.%s" % (pieces[-2], pieces[-1]) in current_proc_names:
                     proc_queues.add(queue)
@@ -213,7 +221,7 @@ class BootstrapExchange(BootstrapPlugin):
         for qn in rem_queues:
             if int(queues[qn]['consumers']) == 0:
                 ex_manager.delete_queue(qn)
-                log.info("Deleted unused queue: %s (%s messages)", qn, queues[qn]['messages'])
+                log.info("Deleted unused queue: %s (%s messages, %s consumers)", qn, queues[qn]['messages'], queues[qn]['consumers'])
 
         #
         # EMPTY SERVICE QUEUES
