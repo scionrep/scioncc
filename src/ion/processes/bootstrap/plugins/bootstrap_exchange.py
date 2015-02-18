@@ -209,24 +209,16 @@ class BootstrapExchange(BootstrapPlugin):
                     svc_queues.add(queue)
                     rem_queues.remove(queue)
 
-            # @TODO: PD-spawned process queues
-            # pattern "<sysname>.<service_name><hex>"
-
-        # Leftover queues are unaccounted for - remove now
-        #if rem_queues:
-        #    log.info("Unknown queues: %s", ", ".join(rem_queues))
+        # EMPTY LEFTOVER QUEUES - they are unaccounted for
         for qn in rem_queues:
             if int(queues[qn]['consumers']) == 0:
-                log.info("Delete unused queue: %s", qn)
                 ex_manager.delete_queue(qn)
+                log.info("Deleted unused queue: %s (%s messages)", qn, queues[qn]['messages'])
 
         #
         # EMPTY SERVICE QUEUES
         #
         for queue in svc_queues:
-            if int(queues[queue]['consumers']) > 0 and not process.CFG.get_safe('force', False):
-                log.warn("Refusing to empty service queue %s with consumers (%s), specify force=True to override", queue, queues[queue]['consumers'])
-            else:
+            if int(queues[queue]['messages']) > 0:
                 ex_manager.purge_queue(queue)
-                log.info("Purged service queue %s of %s messages", queue, queues[queue]['messages'])
-
+                log.info("Purged service queue %s (%s messages)", queue, queues[queue]['messages'])
