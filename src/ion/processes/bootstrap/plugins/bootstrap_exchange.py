@@ -134,13 +134,14 @@ class BootstrapExchange(BootstrapPlugin):
                 log.warn("BootstrapExchange restart: RR XP %s, id=%s NOT FOUND in exchanges", rrxp.name, rrxp._id)
 
         # # events and main service exchange should be left
-        # system_rpc_ex = "%s.%s" % (sys_name, sys_xs_name)
+        system_rpc_ex = "%s.%s" % (sys_name, sys_xs_name)
+        event_ex = "%s.%s.%s" % (sys_name, sys_xs_name, CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP))
+
         # if system_rpc_ex in rem_exchanges:
         #     rem_exchanges.remove(system_rpc_ex)
         # else:
         #     log.warn("BootstrapExchange restart: no main service exchange %s", system_rpc_ex)
         #
-        # event_ex = "%s.%s.%s" % (sys_name, sys_xs_name, CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP))
         # if event_ex in rem_exchanges:
         #     rem_exchanges.remove(event_ex)
         # else:
@@ -189,12 +190,21 @@ class BootstrapExchange(BootstrapPlugin):
         cont_objs, _ = rr.find_resources(RT.CapabilityContainer, id_only=False)
         current_containers = [c.name for c in cont_objs]
 
+        from pyon.ion.event import local_event_queues
+
         # PROCESS QUEUES + SERVICE QUEUES - not yet represented by resource
         proc_queues = set()
         svc_queues = set()
+        event_queues = set()
 
         for queue in list(rem_queues):
             pieces = queue.split(".")
+
+            # EVENT QUEUES
+            if queue.startswith(event_ex) and pieces[-1] in local_event_queues:
+                event_queues.add(queue)
+                rem_queues.remove(queue)
+                continue
 
             # CC AGENT QUEUES
             if pieces[-1].startswith("cc_agent_") and pieces[-1][9:] in current_containers:
@@ -218,10 +228,11 @@ class BootstrapExchange(BootstrapPlugin):
                     rem_queues.remove(queue)
 
         # EMPTY LEFTOVER QUEUES - they are unaccounted for
+
         for qn in rem_queues:
             if int(queues[qn]['consumers']) == 0:
                 ex_manager.delete_queue(qn)
-                log.info("Deleted unused queue: %s (%s messages, %s consumers)", qn, queues[qn]['messages'], queues[qn]['consumers'])
+                log.info("Deleted unused queue: %s (%s messages)", qn, queues[qn]['messages'])
 
         #
         # EMPTY SERVICE QUEUES

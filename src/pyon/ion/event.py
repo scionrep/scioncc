@@ -195,6 +195,10 @@ class EventPublisher(Publisher):
         return actor_id
 
 
+# Helper for bootstrap purposes
+local_event_queues = []
+
+
 class BaseEventSubscriberMixin(object):
     """
     A mixin class for Event subscribers to facilitate inheritance.
@@ -267,6 +271,8 @@ class BaseEventSubscriberMixin(object):
 
             # set this name to be picked up by inherited folks
             self._ev_recv_name = (xp_name, queue_name)
+
+        local_event_queues.append(queue_name)
 
 
 class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
