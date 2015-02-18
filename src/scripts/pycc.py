@@ -26,8 +26,8 @@ log = logging.getLogger('pycc')
 
 version = "3.0"     # TODO: extract version info from the code (tag/commit)
 description = '''
-pyon (SciON capability container) v%s
-''' % (version)
+SciON Capability Container v%s
+''' % version
 
 # See below __main__ for STEP 1
 
@@ -41,24 +41,23 @@ def entry():
     # should be in the config file (pyon.yml), which can also be specified on the command-line via the extra args
 
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config', type=str, help='Additional config files to load or dict config content.', default=[])
+    parser.add_argument('-c', '--config', type=str, help='Additional config files to load or dict config content', default=[])
     parser.add_argument('-D', '--config_from_directory', action='store_true')
     parser.add_argument('-d', '--daemon', action='store_true')
     parser.add_argument('-fc', '--force_clean', action='store_true', help='Force clean system datastores before starting the container')
     parser.add_argument('-bc', '--broker_clean', action='store_true', help='Force clean broker of queues/exchanges belonging to sysname')
-    parser.add_argument('-i', '--immediate', action='store_true', help='Will exit the container if the only procs started are immediate proc types. Sets CFG system.immediate flag.')
-    parser.add_argument('-l', '--logcfg', type=str, help='Path to logging configuration file or dict config content.')
-    parser.add_argument('-m', '--mx', action='store_true', help='Start a management web UI')
-    parser.add_argument('-n', '--noshell', action='store_true')
-    parser.add_argument('-o', '--nomanhole', action='store_true', help="Do not start a shell or a remote-able manhole shell. Implies -n")
+    parser.add_argument('-i', '--immediate', action='store_true', help='Exits the container if the only procs started were of immediate type')
+    parser.add_argument('-l', '--logcfg', type=str, help='Logging config file or config dict content')
+    parser.add_argument('-mx', '--mx', action='store_true', help='Start admin Web UI')
+    parser.add_argument('-n', '--noshell', action='store_true', help="Do not start a shell")
+    parser.add_argument('-o', '--nomanhole', action='store_true', help="Do not remote-able manhole shell")
     parser.add_argument('-p', '--pidfile', type=str, help='PID file to use when --daemon specified. Defaults to cc-<rand>.pid')
-    parser.add_argument('-r', '--rel', type=str, help='Path to a rel file to launch.')
+    parser.add_argument('-r', '--rel', type=str, help='Deploy file to launch')
     parser.add_argument('-s', '--sysname', type=str, help='System name')
-    parser.add_argument('-sp', '--signalparent', action='store_true', help='Signal parent process after service start up complete')
-    parser.add_argument('-v', '--version', action='version', version='pyon v%s' % (version))
-    parser.add_argument('-x', '--proc', type=str, help='Qualified name of process to start and then exit.')
-    parser.add_argument('-X', '--no_container', action='store_true', help='Perform pre-initialization steps and stop before starting a container.')
-    parser.add_argument('-egb', '--enable_gbmonitor', action='store_true', help='Enable gevent block monitor.', default=False)
+    parser.add_argument('-sp', '--signalparent', action='store_true', help='Signal parent process after procs started')
+    parser.add_argument('-v', '--version', action='version', version='ScionCC v%s' % version)
+    parser.add_argument('-x', '--proc', type=str, help='Qualified name of process to start and then exit')
+    parser.add_argument('-X', '--no_container', action='store_true', help='Perform pre-initialization steps and stop before starting a container')
     opts, extra = parser.parse_known_args()
     args, kwargs = parse_args(extra)
 
@@ -291,10 +290,6 @@ def main(opts, *args, **kwargs):
             ipg = gevent.spawn(is_parent_gone)
 
             container.gl_parent_watch = ipg
-
-        if opts.enable_gbmonitor:
-            from pyon.util.gevent_block_plugin import get_gevent_monitor_block
-            get_gevent_monitor_block().start()
 
         if not opts.noshell and not opts.daemon:
             # Keep container running while there is an interactive shell

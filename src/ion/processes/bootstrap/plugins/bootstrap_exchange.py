@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-"""Bootstrap actopms for exchange"""
+"""Bootstrap actions for exchange"""
 
 __author__ = 'Dave Foster <dfoster@asascience.com>, Michael Meisinger'
 
-from pyon.public import log, get_sys_name, RT, PRED
-from pyon.ion.exchange import ExchangeSpace, ExchangePoint, ExchangeName
+from pyon.public import log, get_sys_name, RT, PRED, CFG
+from pyon.ion.exchange import ExchangeSpace, ExchangePoint, ExchangeName, DEFAULT_SYSTEM_XS, DEFAULT_EVENTS_XP
 
 from ion.core.bootstrap_process import BootstrapPlugin
 
@@ -13,6 +13,7 @@ from interface.services.core.iexchange_management_service import ExchangeManagem
 from interface.objects import ExchangeBroker as ResExchangeBroker
 from interface.objects import ExchangeSpace as ResExchangeSpace
 from interface.objects import ExchangePoint as ResExchangePoint
+
 
 class BootstrapExchange(BootstrapPlugin):
     """
@@ -101,6 +102,9 @@ class BootstrapExchange(BootstrapPlugin):
             if assoc.st == RT.ExchangeSpace and assoc.ot == RT.ExchangePoint:
                 xs_by_xp[assoc.o] = assoc.s
 
+        sys_xs_name = CFG.get_safe("exchange.core.system_xs", DEFAULT_SYSTEM_XS)
+        sys_node_name, sys_node = ex_manager._get_node_for_xs(sys_xs_name)
+
         #
         # VERIFY XSs have a declared exchange
         #
@@ -108,13 +112,13 @@ class BootstrapExchange(BootstrapPlugin):
 
         xs_by_id = {}
         for rrxs in xs_objs:
-            xs = ExchangeSpace(ex_manager, ex_manager._priviledged_transport, rrxs.name)
+            xs = ExchangeSpace(ex_manager, ex_manager._get_priv_transport(sys_node_name), sys_node, rrxs.name)
             xs_by_id[rrxs._id] = xs
 
             if xs.exchange in rem_exchanges:
                 rem_exchanges.remove(xs.exchange)
             else:
-                log.warn("BootstrapExchange restart: RR XS %s, id: %s NOT FOUND in exchanges", rrxs.name, rrxs._id)
+                log.warn("BootstrapExchange restart: RR XS %s, id=%s NOT FOUND in exchanges", rrxs.name, rrxs._id)
 
         for rrxp in xp_objs:
             xs_id = xs_by_xp.get(rrxp._id, None)
@@ -122,25 +126,25 @@ class BootstrapExchange(BootstrapPlugin):
                 log.warn("Inconsistent!! XS for XP %s not found", rrxp.name)
                 continue
             xs = xs_by_id[xs_id]
-            xp = ExchangePoint(ex_manager, ex_manager._priviledged_transport, rrxp.name, xs)
+            xp = ExchangePoint(ex_manager, ex_manager._get_priv_transport(sys_node_name), sys_node, rrxp.name, xs)
 
             if xp.exchange in rem_exchanges:
                 rem_exchanges.remove(xp.exchange)
             else:
-                log.warn("BootstrapExchange restart: RR XP %s, id %s NOT FOUND in exchanges", rrxp.name, rrxp._id)
+                log.warn("BootstrapExchange restart: RR XP %s, id=%s NOT FOUND in exchanges", rrxp.name, rrxp._id)
 
-        # TODO: WARNING this is based on hardcoded names
-        # events and main service exchange should be left
-        if sys_name in rem_exchanges:
-            rem_exchanges.remove(sys_name)
-        else:
-            log.warn("BootstrapExchange restart: no main service exchange %s", sys_name)
-
-        event_ex = "%s.pyon.events" % sys_name
-        if event_ex in rem_exchanges:
-            rem_exchanges.remove(event_ex)
-        else:
-            log.warn("BootstrapExchange restart: no events exchange %s", event_ex)
+        # # events and main service exchange should be left
+        # system_rpc_ex = "%s.%s" % (sys_name, sys_xs_name)
+        # if system_rpc_ex in rem_exchanges:
+        #     rem_exchanges.remove(system_rpc_ex)
+        # else:
+        #     log.warn("BootstrapExchange restart: no main service exchange %s", system_rpc_ex)
+        #
+        # event_ex = "%s.%s.%s" % (sys_name, sys_xs_name, CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP))
+        # if event_ex in rem_exchanges:
+        #     rem_exchanges.remove(event_ex)
+        # else:
+        #     log.warn("BootstrapExchange restart: no events exchange %s", event_ex)
 
         # what is left?
         for exchange in rem_exchanges:
@@ -162,14 +166,14 @@ class BootstrapExchange(BootstrapPlugin):
                 continue
             """
 
-            exchange_space_list, assoc_list = rr.find_subjects(RT.ExchangeSpace, PRED.hasExchangeName, rrxn._id)
+            exchange_space_list, _ = rr.find_subjects(RT.ExchangeSpace, PRED.hasExchangeName, rrxn._id)
             if not len(exchange_space_list) == 1:
                 raise StandardError("Association from ExchangeSpace to ExchangeName %s does not exist" % rrxn._id)
 
             rrxs = exchange_space_list[0]
 
-            xs = ExchangeSpace(ex_manager, ex_manager._priviledged_transport, rrxs.name)
-            xn = ExchangeName(ex_manager, ex_manager._priviledged_transport, rrxn.name, xs)
+            xs = ExchangeSpace(ex_manager, ex_manager._get_priv_transport(sys_node_name), sys_node, rrxs.name)
+            xn = ExchangeName(ex_manager, ex_manager._get_priv_transport(sys_node_name), sys_node, rrxn.name, xs)
 
             if xn.queue in rem_queues:
                 rem_queues.remove(xn.queue)
@@ -187,16 +191,16 @@ class BootstrapExchange(BootstrapPlugin):
         for queue in list(rem_queues):
 
             # PROCESS QUEUES: proc manager spawned
-            # pattern "<sysname>.<containerid>.<pid>"
+            # pattern "<sysname>.<root_xs>.<containerid>.<pid>"
             pieces = queue.split(".")
-            if len(pieces) > 2 and pieces[-1].isdigit():
+            if len(pieces) > 3 and pieces[-1].isdigit():
                 proc_queues.add(queue)
                 rem_queues.remove(queue)
                 continue
 
             # SERVICE QUEUES
-            # pattern "<sysname>.<service name>"
-            if len(pieces) == 2:
+            # pattern "<sysname>.<root_xs>.<service name>"
+            if len(pieces) == 3:
                 if pieces[-1] in svc_names:
                     svc_queues.add(queue)
                     rem_queues.remove(queue)

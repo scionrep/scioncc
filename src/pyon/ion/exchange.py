@@ -272,13 +272,16 @@ class ExchangeManager(object):
         if name in self._xs_cache:
             return self._xs_cache[name]
 
-        xs_objs, _ = self._rr.find_resources(RT.ExchangeSpace, name=name)
-        if len(xs_objs) != 1:
-            log.warn("Could not find RR XS object with name: %s", name)
-            return None
+        return None
+        # Commented out MM 2/17/15 - Not needed and slowing things down
 
-        self._xs_cache[name] = xs_objs[0]
-        return xs_objs[0]
+        # xs_objs, _ = self._rr.find_resources(RT.ExchangeSpace, name=name)
+        # if len(xs_objs) != 1:
+        #     log.warn("Could not find ExchangeSpace resource with name: %s", name)
+        #     return None
+        #
+        # self._xs_cache[name] = xs_objs[0]
+        # return xs_objs[0]
 
     def _bootstrap_default_org(self):
         """
@@ -315,24 +318,26 @@ class ExchangeManager(object):
                            durable=False,            # @TODO: configurable?
                            auto_delete=True)
 
-        # create object if we don't have one
-        rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=self.system_xs_name, id_only=True)
-        if not len(rids):
-            xso = ResExchangeSpace(name=self.system_xs_name)
+        # Commented out MM 2/17/15 - Not needed and not correct (Org assoc not created)
 
-            # @TODO: we have a bug in the CC, need to skirt around the event publisher capability which shouldn't be there
-            reset = False
-            if self.container.CCAP.EVENT_PUBLISHER in self.container._capabilities:
-                self.container._capabilities.remove(self.container.CCAP.EVENT_PUBLISHER)
-                reset = True
-
-            rid, _ = self._rr.create(xso)
-
-            # @TODO remove this
-            if reset:
-                self.container._capabilities.append(self.container.CCAP.EVENT_PUBLISHER)
-
-            self._xs_cache[self.system_xs_name] = self._rr.read(rid)
+        # # create ExchangeSpace resource if there is none
+        # rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=self.system_xs_name, id_only=True)
+        # if not rids:
+        #     xso = ResExchangeSpace(name=self.system_xs_name)
+        #
+        #     # @TODO: we have a bug in the CC, need to skirt around the event publisher capability which shouldn't be there
+        #     reset = False
+        #     if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
+        #         self.container._capabilities.remove(self.container.CCAP.EVENT_PUBLISHER)
+        #         reset = True
+        #
+        #     rid, _ = self._rr.create(xso)
+        #
+        #     # @TODO remove this
+        #     if reset:
+        #         self.container._capabilities.append(self.container.CCAP.EVENT_PUBLISHER)
+        #
+        #     self._xs_cache[self.system_xs_name] = self._rr.read(rid)
 
         # ensure_default_declared will take care of any declaration we need to do
         return xs
