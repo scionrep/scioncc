@@ -221,8 +221,8 @@ def main(opts, *args, **kwargs):
 
             from putil.rabbithelper import clean_by_sysname
             deleted_exchanges, deleted_queues = clean_by_sysname(connect_str, bootstrap.get_sys_name())
-            print "      exchanges deleted (%s): %s" % (len(deleted_exchanges), ",".join(deleted_exchanges))
-            print "         queues deleted (%s): %s" % (len(deleted_queues), ",".join(deleted_queues))
+            print "      exchanges deleted (%s): %s" % (len(deleted_exchanges), ", ".join(deleted_exchanges))
+            print "         queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues))
 
         if opts.force_clean:
             path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/ion'), bootstrap.get_sys_name())

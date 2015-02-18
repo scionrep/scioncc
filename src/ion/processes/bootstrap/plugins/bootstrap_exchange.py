@@ -184,7 +184,7 @@ class BootstrapExchange(BootstrapPlugin):
         svc_objs, _ = rr.find_resources(RT.ServiceDefinition)
         svc_names = [s.name for s in svc_objs]
 
-        # PROCESS QUEUES + SERVICE QUEUES- not yet represented by resource
+        # PROCESS QUEUES + SERVICE QUEUES - not yet represented by resource
         proc_queues = set()
         svc_queues = set()
 
@@ -208,9 +208,13 @@ class BootstrapExchange(BootstrapPlugin):
             # @TODO: PD-spawned process queues
             # pattern "<sysname>.<service_name><hex>"
 
-        # leftover queues now
-        if rem_queues:
-            log.info("Unknown queues: %s", ", ".join(rem_queues))
+        # Leftover queues are unaccounted for - remove now
+        #if rem_queues:
+        #    log.info("Unknown queues: %s", ", ".join(rem_queues))
+        for qn in rem_queues:
+            if int(queues[qn]['consumers']) == 0:
+                log.info("Delete unused queue: %s", qn)
+                ex_manager.delete_queue(qn)
 
         #
         # EMPTY SERVICE QUEUES
