@@ -47,10 +47,7 @@ COMMON INSTALLATION
 
 Setup a virtualenv to run the SciON capability container:
     > mkvirtualenv --no-site-packages scion
-
-Install special virtualenv dependencies:
     > pip install setuptools --upgrade
-    > pip install numpy==1.7.1
 
 Clone scioncc (this repository) in your code directory:
     > cd code   # Whatever your code repository directory is

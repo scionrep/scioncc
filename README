@@ -75,6 +75,12 @@ Run smoke tests to verify sanity of the system:
 Run full integration tests - this will take a long time so may be optional:
     > bin/nosetests -v -a INT
 
+To launch the developer/admin Web UI (default on localhost:8080), add --mx option:
+    > bin/pycc --mx
+
+To set a different sysname:
+    > bin/pycc -s NEWSYSNAME
+
 
 INTERACTIVE SHELL
 =================
