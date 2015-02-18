@@ -184,18 +184,22 @@ class BootstrapExchange(BootstrapPlugin):
         svc_objs, _ = rr.find_resources(RT.ServiceDefinition)
         svc_names = [s.name for s in svc_objs]
 
+        proc_objs, _ = rr.find_resources(RT.Process, id_only=False)
+        current_proc_names = [p.name for p in proc_objs]
+
         # PROCESS QUEUES + SERVICE QUEUES - not yet represented by resource
         proc_queues = set()
         svc_queues = set()
 
         for queue in list(rem_queues):
-
             # PROCESS QUEUES: proc manager spawned
             # pattern "<sysname>.<root_xs>.<containerid>.<pid>"
             pieces = queue.split(".")
+
             if len(pieces) > 3 and pieces[-1].isdigit():
-                proc_queues.add(queue)
-                rem_queues.remove(queue)
+                if "%s.%s" % (pieces[-1], pieces[-1]) in current_proc_names:
+                    proc_queues.add(queue)
+                    rem_queues.remove(queue)
                 continue
 
             # SERVICE QUEUES
