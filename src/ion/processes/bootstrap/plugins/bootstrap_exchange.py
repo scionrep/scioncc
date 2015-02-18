@@ -197,7 +197,7 @@ class BootstrapExchange(BootstrapPlugin):
             pieces = queue.split(".")
 
             if len(pieces) > 3 and pieces[-1].isdigit():
-                if "%s.%s" % (pieces[-1], pieces[-1]) in current_proc_names:
+                if "%s.%s" % (pieces[-2], pieces[-1]) in current_proc_names:
                     proc_queues.add(queue)
                     rem_queues.remove(queue)
                 continue
