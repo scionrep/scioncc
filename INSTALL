@@ -14,7 +14,7 @@ Install homebrew package manager
     Note: see 'brew doctor' for any issues with brew and 'brew update' often
 
 Install python 2.7.x
-    > brew install python --framework --universal
+    > brew install python
 
 Basic packages
     > brew install git libevent libyaml zeromq rabbitmq hdf5 pkg-config netcdf udunits
@@ -31,6 +31,20 @@ Python packages and environment management:
     > easy_install --upgrade virtualenv
     > easy_install --upgrade virtualenvwrapper
     Note: This requires Mac's XCode with installed command line tools
+
+Troubleshooting Mac OS Python install:
+    Sometimes, the system wide Python packages get outdated and errors like
+    pkg_resources.DistributionNotFound appear.
+    Always install and upgrade system packages with easy_install, not pip (if that's what
+    you've used before, see above).
+    In case of problems:
+    > brew rm python
+    Then delete outdated stuff out system site-packages directory:
+    > python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())"
+    The reinstall python, and redo above steps
+    > brew install python
+    > easy_install --upgrade pip stevedore setuptools virtualenv virtualenvwrapper
+
 
 LINUX (UBUNTU):
 ---------------
