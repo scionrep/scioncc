@@ -8,18 +8,25 @@ import sys
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+def get_data_dirs(path, patterns):
+    data_dirs = [(rt+"/"+dn+"/") for rt, ds, fs in os.walk(path) for dn in ds]
+    data_dir_patterns = []
+    for pat in patterns:
+        data_dir_patterns += [(dn+pat)[len(path)+1:] for dn in data_dirs]
+    return data_dir_patterns
+
 # Add /usr/local/include to the path for macs, fixes easy_install for several packages (like gevent and pyyaml)
 if sys.platform == 'darwin':
     os.environ['C_INCLUDE_PATH'] = '/usr/local/include'
 
-VERSION = read("version.txt")
+VERSION = read("VERSION").strip()
 
 # See http://pythonhosted.org/setuptools/setuptools.html
 setup(  name='scioncc',
         version=VERSION,
         description='Scientific Observatory Network Capability Container',
         long_description=read('README'),
-        url='www.github.com/scionrep/scioncc',
+        url='https://www.github.com/scionrep/scioncc/wiki',
         download_url='https://github.com/scionrep/scioncc/releases',
         license='BSD',
         author='SciON Contributors',
@@ -37,9 +44,14 @@ setup(  name='scioncc',
                     'Topic :: Scientific/Engineering',
                     'Topic :: Software Development',
                     'Topic :: Software Development :: Libraries :: Application Frameworks'],
-        packages=find_packages('src'),
-        package_dir={'': 'src'},
-        package_data={'': ['*.yml']},
+        packages=find_packages('src') + find_packages('.'),
+        package_dir={'': 'src',
+                     'interface': 'interface',
+                     'defs': 'defs'},
+        include_package_data=True,
+        package_data={
+            '': ['*.yml', '*.txt'] + get_data_dirs("defs", ["*.yml", "*.sql", "*.xml"]),
+        },
         entry_points={
             'console_scripts': [
                 'pycc=scripts.pycc:entry',
@@ -50,7 +62,6 @@ setup(  name='scioncc',
                 ]
             },
         dependency_links=[],
-        #zip_safe=False,
         install_requires=[
             'setuptools',
             'greenlet==0.4.5',
@@ -82,8 +93,6 @@ setup(  name='scioncc',
             # Check if all these are needed
             'graypy==0.2.11',          # For production logging
             'ntplib==0.3.2',
-            'xlrd==0.9.3',             # For Excel file read (dev tools)
-            'xlwt==0.7.5',             # For Excel file write (dev tools)
             'pyproj==1.9.4'            # For geospatial calculations
             #'M2Crypto==0.22.3',        # For X.509 certificates (currently unused)
         ],
@@ -91,6 +100,10 @@ setup(  name='scioncc',
             'scidata': [
                 'Pydap==3.3.RC1',
                 'netCDF4==1.0.9',
+            ],
+            'utils': [
+                'xlrd==0.9.3',             # For Excel file read (dev tools)
+                'xlwt==0.7.5',             # For Excel file write (dev tools)
             ],
         }
      )

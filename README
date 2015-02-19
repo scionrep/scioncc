@@ -130,9 +130,13 @@ Using IPython with buildout:
 DEPLOYMENT
 ==========
 
-To create distributions:
-    > bin/buildout setup . sdist          # Source
-    > bin/buildout setup . bdist_egg      # Binary
+To create a distribution egg in ./dist:
+    > dist_version=`cat VERSION`
+    > swdist_key="~/.ssh/AgXAWSKey.pem"
+    > ant clean
+    > bin/generate_interfaces
+    > bin/buildout setup . bdist_egg
+    > scp -i ${swdist_key} dist/scioncc-${dist_version}-py2.7.egg ubuntu@agproxdev.ddns.net:/home/ubuntu/html/swdist/releases
 
 
 TROUBLESHOOTING
