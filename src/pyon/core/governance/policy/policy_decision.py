@@ -57,7 +57,7 @@ class PolicyDecisionPointManager(object):
         self.resource_policy_decision_point = dict()
         self.service_policy_decision_point = dict()
 
-        self.empty_pdp = PDP.fromPolicySource(path.join(THIS_DIR, XACML_EMPTY_POLICY_FILENAME), ReaderFactory)
+        self.empty_pdp = PDP.fromPolicySource(path.join(".", XACML_EMPTY_POLICY_FILENAME), ReaderFactory)
         self.load_common_service_policy_rules('')
 
         self.governance_controller = governance_controller
