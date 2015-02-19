@@ -32,7 +32,7 @@ COMMON_SERVICE_POLICY_RULES = 'common_service_policy_rules'
 
 
 THIS_DIR = path.dirname(__file__)
-XACML_EMPTY_POLICY_FILENAME = 'empty_policy_set.xml'
+XACML_EMPTY_POLICY_FILENAME = 'res/config/policy/empty_policy_set.xml'
 
 ROLE_ATTRIBUTE_ID = XACML_1_0_PREFIX + 'subject:subject-role-id'
 SENDER_ID = XACML_1_0_PREFIX + 'subject:subject-sender-id'

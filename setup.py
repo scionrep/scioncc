@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup, find_packages
 
 import os
 import sys
@@ -15,11 +12,11 @@ def read(fname):
 if sys.platform == 'darwin':
     os.environ['C_INCLUDE_PATH'] = '/usr/local/include'
 
-version = '3.0.0.dev0'
+VERSION = read("version.txt")
 
 # See http://pythonhosted.org/setuptools/setuptools.html
 setup(  name='scioncc',
-        version=version,
+        version=VERSION,
         description='Scientific Observatory Network Capability Container',
         long_description=read('README'),
         url='www.github.com/scionrep/scioncc',
@@ -42,7 +39,7 @@ setup(  name='scioncc',
                     'Topic :: Software Development :: Libraries :: Application Frameworks'],
         packages=find_packages('src'),
         package_dir={'': 'src'},
-        package_data={'': ['*.xml', '*.yml']},
+        package_data={'': ['*.yml']},
         entry_points={
             'console_scripts': [
                 'pycc=scripts.pycc:entry',
