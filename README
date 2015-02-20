@@ -164,3 +164,9 @@ working directory to the git repository root. Use the -n option to avoid the
 interactive IPython shell--it does not work properly with the debugger.
 
 See DEVELOPMENT section for how configure PyCharm IDE.
+
+
+DOCKER USAGE
+============
+
+TBD

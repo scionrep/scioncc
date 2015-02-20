@@ -9,15 +9,15 @@ PREREQUISITES
 MAC OS:
 -------
 
-Install homebrew package manager
-    > /usr/bin/ruby <(curl -fsSkL raw.github.com/mxcl/homebrew/go)
+Install homebrew package manager - NOTE: DO NOT USE brew ON LINUX
+    > ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
     Note: see 'brew doctor' for any issues with brew and 'brew update' often
 
 Install python 2.7.x
     > brew install python
 
 Basic packages
-    > brew install git libevent libyaml zeromq rabbitmq hdf5 pkg-config netcdf udunits
+    > brew install git libevent libyaml rabbitmq pkg-config
 
 Install postgres with postgis extension
     > brew install postgres postgis
@@ -27,12 +27,11 @@ Install postgres with postgis extension
 
 Python packages and environment management:
     > easy_install pip
-
     > easy_install --upgrade virtualenv
     > easy_install --upgrade virtualenvwrapper
     Note: This requires Mac's XCode with installed command line tools
 
-Troubleshooting Mac OS Python install:
+Troubleshooting Mac OS Python install (tested on Mac OS 10.9):
     Sometimes, the system wide Python packages get outdated and errors like
     pkg_resources.DistributionNotFound appear.
     Always install and upgrade system packages with easy_install, not pip (if that's what
@@ -40,7 +39,7 @@ Troubleshooting Mac OS Python install:
     In case of problems:
     > brew rm python
     Then delete outdated stuff out system site-packages directory:
-    > python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())"
+    > cd `python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())"`
     The reinstall python, and redo above steps
     > brew install python
     > easy_install --upgrade pip stevedore setuptools virtualenv virtualenvwrapper
@@ -49,15 +48,41 @@ Troubleshooting Mac OS Python install:
 LINUX (UBUNTU):
 ---------------
 
-See misc/install/install_ubuntu.sh
-Note: Only run this file on a new VM if you know what you are doing.
-Check that no errors occurred during dependencies install.
+Use a fresh Ubuntu 14.04 VM with latest patches:
+    > sudo apt-get update
+    > sudo apt-get upgrade
 
-Then follow manual steps in misc/install/install_ubuntu.txt
+Execute dependencies install script (from repo root - only if you are comfortable):
+    > sudo sh misc/install/install_ubuntu.sh
+
+Set postgres superuser password and create users:
+    > sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'xxxxx';"
+    > sudo -u postgres createuser ion
+    > sudo -u postgres psql -U postgres -d postgres -c "alter user ion with password 'xxxxx';"
+
+Configure postgres:
+    > sudo vim /etc/postgresql/9.3/main/pg_hba.conf
+    # For rule all (1 line), change peer to md5 to enable password login
+    > sudo service postgresql restart
+
+Install virtualenv:
+    > cd
+    > mkdir .virtualenvs
+    > cat <<EOF >> .profile
+    export EDITOR="/usr/bin/vim"
+    export WORKON_HOME="~/.virtualenvs"
+    source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+    EOF
+    > source .profile
 
 
 COMMON INSTALLATION
 ===================
+
+Configure git:
+    > git config --global user.email "name@email.com"
+    > git config --global user.name "Full Name"
+    > git config --global core.editor vim
 
 Setup a virtualenv to run the SciON capability container:
     > mkvirtualenv --no-site-packages scion
@@ -66,6 +91,7 @@ Setup a virtualenv to run the SciON capability container:
 Clone scioncc (this repository) in your code directory:
     > cd code   # Whatever your code repository directory is
     > git clone git@github.com:scionrep/scioncc.git
+    > cd scioncc
 
 Use buildout to install the python package dependencies with:
     > python bootstrap.py -v 2.3.1
@@ -80,7 +106,7 @@ Generate service definition interfaces and abstract base classes:
     Note: These will be placed in the interfaces/ subdirectory.
 
 Optional: You can establish a buildout cache by adding
-    > mkdir ~/.buildout
+    > mkdir -p ~/.buildout/eggs ~/.buildout/dlcache
     > vim ~/.buildout/default.cfg
 # Paste this into file and edit home directory
 [buildout]
@@ -99,9 +125,25 @@ Start postgresql (in a terminal or as a service) before starting the container o
     Ubuntu Linux:
     > sudo service postgresql start
 
-
 RABBITMQ (MESSAGE BROKER):
     MacOS:
     > rabbitmq-server
     Ubuntu Linux:
     > sudo service rabbitmq-server start
+
+
+DOCKER INSTALL
+==============
+
+Install a recent docker on Ubuntu 14.04:
+    See https://docs.docker.com/installation/ubuntulinux/
+    > curl -sSL https://get.docker.com/ubuntu/ | sudo sh
+
+Get docker images for Scion CC, database and message broker:
+    See https://registry.hub.docker.com/repos/scioncc/
+    > sudo docker pull scioncc/scion_cc:3.0.0
+    > sudo docker pull scioncc/scion_pg:9.4-1
+    > sudo docker pull scioncc/scion_rabbitmq:1.0
+
+See also:
+    - https://github.com/phusion/baseimage-docker
