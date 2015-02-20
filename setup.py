@@ -105,5 +105,9 @@ setup(  name='scioncc',
                 'xlrd==0.9.3',             # For Excel file read (dev tools)
                 'xlwt==0.7.5',             # For Excel file write (dev tools)
             ],
+            'parsing': [
+                'lxml==3.4.2',
+                'beautifulsoup4==4.3.2',
+            ],
         }
      )
