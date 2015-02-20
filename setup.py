@@ -84,7 +84,7 @@ setup(  name='scioncc',
             'flask-socketio==0.4.1',
             'python-dateutil==2.2',
             'bcrypt==1.0.1',           # For password authentication
-            'lovely.buildouthttp==0.6.1'    # For buildout
+            'lovely.buildouthttp==0.6.1',    # For buildout
 
             # Test support
             'nose==1.1.2',
