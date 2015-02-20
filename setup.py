@@ -84,6 +84,7 @@ setup(  name='scioncc',
             'flask-socketio==0.4.1',
             'python-dateutil==2.2',
             'bcrypt==1.0.1',           # For password authentication
+            'lovely.buildouthttp==0.6.1'    # For buildout
 
             # Test support
             'nose==1.1.2',
@@ -102,8 +103,8 @@ setup(  name='scioncc',
                 'netCDF4==1.0.9',
             ],
             'utils': [
-                'xlrd==0.9.3',             # For Excel file read (dev tools)
-                'xlwt==0.7.5',             # For Excel file write (dev tools)
+                'xlrd==0.9.3',         # For Excel file read (dev tools)
+                'xlwt==0.7.5',         # For Excel file write (dev tools)
             ],
             'parsing': [
                 'lxml==3.4.2',
