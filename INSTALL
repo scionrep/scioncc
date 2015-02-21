@@ -107,11 +107,7 @@ Generate service definition interfaces and abstract base classes:
 
 Optional: You can establish a buildout cache by adding
     > mkdir -p ~/.buildout/eggs ~/.buildout/dlcache
-    > vim ~/.buildout/default.cfg
-# Paste this into file and edit home directory
-[buildout]
-eggs-directory = /Users/username/.buildout/eggs
-download-cache = /Users/username/.buildout/dlcache
+    > printf "[buildout]\neggs-directory=$HOME/.buildout/eggs\ndownload-cache=$HOME/.buildout/dlcache\n" > ~/.buildout/default.cfg
 
 
 RUN-TIME DEPENDENCIES
