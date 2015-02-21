@@ -13,13 +13,6 @@ sudo apt-get install -y --no-install-recommends libev-dev libffi-dev libpq-dev l
 # Dependencies for ant / Java
 sudo apt-get install -y ant ant-optional
 
-
-# Dependencies for Thingworx/Java
-sudo apt-get install -y ntp
-sudo apt-get install -y authbind
-sudo touch /etc/authbind/byport/443
-sudo chmod 555 /etc/authbind/byport/443
-
 # Install RabbitMQ
 sudo apt-get install -y rabbitmq-server
 sudo rabbitmq-plugins enable rabbitmq_management
@@ -28,9 +21,9 @@ sudo service rabbitmq-server restart
 # Install PostgreSQL
 sudo apt-get install -y postgresql postgresql-contrib
 sudo apt-get install -y postgis
-sudo apt-get install -y postgresql-9.3-postgis-2.1
-sudo apt-get install -y postgresql-server-dev-9.3
-sudo apt-get install -y postgresql-plpython-9.3
+sudo apt-get install -y postgresql-9.4-postgis-2.1
+sudo apt-get install -y postgresql-server-dev-9.4
+sudo apt-get install -y postgresql-plpython-9.4
 
 sudo apt-get update
 #sudo apt-get upgrade -y
