@@ -55,13 +55,13 @@ Use a fresh Ubuntu 14.04 VM with latest patches:
 Execute dependencies install script (from repo root - only if you are comfortable):
     > sudo sh misc/install/install_ubuntu.sh
 
-Set postgres superuser password and create users:
+Set postgres superuser password and create users (replace xxxxx with a good password):
     > sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'xxxxx';"
     > sudo -u postgres createuser ion
     > sudo -u postgres psql -U postgres -d postgres -c "alter user ion with password 'xxxxx';"
 
 Configure postgres:
-    > sudo vim /etc/postgresql/9.3/main/pg_hba.conf
+    > sudo vim /etc/postgresql/9.4/main/pg_hba.conf
     # For rule all (1 line), change peer to md5 to enable password login
     > sudo service postgresql restart
 

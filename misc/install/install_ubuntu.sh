@@ -8,7 +8,7 @@ sudo apt-get install -y --no-install-recommends git git-core vim build-essential
 
 sudo apt-get install -y --no-install-recommends python-pip python-virtualenv virtualenvwrapper python2.7 python2.7-dev python python-all-dev
 
-sudo apt-get install -y --no-install-recommends libev-dev libffi-dev libpq-dev libxml2-dev libxslt1-dev ncurses-dev swig
+sudo apt-get install -y --no-install-recommends libev-dev libffi-dev libpq-dev libxml2-dev libxslt1-dev libzmq-dev ncurses-dev swig
 
 # Dependencies for ant / Java
 sudo apt-get install -y ant ant-optional

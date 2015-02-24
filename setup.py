@@ -85,6 +85,8 @@ setup(  name='scioncc',
             'python-dateutil==2.2',
             'bcrypt==1.0.1',           # For password authentication
             'lovely.buildouthttp==0.6.1',    # For buildout
+            'pyzmq==2.2.0',            # For IPython manhole
+            'gevent_zeromq==0.2.5',
 
             # Test support
             'nose==1.1.2',

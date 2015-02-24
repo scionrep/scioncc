@@ -395,6 +395,9 @@ def main(opts, *args, **kwargs):
             import random
             gevent.sleep(random.random() * 3.0)  # Introduce a random delay to make conflict less likely
 
+        from gevent_zeromq import monkey_patch
+        monkey_patch()
+
         # patch in device:
         # gevent-zeromq does not support devices, which block in the C layer.
         # we need to support the "heartbeat" which is a simple bounceback, so we
