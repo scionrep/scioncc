@@ -22,7 +22,7 @@ from putil.logging import log
 
 from pyon.core.exception import BadRequest, Conflict, NotFound, Inconsistent
 from pyon.datastore.datastore_common import DataStore, get_obj_geospatial_bounds, get_obj_geospatial_point, \
-    get_obj_temporal_bounds, get_obj_vertical_bounds
+    get_obj_temporal_bounds, get_obj_vertical_bounds, get_obj_geometry
 from pyon.datastore.datastore_query import DQ
 from pyon.datastore.postgresql.pg_util import PostgresConnectionPool, StatementBuilder, psycopg2_connect, TracingCursor
 from pyon.util.containers import create_basic_identifier, parse_ion_ts, DotDict
@@ -32,7 +32,7 @@ TABLE_PREFIX = "ion_"
 DEFAULT_USER = "ion"
 DEFAULT_DBNAME = "ion"
 DEFAULT_PROFILE = "BASIC"
-GEOSPATIAL_COLS = {"geom", "geom_loc"}
+GEOSPATIAL_COLS = {"geom", "geom_loc", "geom_mpoly"}
 NUMRANGE_COLS = {"vertical_range", "temporal_range"}
 
 # Mapping of object type to table name extension and special attribute names
@@ -388,6 +388,11 @@ class PostgresDataStore(DataStore):
                         res = "POLYGON((%s))" % coords
                     except ValueError as ve:
                         log.warn("GeospatialBounds location values not parseable: %s", ve)
+
+            elif col == "geom_mpoly":  # Resource bounding box (POLYGON shape, 2D)
+                present, geom_type, geom_wkt = get_obj_geometry(doc)
+                if present and geom_type == "MULTIPOLYGON":
+                    res = geom_wkt
 
             if res:
                 log.debug("Geospatial column %s value: %s", col, res)

@@ -10,6 +10,8 @@ SELECT AddGeometryColumn('public', '%(ds)s', 'geom', 4326, 'POINT', 2);
 
 SELECT AddGeometryColumn('public', '%(ds)s', 'geom_loc', 4326, 'POLYGON', 2);
 
+SELECT AddGeometryColumn('public', '%(ds)s', 'geom_mpoly', 4326, 'MULTIPOLYGON', 2);
+
 GRANT SELECT, INSERT, UPDATE, DELETE on "%(ds)s" TO ion;
 
 CREATE TABLE "%(ds)s_assoc" (id varchar(300) PRIMARY KEY, rev int, doc json,
@@ -58,6 +60,8 @@ CREATE INDEX "%(ds)s_altids_id_idx" ON "%(ds)s" USING GIN (json_altids_id(doc));
 CREATE INDEX "%(ds)s_geom_idx" ON "%(ds)s" USING GIST (geom);
 
 CREATE INDEX "%(ds)s_geom_loc_idx" ON "%(ds)s" USING GIST (geom_loc);
+
+CREATE INDEX "%(ds)s_geom_mpoly_idx" ON "%(ds)s" USING GIST (geom_mpoly);
 
 CREATE INDEX "%(ds)s_geom_vert_idx" ON "%(ds)s" USING GIST (vertical_range);
 

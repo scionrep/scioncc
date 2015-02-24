@@ -187,6 +187,37 @@ def get_obj_geospatial_bounds(doc, calculate=True, return_geo_bounds=False):
 
     return False, None
 
+
+def get_obj_geometry(doc):
+    """Extracts EWKT geometry given object dict
+    """
+    geo_obj = None
+    geo_wkt = None
+    geo_type = None
+    if "boundary" in doc and isinstance(doc["boundary"], dict):
+        geo_obj = doc["boundary"]
+
+    if geo_obj and not geo_wkt:
+        if "boundary" in geo_obj and isinstance(geo_obj["boundary"], basestring):
+            # Object type GeospatialArea
+            geo_wkt = geo_obj["boundary"]
+
+    if not geo_wkt:
+        present, coord_list = get_obj_geospatial_bounds(doc, calculate=False)
+        if present:
+            try:
+                coords = ", ".join("%s %s" % (x, y) for (x, y) in coord_list)
+                geo_wkt = "POLYGON((%s))" % coords
+            except ValueError as ve:
+                log.warn("GeospatialBounds location values not parseable: %s", ve)
+
+    if geo_wkt:
+        geo_type = geo_type or geo_wkt.split("(", 1)[0]
+        return True, geo_type, geo_wkt
+
+    return False, None, None
+
+
 def get_obj_vertical_bounds(doc, calculate=True):
     """Extracts vertical bounds (min, max) from given object dict, by looking for an
     attribute with GeospatialBounds type, or by computing from a geospatial point
