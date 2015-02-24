@@ -168,7 +168,9 @@ def process_list_resource_types():
 @app.route('/alt/<namespace>/<alt_id>', methods=['GET'])
 def process_alt_ids(namespace, alt_id):
     try:
-        res_list, _ = Container.instance.resource_registry.find_resources_ext(alt_id_ns=namespace.encode('ascii'), alt_id=alt_id.encode('ascii'))
+        res_list, _ = Container.instance.resource_registry.find_resources_ext(alt_id_ns=namespace.encode('ascii'),
+                                                                              alt_id=alt_id.encode('ascii'),
+                                                                              access_args=get_rr_access_args())
         fragments = [
             build_standard_menu(),
             "<h1>List of Matching Resources: %s</h1>" % alt_id,
@@ -212,7 +214,8 @@ def process_list_resources(resource_type):
         restype = str(resource_type)
         with_details = get_arg("details", "off") == "on"
 
-        res_list,_ = Container.instance.resource_registry.find_resources(restype=restype)
+        res_list,_ = Container.instance.resource_registry.find_resources(restype=restype,
+                                                                         access_args=get_rr_access_args())
 
         fragments = [
             build_standard_menu(),
@@ -381,7 +384,8 @@ def build_associations(resid):
     fragments.append("<h3>FROM</h3>")
     fragments.append("<p><table>")
     fragments.append("<tr><th>Subject Type</th><th>Subject Name</th><th>Subject ID</th><th>Predicate</th><th>Command</th></tr>")
-    obj_list, assoc_list = Container.instance.resource_registry.find_subjects(object=resid, id_only=False)
+    obj_list, assoc_list = Container.instance.resource_registry.find_subjects(object=resid, id_only=False,
+                                                                              access_args=get_rr_access_args())
     iter_list = sorted(zip(obj_list, assoc_list), key=lambda x: [x[1].p, x[0].type_, x[0].name])
     for obj, assoc in iter_list:
         fragments.append("<tr>")
@@ -392,7 +396,8 @@ def build_associations(resid):
 
     fragments.append("</table></p>")
     fragments.append("<h3>TO</h3>")
-    obj_list, assoc_list = Container.instance.resource_registry.find_objects(subject=resid, id_only=False)
+    obj_list, assoc_list = Container.instance.resource_registry.find_objects(subject=resid, id_only=False,
+                                                                             access_args=get_rr_access_args())
 
     fragments.append("<p><table>")
     fragments.append("<tr><th>Object Type</th><th>Object Name</th><th>Object ID</th><th>Predicate</th><th>Command</th></tr>")
@@ -673,7 +678,8 @@ def process_assoc_list():
     try:
         predicate = get_arg('predicate')
 
-        assoc_list = Container.instance.resource_registry.find_associations(predicate=predicate, id_only=False)
+        assoc_list = Container.instance.resource_registry.find_associations(predicate=predicate, id_only=False,
+                                                                            access_args=get_rr_access_args())
 
         fragments = [
             build_standard_menu(),
@@ -935,6 +941,12 @@ def process_tree(resid):
 
 def is_read_only():
     return CFG.get_safe(CFG_PREFIX + '.read_only', False)
+
+def get_rr_access_args(as_superuser=True):
+    """Return RR access args for search result filtering. For now superuser level.
+    TODO: Use logged in user permissions or override
+    """
+    return dict(current_actor_id="SUPERUSER", superuser_actor_ids=["SUPERUSER"])
 
 def build_type_link(restype):
     return build_link(restype, "/list/%s" % restype)

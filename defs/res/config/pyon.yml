@@ -35,7 +35,7 @@ system:
   load_policy: False
 
   # The base web UI URL
-  web_ui_url: http://localhost:3000/
+  web_ui_url: http://localhost:4000/
 
 
 bootstrap:
