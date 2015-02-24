@@ -36,7 +36,7 @@ GEOSPATIAL_COLS = {"geom", "geom_loc", "geom_mpoly"}
 NUMRANGE_COLS = {"vertical_range", "temporal_range"}
 
 # Mapping of object type to table name extension and special attribute names
-OBJ_SPECIAL = {"R": ("", ("type_", "lcstate", "availability", "visibility", "name", "ts_created", "ts_updated", "geom", "geom_loc", "vertical_range", "temporal_range")),
+OBJ_SPECIAL = {"R": ("", ("type_", "lcstate", "availability", "visibility", "name", "ts_created", "ts_updated", "geom", "geom_loc", "geom_mpoly", "vertical_range", "temporal_range")),
                "A": ("_assoc", ("s", "st", "p", "o", "ot", "retired")),
                "D": ("_dir", ("org", "parent", "key")),
                "E": ("", ("origin", "origin_type", "sub_type", "ts_created", "type_")),
@@ -391,8 +391,11 @@ class PostgresDataStore(DataStore):
 
             elif col == "geom_mpoly":  # Resource bounding box (POLYGON shape, 2D)
                 present, geom_type, geom_wkt = get_obj_geometry(doc)
-                if present and geom_type == "MULTIPOLYGON":
-                    res = geom_wkt
+                if present:
+                    if geom_type == "MULTIPOLYGON":
+                        res = geom_wkt
+                    elif geom_type == "POLYGON":
+                        res = "MULTIPOLYGON(" + geom_wkt[7:] + ")"
 
             if res:
                 log.debug("Geospatial column %s value: %s", col, res)

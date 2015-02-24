@@ -207,7 +207,7 @@ def get_obj_geometry(doc):
         if present:
             try:
                 coords = ", ".join("%s %s" % (x, y) for (x, y) in coord_list)
-                geo_wkt = "POLYGON((%s))" % coords
+                geo_wkt = "MULTIPOLYGON(((%s)))" % coords
             except ValueError as ve:
                 log.warn("GeospatialBounds location values not parseable: %s", ve)
 
