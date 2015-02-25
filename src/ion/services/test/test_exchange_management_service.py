@@ -20,7 +20,7 @@ from interface.services.core.iexchange_management_service import ExchangeManagem
 
 
 @attr('INT', group='coi')
-@patch.dict('pyon.ion.exchange.CFG', container=DotDict(CFG.container, exchange=DotDict(auto_register=True)))
+@patch.dict('pyon.ion.exchange.CFG', IonIntegrationTestCase._get_alt_cfg({'container':{'messaging':{'auto_register': True}}}))
 class TestExchangeManagementServiceInt(IonIntegrationTestCase):
 
     def setUp(self):

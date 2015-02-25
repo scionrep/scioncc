@@ -27,7 +27,7 @@ from pyon.net.endpoint import RPCServer, Subscriber, Publisher
 from pyon.net.transport import BaseTransport, NameTrio, TransportError
 from pyon.net.messaging import NodeB
 from pyon.net.channel import SendChannel
-from pyon.util.containers import DotDict
+from pyon.util.containers import DotDict, get_safe
 
 from ion.services.examples.hello_service import HelloService
 
@@ -430,10 +430,7 @@ class TestExchangeObjects(PyonTestCase):
         self.ex_manager._get_xs_obj = Mock(return_value=None)
 
         # patch for setUp and test
-        # self.patch_cfg('pyon.ion.exchange.CFG',
-        #                {'container':{'exchange':{'auto_register':False}},
-        #                 'exchange':_make_exchange_cfg()})
-        self.patch_alt_cfg('pyon.ion.exchange.CFG', {'container':{'exchange':{'auto_register':False}}})
+        self.patch_alt_cfg('pyon.ion.exchange.CFG', {'container':{'messaging':{'auto_register':False}}})
 
         # start ex manager
         self.ex_manager.start()
@@ -659,7 +656,7 @@ class TestExchangeObjects(PyonTestCase):
 class TestExchangeObjectsInt(IonIntegrationTestCase):
     def setUp(self):
         self.patch_alt_cfg('pyon.ion.exchange.CFG',
-                           {'container':{'exchange':{'auto_register': False}},
+                           {'container':{'messaging':{'auto_register': False}},
                             'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp'),
                                                            other=_make_broker_cfg(server='amqp', join_xs=['other']))})
 
@@ -820,14 +817,14 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
 class TestExchangeObjectsIntWithLocal(TestExchangeObjectsInt):
     def setUp(self):
         self.patch_alt_cfg('pyon.ion.exchange.CFG',
-                           {'container':{'exchange':{'auto_register': False}},
+                           {'container':{'messaging':{'auto_register': False}},
                             'exchange': _make_exchange_cfg(system_broker=_make_broker_cfg(server='amqp'))})
 
         self._start_container()
 
 
 @attr('INT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'exchange':{'auto_register': False}}}))
+@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'messaging':{'auto_register': False}}}))
 class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
     """
     Tests creation and deletion of things on the broker.
@@ -898,24 +895,27 @@ class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
         self.assertNotIn(xn.queue, self.container.ex_manager.list_queues())
 
 @attr('INT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'exchange':{'auto_register': False,
-                                                                                         'names':{'durable':True}}}}))
+@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'messaging':{'auto_register': False,
+                                                                                          'names':{'durable':True}}}}))
 class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
     def setUp(self):
         self._start_container()
         def cleanup_broker():
+            mgmt_cfg_key = CFG.get_safe("container.messaging.management.server", "rabbit_manage")
+            mgmt_cfg = CFG.get_safe("server." + mgmt_cfg_key)
+            mgmt_port = get_safe(mgmt_cfg, "port") or "15672"
+            username = get_safe(mgmt_cfg, "username") or "guest"
+            password = get_safe(mgmt_cfg, "password") or "guest"
+
             # @Dave: This is maybe too brute force and there is maybe a better pattern...
             connect_str = "-q -H %s -P %s -u %s -p %s -V %s" % (CFG.get_safe('server.amqp_priv.host', CFG.get_safe('server.amqp.host', 'localhost')),
-                                                                   CFG.get_safe('container.exchange.management.port', '15672'),
-                                                                   CFG.get_safe('container.exchange.management.username', 'guest'),
-                                                                   CFG.get_safe('container.exchange.management.password', 'guest'),
-                                                                   '/')
+                                                                   mgmt_port, username, password, '/')
 
             from putil.rabbithelper import clean_by_sysname
             clean_by_sysname(connect_str, get_sys_name())
         self.addCleanup(cleanup_broker)
 
-    @patch.dict('pyon.ion.exchange.CFG', {'container':{'exchange':{'names':{'durable':False}}}})
+    @patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'messaging':{'names':{'durable':False}}}}))
     def test_durable_off_on_create(self):
         xq = self.container.ex_manager.create_xn_queue('belb')
         self.addCleanup(xq.delete)
@@ -981,8 +981,9 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
         self.assertFalse(filtered[0])       # not durable, even tho config says base ones are
 
 @attr('UNIT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'exchange':{'auto_register': False,
-                                                                                         'management':{'username':'user', 'password':'pass', 'port':'port'}}}}))
+@patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({
+    'server':{'rabbit_manage':{'username':'user', 'password':'pass', 'port':'port'}},
+    'container':{'messaging':{'auto_register': False}}}))
 class TestManagementAPI(PyonTestCase):
     def setUp(self):
         self.ex_manager = ExchangeManager(Mock())
@@ -1053,7 +1054,7 @@ class TestManagementAPI(PyonTestCase):
 
 
 @attr('INT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', {'container':{'exchange':{'auto_register': False}}})
+@patch.dict('pyon.ion.exchange.CFG', IonIntegrationTestCase._get_alt_cfg({'container':{'messaging':{'auto_register': False}}}))
 class TestManagementAPIInt(IonIntegrationTestCase):
 
     def setUp(self):

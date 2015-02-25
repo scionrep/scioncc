@@ -108,7 +108,7 @@ class BaseChannel(object):
     @property
     def exchange_auto_delete(self):
         # Fix OOIION-1710: Added because exchanges get deleted on broker restart
-        if CFG.get_safe('container.exchange.names.durable', False):
+        if CFG.get_safe('container.messaging.names.durable', False):
             self._exchange_auto_delete = False
             return False
 
@@ -130,7 +130,7 @@ class BaseChannel(object):
     @property
     def exchange_durable(self):
         # Fix OOIION-1710: Added because exchanges get deleted on broker restart
-        if CFG.get_safe('container.exchange.names.durable', False):
+        if CFG.get_safe('container.messaging.names.durable', False):
             self._exchange_durable = True
             return True
 

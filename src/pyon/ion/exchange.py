@@ -8,6 +8,7 @@ from pyon.core import bootstrap
 from pyon.core.bootstrap import CFG, get_service_registry
 from pyon.net import messaging
 from pyon.net.transport import NameTrio, TransportError, XOTransport
+from pyon.util.containers import get_safe
 from pyon.util.log import log
 from pyon.ion.resource import RT
 from pyon.core.exception import Timeout, ServiceUnavailable, ServerError
@@ -872,7 +873,10 @@ class ExchangeManager(object):
         node = self._priv_nodes.get(ION_DEFAULT_BROKER, self.default_node)
         host = node.client.parameters.host
 
-        url = "http://%s:%s/api/%s" % (host, CFG.get_safe("container.exchange.management.port", "15672"), "/".join(feats))
+        mgmt_cfg_key = CFG.get_safe("container.messaging.management.server", "rabbit_manage")
+        mgmt_cfg = CFG.get_safe("server." + mgmt_cfg_key)
+        mgmt_port = get_safe(mgmt_cfg, "port") or "15672"
+        url = "http://%s:%s/api/%s" % (host, mgmt_port, "/".join(feats))
 
         return url
 
@@ -905,8 +909,10 @@ class ExchangeManager(object):
         meth = getattr(requests, method)
 
         try:
-            username = CFG.get_safe("container.exchange.management.username", "guest")
-            password = CFG.get_safe("container.exchange.management.password", "guest")
+            mgmt_cfg_key = CFG.get_safe("container.messaging.management.server", "rabbit_manage")
+            mgmt_cfg = CFG.get_safe("server." + mgmt_cfg_key)
+            username = get_safe(mgmt_cfg, "username") or "guest"
+            password = get_safe(mgmt_cfg, "password") or "guest"
 
             with gevent.timeout.Timeout(10):
                 r = meth(url, auth=(username, password), data=data)
@@ -950,7 +956,7 @@ class ExchangeSpace(XOTransport, NameTrio):
     @property
     def exchange_durable(self):
         # Added because exchanges get deleted on broker restart
-        if CFG.get_safe('container.exchange.names.durable', False):
+        if CFG.get_safe('container.messaging.names.durable', False):
             self._xs_durable = True
             return True
 
@@ -959,7 +965,7 @@ class ExchangeSpace(XOTransport, NameTrio):
     @property
     def exchange_auto_delete(self):
         # Added because exchanges get deleted on broker restart
-        if CFG.get_safe('container.exchange.names.durable', False):
+        if CFG.get_safe('container.messaging.names.durable', False):
             self._xs_auto_delete = False
             return False
 
@@ -1003,7 +1009,7 @@ class ExchangeName(XOTransport, NameTrio):
         if self._xn_durable is not None:
             return self._xn_durable
 
-        if CFG.get_safe('container.exchange.names.durable', False):
+        if CFG.get_safe('container.messaging.names.durable', False):
             return True
 
         return False
@@ -1111,7 +1117,7 @@ class ExchangePoint(ExchangeName):
     def declare(self):
         param_kwargs = {}
         # Added because exchanges get deleted on broker restart
-        if CFG.get_safe('container.exchange.names.durable', False):
+        if CFG.get_safe('container.messaging.names.durable', False):
             param_kwargs["durable"] = True
             param_kwargs["auto_delete"] = False
 

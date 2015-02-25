@@ -213,11 +213,15 @@ def main(opts, *args, **kwargs):
             print "pycc: broker_clean=True, sysname:", bootstrap.get_sys_name()
 
             # build connect str
+            from pyon.util.containers import get_safe
+            mgmt_cfg_key = pyon_config.get_safe("container.messaging.management.server", "rabbit_manage")
+            mgmt_cfg = pyon_config.get_safe("server." + mgmt_cfg_key)
+            mgmt_port = get_safe(mgmt_cfg, "port") or "15672"
+            username = get_safe(mgmt_cfg, "username") or "guest"
+            password = get_safe(mgmt_cfg, "password") or "guest"
+
             connect_str = "-q -H %s -P %s -u %s -p %s -V %s" % (pyon_config.get_safe('server.amqp_priv.host', pyon_config.get_safe('server.amqp.host', 'localhost')),
-                                                                pyon_config.get_safe('container.exchange.management.port', '15672'),
-                                                                pyon_config.get_safe('container.exchange.management.username', 'guest'),
-                                                                pyon_config.get_safe('container.exchange.management.password', 'guest'),
-                                                                '/')
+                                                                mgmt_port, username, password, '/')
 
             from putil.rabbithelper import clean_by_sysname
             deleted_exchanges, deleted_queues = clean_by_sysname(connect_str, bootstrap.get_sys_name())
@@ -225,7 +229,7 @@ def main(opts, *args, **kwargs):
             print "         queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues))
 
         if opts.force_clean:
-            path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/ion'), bootstrap.get_sys_name())
+            path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/scion'), bootstrap.get_sys_name())
             print "force_clean: Removing", path
             FileSystem._clean(pyon_config)
 

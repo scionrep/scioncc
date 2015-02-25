@@ -1,30 +1,33 @@
-# Central configuration file for SciON container, system and services.
-# The contents are transformed into a dict that supports dot notation:
-#   CFG.server.amqp.host or CFG.get_safe("server.amqp.host", 1234)
-# Do not modify this file! Set overrides in pyon.local.yml or in rel files
+# Central base configuration file for SciON container, system and services.
+# Configuration is available at runtime:
+#   from pyon.public import CFG
+#   CFG.get_safe("server.amqp.host", 1234)
+# Do not modify this file! Set overrides in pyon.local.yml, in additional
+# YML files, in deploy files and through the command line
 
-# PLEASE DO NOT ADD NEW TOP LEVEL KEYS
-# PLEASE COORDINATE WITH ARCHITECTURE FOR APPROPRIATE CFG KEYS
+# DO NOT ADD NEW TOP LEVEL KEYS AND REQUEST APPROPRIATE CFG KEYS
 
 
 # ----------------------------------------------------------------------------------
-# The "system" root entry defines settings for the distributed ION system that this
+# The "system" root entry defines settings for the distributed SciON system that this
 # container starts or joins. A system comprises all containers with the same sysname.
 system:
-  # Set to define sysname in tests. Otherwise set via pycc --sysname or set to default
+  # Set to define sysname in tests. Otherwise set via pycc --sysname or use default
   name:
 
-  # Name of the Org that bootstraps the system. Super-Org in Release 2
+  # Name of the Org that bootstraps the system and acts as "Super-Org"
   root_org: ION
 
-  # The name of the ION System ActorIdentity
+  # The name of the actor used for actions on behalf of the SciON system
   system_actor: ionsystem
 
-  # Global flag indicating debug mode. Code can perform more expensive operations if True
+  # Global flag indicating debug mode to all system participants
   debug: True
 
-  # If true, the first pycc program will bootstrap the system config and interfaces
-  # into the directory and resource registry to avoid calling store_interfaces.
+  # Global flag that indicates if pycc programs should check on startup for
+  # the presence of persisted system config and interfaces and store otherwise.
+  # Use this in development only as this leads to race conditions with multiple
+  # concurrently starting containers, or execute bin/store_interfaces before.
   auto_bootstrap: True
 
   # Global config for use of a Real SMTP server or a fake logging class
@@ -34,16 +37,19 @@ system:
   # Indicates whether policy should be loaded during system bootstrap (False is for development only)
   load_policy: False
 
-  # The base web UI URL
+  # The base Web UI URL to generate absolute links from
   web_ui_url: http://localhost:4000/
 
 
+# ----------------------------------------------------------------------------------
+# The "bootstrap" root entry defines settings for the system bootstrapping and
+# restart process.
 bootstrap:
 
 
 # ----------------------------------------------------------------------------------
-# The "server" root entry defines profiles for connections/credentials TO external servers
-# These entries are names of server/credential profiles that can be referenced in other settings.
+# The "server" root entry defines named sets of connections/credentials TO external servers.
+# These named entries can be referenced in other settings.
 server:
   amqp:
     # The normal container broker connection
@@ -55,7 +61,7 @@ server:
     vhost: /
     heartbeat: 30
   amqp_priv:
-    # The privileged broker connection that the Exchange Management Service uses
+    # The privileged broker connection used for making changes to broker resources
     type: amqp_91
     host: localhost
     port: 5672
@@ -63,6 +69,13 @@ server:
     password: ion
     vhost: /
     heartbeat: 30
+  rabbit_manage:
+    # REST access to RabbitMQ management plugin
+    type: rabbit_mgmt
+    host: localhost
+    port: 15672
+    username: guest
+    password: guest
 
   postgresql:
     type: postgresql
@@ -79,21 +92,22 @@ server:
   smtp:
     # Outgoing email server
     type: smtp
-    host: mail.oceanobservatories.org
+    host: mail.server.org
     port: 25
-    sender: data_alerts@oceanobservatories.org
+    sender: alerts@server.org
     password: ""
 
   localrouter:
-    # In-process message router
+    # In-container async message router
     type: local
 
 
 # ----------------------------------------------------------------------------------
-# The "container" root entry defines settings for the current Pyon container
+# The "container" root entry defines settings for the current ScionCC container
 container:
-  # Capability profile to use (assumes a file in res/profile/<name>.yml unless a path is specified)
-  profile: development   # Profile for development purposes
+  # Capability profile to use (assumes a file in res/profile/<name>.yml unless
+  # a path is specified). Determines what capabilities the container offers.
+  profile: development
 
   datastore:
     default_server: postgresql  # Which server connection (and type) to use as primary datastore
@@ -102,19 +116,15 @@ container:
         base: pyon.datastore.postgresql.base_store.PostgresDataStore
         full: pyon.datastore.postgresql.datastore.PostgresPyonDataStore
 
-  exchange:
+  messaging:
     auto_register: True
     names:
       durable: False         # Declare exchanges and queues as durable to survive broker restart
-    management:
-      port: 15672            # Note: RabbitMQ management before 3.x versions was on port 55672
-      username: guest
-      password: guest
-
-  messaging:
     server:
       primary: amqp
       privileged:
+    management:
+      server: rabbit_manage
     endpoint:
       prefetch_count: 1      # how many messages to prefetch from broker by default
     timeout:
@@ -132,7 +142,6 @@ container:
       interceptor: True
 
   timeout:
-    start_listener: 30.0
     shutdown: 30.0
     heartbeat: 30.0
     heartbeat_proc_time_threshold: 600.0
@@ -140,11 +149,11 @@ container:
 
   org_boundary: False  # If True, then check against policies related to the Org below; else do not.
 
-  org_name: ION  # The default is the ROOT ION Org
+  org_name: ION  # The default is the Scion root Org
 
   filesystem:
     force_clean: False
-    root: /tmp/ion
+    root: /tmp/scion
 
   tracer:
     enabled: False        # Enable the database class and message tracer in container
