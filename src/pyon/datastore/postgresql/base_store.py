@@ -90,7 +90,8 @@ class PostgresDataStore(DataStore):
         # Make sure database exists and set connection
         dsn = "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable connect_timeout=5 application_name=%s" % (
             self.host, self.port, self.database, self.username, self.password, "%s:%s" % ("ion", self.datastore_name))
-        log.info("Using Postgres connection DSN: %s", dsn)   # TODO: Remove later because of password
+        clean_dsn = dsn.replace(self.password, "***") if self.password else dsn.replace("password=", "password=***")
+        log.info("Using Postgres connection DSN: %s", clean_dsn)
         global pg_connection_pool
         if not pg_connection_pool:
             pg_connection_pool = PostgresConnectionPool(dsn, maxsize=self.pool_maxsize)
