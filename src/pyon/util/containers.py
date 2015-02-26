@@ -360,7 +360,7 @@ def create_valid_identifier(name, valid_chars=BASIC_VALID, dot_sub=None, ws_sub=
         name = name.replace('.', dot_sub)
     if ws_sub:
         name = name.replace(' ', ws_sub)
-    return ''.join(c for c in name if c in valid_chars)
+    return str(''.join(c for c in name if c in valid_chars))
 
 def create_basic_identifier(name):
     return create_valid_identifier(name, dot_sub='_', ws_sub='_')
