@@ -4,6 +4,7 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 
+from types import ModuleType
 from zope.interface import implementedBy
 
 from pyon.core.exception import BadRequest, ServerError
@@ -294,17 +295,18 @@ class IonServiceRegistry(object):
             setattr(svc_def, key, value)
 
     @classmethod
-    def load_service_mods(cls, path):
-        import pkgutil
-        import string
-        mod_prefix = string.replace(path, "/", ".")
+    def load_service_mods(cls, path, package=""):
+        if isinstance(path, ModuleType):
+            for p in path.__path__:
+                cls.load_service_mods(p, path.__name__)
+            return
 
+        import pkgutil
         for mod_imp, mod_name, is_pkg in pkgutil.iter_modules([path]):
             if is_pkg:
-                cls.load_service_mods(path + "/" + mod_name)
+                cls.load_service_mods(path + "/" + mod_name, package + "." + mod_name)
             else:
-                mod_qual = "%s.%s" % (mod_prefix, mod_name)
-                #print "Import", mod_qual
+                mod_qual = "%s.%s" % (package, mod_name)
                 try:
                     named_any(mod_qual)
                 except Exception, ex:
