@@ -39,9 +39,11 @@ SG_IDENTIFICATION = "service_gateway/ScionCC/1.0"
 GATEWAY_ARG_PARAMS = "params"
 GATEWAY_ARG_JSON = "data"
 GATEWAY_RESPONSE = "result"
+GATEWAY_STATUS = "status"
 GATEWAY_ERROR = "error"
 GATEWAY_ERROR_EXCEPTION = "exception"
 GATEWAY_ERROR_MESSAGE = "message"
+GATEWAY_ERROR_EXCID = "error_id"
 GATEWAY_ERROR_TRACE = "trace"
 
 # Stuff for specifying other return types
@@ -70,6 +72,7 @@ class ServiceGateway(object):
 
         self.gateway_base_url = process.gateway_base_url
         self.develop_mode = self.config.get_safe(CFG_PREFIX + ".develop_mode") is True
+        self.require_login = self.config.get_safe(CFG_PREFIX + ".require_login") is True
 
         # Optional list of trusted originators can be specified in config.
         self.trusted_originators = self.config.get_safe(CFG_PREFIX + ".trusted_originators")
@@ -400,13 +403,19 @@ class ServiceGateway(object):
         # There is no point in looking up an anonymous user - so return default values.
         if ion_actor_id == DEFAULT_ACTOR_ID:
             # Since this is an anonymous request, there really is no expiry associated with it
-            return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
+            if self.require_login:
+                raise Unauthorized("Anonymous access not permitted")
+            else:
+                return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
 
         try:
             user = self.idm_client.read_actor_identity(actor_id=ion_actor_id, headers=self._get_gateway_headers())
         except NotFound as e:
-            # If the user isn"t found default to anonymous
-            return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
+            if self.require_login:
+                raise Unauthorized("Invalid identity", exc_id="01.10")
+            else:
+                # If the user isn't found default to anonymous
+                return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
 
         # Need to convert to int first in order to compare against current time.
         try:
@@ -417,9 +426,11 @@ class ServiceGateway(object):
         # The user has been validated as being known in the system, so not check the expiry and raise exception if
         # the expiry is not set to 0 and less than the current time.
         if 0 < int_expiry < current_time_millis():
-            log.warn("User authentication expired")
-            #raise Unauthorized("User authentication expired")
-            return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
+            if self.require_login:
+                raise Unauthorized("User authentication expired")
+            else:
+                log.warn("User authentication expired")
+                return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
 
         return ion_actor_id, expiry
 
@@ -644,7 +655,7 @@ class ServiceGateway(object):
 
         result = {
             GATEWAY_RESPONSE: response_data,
-            "status": 200,
+            GATEWAY_STATUS: 200,
         }
         return self.json_response(result)
 
@@ -678,6 +689,7 @@ class ServiceGateway(object):
         result = {
             GATEWAY_ERROR_EXCEPTION: exec_name,
             GATEWAY_ERROR_MESSAGE: str(exc.message),
+            GATEWAY_ERROR_EXCID: getattr(exc, "exc_id", "") or ""
         }
         if self.develop_mode:
             result[GATEWAY_ERROR_TRACE] = full_error
@@ -686,7 +698,7 @@ class ServiceGateway(object):
             return_mimetype = str(request.args[RETURN_MIMETYPE_PARAM])
             return self.response_class(result, mimetype=return_mimetype)
 
-        return self.json_response({GATEWAY_ERROR: result, "status": getattr(exc, "status_code", 400)})
+        return self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: getattr(exc, "status_code", 400)})
 
 
 # -------------------------------------------------------------------------

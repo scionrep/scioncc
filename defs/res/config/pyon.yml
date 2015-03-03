@@ -265,6 +265,7 @@ service:
     service_blacklist: []    # Names of services not accessible via the gateway. Applies after white list
     user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
     develop_mode: true
+    require_login: true      # Must provide session or token and no anonymous access allowed
 
 units: res/config/units/udunits2.xml
 

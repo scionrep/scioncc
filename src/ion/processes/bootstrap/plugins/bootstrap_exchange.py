@@ -136,16 +136,14 @@ class BootstrapExchange(BootstrapPlugin):
         # # events and main service exchange should be left
         system_rpc_ex = "%s.%s" % (sys_name, sys_xs_name)
         event_ex = "%s.%s.%s" % (sys_name, sys_xs_name, CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP))
+        data_ex = "%s.%s.%s" % (sys_name, sys_xs_name, CFG.get_safe("exchange.core.data_streams", "data"))
 
-        # if system_rpc_ex in rem_exchanges:
-        #     rem_exchanges.remove(system_rpc_ex)
-        # else:
-        #     log.warn("BootstrapExchange restart: no main service exchange %s", system_rpc_ex)
-        #
-        # if event_ex in rem_exchanges:
-        #     rem_exchanges.remove(event_ex)
-        # else:
-        #     log.warn("BootstrapExchange restart: no events exchange %s", event_ex)
+        if system_rpc_ex in rem_exchanges:
+            rem_exchanges.remove(system_rpc_ex)
+        if event_ex in rem_exchanges:
+            rem_exchanges.remove(event_ex)
+        if data_ex in rem_exchanges:
+            rem_exchanges.remove(data_ex)
 
         # what is left?
         for exchange in rem_exchanges:
@@ -232,7 +230,7 @@ class BootstrapExchange(BootstrapPlugin):
         for qn in rem_queues:
             if int(queues[qn]['consumers']) == 0:
                 ex_manager.delete_queue(qn)
-                log.info("Deleted unused queue: %s (%s messages)", qn, queues[qn]['messages'])
+                log.debug("Deleted unused queue: %s (%s messages)", qn, queues[qn]['messages'])
 
         #
         # EMPTY SERVICE QUEUES
