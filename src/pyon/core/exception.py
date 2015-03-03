@@ -4,7 +4,7 @@ import sys
 from putil.exception import ApplicationException
 
 
-__author__ = 'Thomas R. Lennan'
+__author__ = 'Thomas R. Lennan, Michael Meisinger'
 
 
 BAD_REQUEST = 400
@@ -20,6 +20,7 @@ class IonException(ApplicationException):
     status_code = -1
 
     def __init__(self, *a, **b):
+        self.exc_id = b.pop("exc_id", None)
         super(IonException, self).__init__(*a, **b)
 
     def get_status_code(self):
@@ -27,6 +28,9 @@ class IonException(ApplicationException):
 
     def get_error_message(self):
         return self.message
+
+    def get_exception_id(self):
+        return self.exc_id
 
     def __str__(self):
         return str(self.get_status_code()) + " - " + str(self.get_error_message())

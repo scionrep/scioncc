@@ -417,7 +417,9 @@ class ServiceGateway(object):
         # The user has been validated as being known in the system, so not check the expiry and raise exception if
         # the expiry is not set to 0 and less than the current time.
         if 0 < int_expiry < current_time_millis():
-            raise Unauthorized("User authentication expired")
+            log.warn("User authentication expired")
+            #raise Unauthorized("User authentication expired")
+            return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
 
         return ion_actor_id, expiry
 
@@ -684,7 +686,7 @@ class ServiceGateway(object):
             return_mimetype = str(request.args[RETURN_MIMETYPE_PARAM])
             return self.response_class(result, mimetype=return_mimetype)
 
-        return self.json_response({GATEWAY_ERROR: result})
+        return self.json_response({GATEWAY_ERROR: result, "status": getattr(exc, "status_code", 400)})
 
 
 # -------------------------------------------------------------------------

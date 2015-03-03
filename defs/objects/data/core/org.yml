@@ -1,3 +1,7 @@
+# Object holding additional org details
+OrgDetails:
+---
+
 # A domain of authority that provides the context within which policy applies to registered
 # member individuals and resources.
 Org: !Extends_SystemResource
@@ -12,6 +16,8 @@ Org: !Extends_SystemResource
   # A list of ContactInformation entities that serves as a contact point
   #@ContentType=ContactInformation
   contacts: []
+  # Additional information specific to the org type
+  details: !OrgDetails
 ---
 
 # Enumerates possible proposal originator roles
