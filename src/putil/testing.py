@@ -19,25 +19,34 @@ examples from coi-services:
 import unittest
 import os
 
-class ImportTest(unittest.TestCase):
+
+class UtilTest(unittest.TestCase):
+    # override __str__ and __repr__ behavior to show a copy-pastable nosetest name for tests
+    #  putil.module:TestClassName.test_function_name
+    def __repr__(self):
+        name = self.id()
+        name = name.split('.')
+        if name[0] not in ["putil"]:
+            return "%s (%s)" % (name[-1], '.'.join(name[:-1]))
+        else:
+            return "%s ( %s )" % (name[-1], '.'.join(name[:-2]) + ":" + '.'.join(name[-2:]))
+
+    __str__ = __repr__
+
+
+class ImportTest(UtilTest):
     """
     unit test that attempts to import every python file beneath the base directory given.
     fail if any can not be imported
     """
-    def __init__(self, source_directory, base_package,*a,**b):
-        """
-        @param source_directory: should be something in the PYTHONPATH
-        @param base_package: top-level package to start recursive search in (or list of them)
-        @param a, b: pass-through from unittest.main() to TestCase.__init__()
-        """
-        super(ImportTest,self).__init__(*a,**b)
-        self.source_directory = source_directory
-        self.base_package = base_package
-        print 'source dir: %s\npkgs: %s' % (source_directory, base_package)
+
     def test_can_import(self):
+        if not hasattr(self, "source_directory") or not hasattr(self, "base_package"):
+            raise unittest.SkipTest("Don't execute base class")
+
         failures = []
 
-        packages = self.base_package if isinstance(self.base_package,list) else [ self.base_package ]
+        packages = self.base_package if isinstance(self.base_package, list) else [self.base_package]
         for pkg in packages:
             pkg_dir = pkg.replace('.','/')
             self._import_below(pkg_dir, pkg, failures)
@@ -45,6 +54,9 @@ class ImportTest(unittest.TestCase):
             self.fail(msg='failed to import these modules:\n' + '\n'.join(failures))
 
     def test_can_import_from_any_dir(self):
+        if not hasattr(self, "source_directory") or not hasattr(self, "base_package"):
+            raise unittest.SkipTest("Don't execute base class")
+
         original_dir = os.getcwd()
         try:
             os.chdir('/tmp')
@@ -67,6 +79,5 @@ class ImportTest(unittest.TestCase):
                     submod = mod + '.' + entry
                     __import__(submod)
                     self._import_below(os.path.join(dir,entry), submod, failures)
-            except Exception,e:
+            except Exception as ex:
                 failures.append(submod)
-

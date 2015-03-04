@@ -1,16 +1,17 @@
 
-from putil.logging import config
 import logging
 import unittest
-from unittest.case import TestCase
-import os.path
 import os
+
 import putil.exception
+from putil.logging import config
+from putil.testing import UtilTest
 
-LOGFILE='/tmp/unittest-stack.log'
-CONFIGFILE='logging.yml'
+LOGFILE = '/tmp/unittest-stack.log'
+CONFIGFILE = 'logging.yml'
 
-class TestStackLogger(TestCase):
+
+class TestStackLogger(UtilTest):
     def setUp(self):
         # clear file
         try: os.remove(LOGFILE)
@@ -21,21 +22,24 @@ class TestStackLogger(TestCase):
         self.log = logging.getLogger('stack')
 
     def tearDown(self):
-        try: os.remove(LOGFILE)
-        except: pass
+        try:
+            os.remove(LOGFILE)
+        except:
+            pass
 
     def get_lines(self):
         with open(LOGFILE, 'r') as f:
             return f.readlines()
 
     def test_simple_message(self):
-        """ simple message is just one line """
+        #""" simple message is just one line """
         self.assertEquals(0, os.path.getsize(LOGFILE))
         self.log.info("short message")
+
         self.assertEquals(1, len(self.get_lines()))
 
     def test_generic_exception(self):
-        """ stack trace should be compact form """
+        #""" stack trace should be compact form """
         try:
             splotgorpsh()
         except:
@@ -47,7 +51,7 @@ class TestStackLogger(TestCase):
         self.assertTrue("splotgorpsh" in lines[2])
 
     def test_chained_exception(self):
-        """ chained stack traces should be compact, columns should be aligned """
+        #""" chained stack traces should be compact, columns should be aligned """
         try:
             try:
                 splotgorpsh()
@@ -67,7 +71,4 @@ class TestStackLogger(TestCase):
             if len(line)>40 and line[40]==':':
                 aligned_count+=1
         # 3 of the lines won't be stack traces
-        self.assertTrue(len(lines)-aligned_count==3, msg='%d of %d lines aligned'%(aligned_count,len(lines)))
-
-if __name__ == '__main__':
-    unittest.main()
+        self.assertTrue(len(lines)-aligned_count==2, msg='%d of %d lines aligned' % (aligned_count,len(lines)))

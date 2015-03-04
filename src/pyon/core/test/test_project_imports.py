@@ -10,16 +10,10 @@ from nose.plugins.attrib import attr
 
 MODULES = ['ion', 'pyon', 'putil' ]
 
-
 @attr('UNIT')
 class TestProjectImports(putil.testing.ImportTest):
-    def __init__(self, *a, **b):
-        # for utilities project only, want to search in BASE/src
-        # but this test is in BASE/pyon/core/test
-        # so have to go up three levels
+
+    def setUp(self):
         source_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        super(TestProjectImports, self).__init__(source_dir, MODULES, *a, **b)
-
-
-if __name__ == '__main__':
-    main()
+        self.source_directory = source_dir
+        self.base_package = MODULES

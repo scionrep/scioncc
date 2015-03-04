@@ -6,7 +6,10 @@ __author__ = 'Michael Meisinger'
 
 import csv
 import StringIO
-import xlrd
+try:
+    import xlrd
+except ImportError:
+    print "No xlrd in buildout/path"
 
 
 class XLSParser(object):

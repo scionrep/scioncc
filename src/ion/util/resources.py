@@ -13,7 +13,7 @@ try:
     import xlrd
     import xlwt
 except ImportError:
-    print "Excel imports failed"
+    print "No xlrd/xlwt in buildout/path"
 
 from putil.timer import get_accumulators
 

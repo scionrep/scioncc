@@ -32,6 +32,7 @@ def _get_calling_module(default_value=None):
         log.warning('failed to inspect calling module', exc_info=True)
         return default_value
 
+
 class _SelfLogging(object):
     """ base class provides shared logging behavior of Timer and Accumulator """
     def __init__(self, name, logger, level, prefix):
@@ -105,6 +106,7 @@ class Timer(_SelfLogging):
         if min and self._elapsed()>=min:
             self._log()
 
+TOTAL_LABEL = '__total__'
 _persisted_accumulators = {}
 def get_accumulators():
     return _persisted_accumulators
@@ -149,22 +151,22 @@ class Accumulator(_SelfLogging):
         if self.keys_arg == 'all':
             return self.count.keys()
         elif self.keys_arg == 'total':
-            return ['__total__']
+            return [TOTAL_LABEL]
         elif self.keys_arg == '!total':
             out = self.count.keys()
-            out.remove('__total__')
+            out.remove(TOTAL_LABEL)
             return out
         else:
             return self.keys_arg
 
     def clear(self):
         with self.lock:
-            self.count = { '__total__': 0 }
-            self.min = {}
-            self.sum = {}
-            self.sumsquares = {}
-            self.min = {}
-            self.max = {}
+            self.count = {TOTAL_LABEL: 0}
+            self.min = {TOTAL_LABEL: 0}
+            self.sum = {TOTAL_LABEL: 0}
+            self.sumsquares = {TOTAL_LABEL: 0}
+            self.min = {TOTAL_LABEL: 0}
+            self.max = {TOTAL_LABEL: 0}
 
     def add(self, timer):
         new_values = []
@@ -173,7 +175,7 @@ class Accumulator(_SelfLogging):
             delta = pair_o_tuples[1][1]-pair_o_tuples[0][1]
             new_values.append((label,delta))
         with self.lock:
-            for label,delta in new_values:
+            for label, delta in new_values:
                 self.add_value(label, delta, _can_trigger=False, _have_lock=True)
             self._check_trigger()
 
@@ -187,15 +189,20 @@ class Accumulator(_SelfLogging):
                 self.add_value(label, value, _can_trigger=_can_trigger, _have_lock=True)
         else:
             if label in self.sum:
-                self.count[label]+=1
+                self.count[label] += 1
                 self.sum[label] += value
                 self.sumsquares[label] += value*value
                 self.min[label] = min(value, self.min[label])
                 self.max[label] = max(value, self.max[label])
             else:
-                self.count[label]=1
+                self.count[label] = 1
                 self.sumsquares[label] = value*value
                 self.min[label] = self.max[label] = self.sum[label] = value
+            self.count[TOTAL_LABEL] += 1
+            self.sum[TOTAL_LABEL] += value
+            self.sumsquares[TOTAL_LABEL] += value*value
+            self.min[TOTAL_LABEL] = min(value, self.min[TOTAL_LABEL])
+            self.max[TOTAL_LABEL] = max(value, self.max[TOTAL_LABEL])
             if _can_trigger:
                 self._check_trigger()
 
@@ -206,19 +213,20 @@ class Accumulator(_SelfLogging):
             if self.trigger_clear:
                 self.clear()
 
-    def get_count(self, key='__total__'):
+    def get_count(self, key=TOTAL_LABEL):
         return self.count[key] if key in self.count else 0
 
-    def get_min(self, key='__total__'):
+    def get_min(self, key=TOTAL_LABEL):
         return self.min[key] if key in self.min else float('nan')
-    def get_max(self, key='__total__'):
+
+    def get_max(self, key=TOTAL_LABEL):
         return self.max[key] if key in self.max else float('nan')
 
-    def get_average(self, key='__total__'):
-        return self.sum[key] / self.count[key]
+    def get_average(self, key=TOTAL_LABEL):
+        return self.sum[key] / self.count[key] if key in self.count and key in self.sum else 0
 
-    def get_standard_deviation(self, key='__total__'):
-        if self.count[key]<2:
+    def get_standard_deviation(self, key=TOTAL_LABEL):
+        if self.count[key] < 2:
             return float('nan')
         avg = self.get_average(key=key)
         return math.sqrt(self.sumsquares[key]/self.count[key]-avg*avg)
@@ -229,7 +237,7 @@ class Accumulator(_SelfLogging):
     def __str__(self):
         return '\n'.join(['%s: %s' % (key,self.to_string(key)) for key in self.keys()])
 
-    def to_string(self, key='__total__'):
+    def to_string(self, key=TOTAL_LABEL):
         count = self.get_count(key)
         if count:
             return self.format % ( count, self.get_min(key), self.get_average(key),

@@ -50,7 +50,7 @@ loggers:
   putil.poller:
     level: DEBUG
   stack:
-    handlers: [stack]
+#    handlers: [stack]
     level: INFO
   block:
     handlers: [block]

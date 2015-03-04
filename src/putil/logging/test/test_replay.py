@@ -1,18 +1,17 @@
+import logging
+import os
 
 from putil.logging import config
-import logging
-import unittest
-from unittest.case import TestCase
-import os.path
-import os
+from putil.testing import UtilTest
 import putil.exception
 import putil.logging.replay
 
-RAW_LOGFILE='/tmp/unittest-raw.log'
-REPLAY_LOGFILE='/tmp/unittest-replay.log'
-CONFIGFILE='logging.yml'
+RAW_LOGFILE = '/tmp/unittest-raw.log'
+REPLAY_LOGFILE = '/tmp/unittest-replay.log'
+CONFIGFILE = 'logging.yml'
 
-class TestRawLogger(TestCase):
+
+class TestRawLogger(UtilTest):
     def setUp(self):
         # clear file
         try: os.remove(RAW_LOGFILE)
@@ -40,7 +39,7 @@ class TestRawLogger(TestCase):
         self.count = len(contents)
 
     def test_simple_message(self):
-        """ make sure message makes file grow """
+        #""" make sure message makes file grow """
         self.assertEquals(0, os.path.getsize(RAW_LOGFILE))
         self.log.info("short message")
         self.replay.relay(RAW_LOGFILE)
@@ -49,7 +48,7 @@ class TestRawLogger(TestCase):
         self.assertEquals(1, self.count)
 
     def test_multiple_messages(self):
-        """ multiple log statements can be read back as multiple dictionaries """
+        #""" multiple log statements can be read back as multiple dictionaries """
         self.assertEquals(0, os.path.getsize(RAW_LOGFILE))
         self.log.info("short message")
         self.log.info("another short message")
@@ -60,7 +59,7 @@ class TestRawLogger(TestCase):
         self.assertEquals(3, self.count)
 
     def test_multi_line_messages(self):
-        """ newline won't break parsing back to dict """
+        #""" newline won't break parsing back to dict """
         self.assertEquals(0, os.path.getsize(RAW_LOGFILE))
         self.log.info("short message")
         self.log.info("this message\nspans multiple\nlines of text")
@@ -70,7 +69,7 @@ class TestRawLogger(TestCase):
         self.assertTrue(self.count>2)
 
     def test_messages_with_stack(self):
-        """ record can contain stack trace """
+        #""" record can contain stack trace """
         self.assertEquals(0, os.path.getsize(RAW_LOGFILE))
         try:
             awjrht()
@@ -80,7 +79,3 @@ class TestRawLogger(TestCase):
         self.assertTrue(os.path.getsize(REPLAY_LOGFILE)>0)
         self.read_file()
         self.assertTrue(self.count>1)
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -1,16 +1,15 @@
 
-from putil.logging import config
 import logging
-import unittest
-from unittest.case import TestCase
-import os.path
 import os
-import putil.exception
 
-LOGFILE='/tmp/unittest-raw.log'
-CONFIGFILE='logging.yml'
+from putil.logging import config
+from putil.testing import UtilTest
 
-class TestRawLogger(TestCase):
+LOGFILE = '/tmp/unittest-raw.log'
+CONFIGFILE = 'logging.yml'
+
+
+class TestRawLogger(UtilTest):
     def setUp(self):
         # clear file
         try: os.remove(LOGFILE)
@@ -32,7 +31,7 @@ class TestRawLogger(TestCase):
         exec contents
 
     def test_simple_message(self):
-        """ make sure message makes file grow """
+        #""" make sure message makes file grow """
         self.assertEquals(0, os.path.getsize(LOGFILE))
         self.log.info("short message")
         self.assertTrue(os.path.getsize(LOGFILE)>0)
@@ -40,7 +39,7 @@ class TestRawLogger(TestCase):
         self.assertEquals(1, self.count)
 
     def test_multiple_messages(self):
-        """ multiple log statements can be read back as multiple dictionaries """
+        #""" multiple log statements can be read back as multiple dictionaries """
         self.assertEquals(0, os.path.getsize(LOGFILE))
         self.log.info("short message")
         self.log.info("another short message")
@@ -50,7 +49,7 @@ class TestRawLogger(TestCase):
         self.assertEquals(3, self.count)
 
     def test_multi_line_messages(self):
-        """ newline won't break parsing back to dict """
+        #""" newline won't break parsing back to dict """
         self.assertEquals(0, os.path.getsize(LOGFILE))
         self.log.info("short message")
         self.log.info("this message\nspans multiple\nlines of text")
@@ -59,7 +58,7 @@ class TestRawLogger(TestCase):
         self.assertEquals(2, self.count)
 
     def test_messages_with_stack(self):
-        """ record can contain stack trace """
+        #""" record can contain stack trace """
         self.assertEquals(0, os.path.getsize(LOGFILE))
         try:
             awjrht()
@@ -71,6 +70,3 @@ class TestRawLogger(TestCase):
 
     def _handle(self, dict):
         self.count+=1
-
-if __name__ == '__main__':
-    unittest.main()
