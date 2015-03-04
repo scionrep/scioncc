@@ -38,10 +38,8 @@ ContactInformation:
   # URL for the contact
   url: ""
   # A list holding the extra information about user so that specific variables do not need to be held,
-  # e.g. IM, alternate phone, second address, facebook, etc. Every entry in this list has a name and a value.
-  variables:
-  - name: ""
-    value: ""
+  # e.g. IM, alternate phone, second address, facebook, etc.
+  variables: {}
 
 
 # Data structure for representing institution information uniformly across resources

@@ -233,7 +233,7 @@ def start_mx():
 
 
 def ionhelp():
-    print "ION R2 CC interactive shell"
+    print "ScionCC interactive shell"
     print
     print "Available functions: %s" % ", ".join(sorted([func.__name__ for func in public_api]))
     print "Available variables: %s" % ", ".join(sorted(public_vars.keys()))

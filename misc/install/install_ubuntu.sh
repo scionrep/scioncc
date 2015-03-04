@@ -19,6 +19,7 @@ sudo rabbitmq-plugins enable rabbitmq_management
 sudo service rabbitmq-server restart
 
 # Install PostgreSQL
+# NOTE: PostgreSQL 9.3 works too if 9.4 makes trouble
 sudo apt-get install -y postgresql postgresql-contrib
 sudo apt-get install -y postgis
 sudo apt-get install -y postgresql-9.4-postgis-2.1

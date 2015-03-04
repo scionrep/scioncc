@@ -6,6 +6,23 @@ system:
   name: scion
 
 server:
+  amqp:
+    # The normal container broker connection
+    type: amqp_91
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    vhost: /
+    heartbeat: 30
+  rabbit_manage:
+    # REST access to RabbitMQ management plugin
+    type: rabbit_mgmt
+    host: localhost
+    port: 15672
+    username: guest
+    password: guest
+
   postgresql:
     type: postgresql
     host: localhost
@@ -19,9 +36,6 @@ server:
     connection_pool_max: 5      # Number of connections for entire container
 
 container:
-  datastore:
-    default_server: postgresql
-
   tracer:
     enabled: True
     max_entries: 100000
@@ -30,16 +44,7 @@ container:
     log_stack: False
     log_color: True
 
-  exchange:
-    management:
-      port: 15672
-      username: guest
-      password: guest
-#    auto_register: True
-#    names:
-#      durable: True
-
-  objects:
-    validate:
-      setattr: False
-      interceptor: False
+process:
+  admin_ui:                  # Config for admin UI, started with --mx option
+    web_server:
+      port: 8080

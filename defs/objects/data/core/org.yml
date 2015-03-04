@@ -48,9 +48,9 @@ ServiceAgreementProposal:
   expiration: "0"
   # Optional description of proposal - if set in initial proposal will be copied to Negotiation description
   description: ""
-  # Optional collection of additional conditions - not used in R2
+  # Optional collection of additional conditions
   conditions: {}
-  # Optional collection of additional clauses - not used in R2
+  # Optional collection of additional clauses
   clauses: {}
 ---
 

@@ -52,7 +52,8 @@ Use a fresh Ubuntu 14.04 VM with latest patches:
     > sudo apt-get update
     > sudo apt-get upgrade
 
-Execute dependencies install script (from repo root - only if you are comfortable):
+Execute dependencies install script (from repo root dir - only if you are comfortable):
+    # NOTE: PostgreSQL 9.3 works too if 9.4 makes trouble
     > sudo sh misc/install/install_ubuntu.sh
 
 Set postgres superuser password and create users (replace xxxxx with a good password):
