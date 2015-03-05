@@ -751,10 +751,6 @@ Routing method for next test, raises an IonException.
 
         self.assertRaises(exception.BadRequest, e.message_received, 3, {})
 
-    def test__get_sample_name(self):
-        e = RPCResponseEndpointUnit(interceptors={})
-        self.assertEquals(e._get_sample_name(), "unknown-rpc-server")
-
 
 @attr('UNIT')
 class TestRPCServer(PyonTestCase, RecvMockMixin):

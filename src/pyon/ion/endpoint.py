@@ -119,19 +119,19 @@ class ProcessEndpointUnitMixin(EndpointUnit):
         original_conv_id    = context.get('original-conv-id', None)
         conv_id             = context.get('conv-id', None)
 
-        #If an actor-id is specified then there may be other associated data that needs to be passed on
+        # If an actor-id is specified then there may be other associated data that needs to be passed on
         if actor_id:
             header[MSG_HEADER_ACTOR] = actor_id
             if actor_roles:     header[MSG_HEADER_ROLES]   = actor_roles
 
-        #This set of tokens is set independently of the actor
+        # This set of tokens is set independently of the actor
         if actor_tokens:    header['ion-actor-tokens']   = actor_tokens
 
         if expiry:          header[MSG_HEADER_VALID]                = expiry
         if container_id:    header['origin-container-id']   = container_id
 
-        #Since this is not the originating message, this must be a requests within an existing conversation,
-        #so track original conversation
+        # Since this is not the originating message, this must be a requests within an existing conversation,
+        # so track original conversation
         if original_conv_id:
             header['original-conv-id'] = original_conv_id
         else:
@@ -139,9 +139,6 @@ class ProcessEndpointUnitMixin(EndpointUnit):
                 header['original-conv-id'] = conv_id
 
         return header
-
-    def _get_sample_name(self):
-        return str(self._process.id)
 
 
 class ProcessRPCRequestEndpointUnit(ProcessEndpointUnitMixin, RPCRequestEndpointUnit):
@@ -210,10 +207,12 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
 
     def _message_received(self, msg, headers):
         """
-        Message received override.
+        Message received override for processes.
 
-        Sets the process' context here to be picked up by subsequent calls out by this service to other services, or replies.
+        Sets the process context here to be used for subsequent calls out by this
+        process to other processes, or replies.
         """
+
         ######
         ###### THIS IS WHERE THE THREAD LOCAL HEADERS CONTEXT IS SET ######
         ######
@@ -227,8 +226,8 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
             return RPCResponseEndpointUnit._message_received(self, msg, headers)
 
     def message_received(self, msg, headers):
-        #This is the hook for checking governance pre-conditions before calling a service operation
-        #TODO - replace with a process specific interceptor stack of some sort.
+        """Hook for checking governance pre-conditions before calling a service operation
+        """
         gc = self._routing_obj.container.governance_controller
         if gc:
             gc.check_process_operation_preconditions(self._routing_obj, msg, headers)
@@ -248,7 +247,6 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
         """
         Override to direct the calls in _build_header - first the RPCResponse side, then the Process mixin.
         """
-
         header1 = RPCResponseEndpointUnit._build_header(self, raw_msg, raw_headers)
         header2 = ProcessEndpointUnitMixin._build_header(self, raw_msg, raw_headers)
 
@@ -260,16 +258,15 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
         if not self._routing_call:
             return RPCResponseEndpointUnit._make_routing_call(self, call, timeout, *op_args, **op_kwargs)
 
-        ctx = self._process.get_context()       # pull onto the locals here, for debuggability with manhole
+        ctx = self._process.get_context()
         ar = self._routing_call(call, ctx, *op_args, **op_kwargs)
-        res = ar.get()    # REMOVED TIMEOUT
+        res = ar.get()
+        # REMOVED TIMEOUT
         #try:
         #    res = ar.get(timeout=timeout)
         #except Timeout:
-        #
         #    # cancel or abort current processing
         #    self._process._process.cancel_or_abort_call(ar)
-        #
         #    raise IonTimeout("Process did not execute in allotted time")    # will be returned to caller via messaging
 
         # Persistent process state handling
@@ -286,6 +283,7 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
         total, _, proc, interval, interval_run = self._process._process.time_stats  # we want the ION proc's stats
         #return str(int(proc / float(total) * 100))  # Total
         return str(int(interval_run / float(interval) * 100))  # Percentage in current (partial) and prior interval
+
 
 class ProcessRPCServer(RPCServer):
     endpoint_unit_type = ProcessRPCResponseEndpointUnit
@@ -318,6 +316,7 @@ class ProcessRPCServer(RPCServer):
 
     def __str__(self):
         return "ProcessRPCServer at %s:\n\trecv_name: %s\n\tprocess: %s" % (hex(id(self)), str(self._recv_name), str(self._process))
+
 
 class ProcessPublisherEndpointUnit(ProcessEndpointUnitMixin, PublisherEndpointUnit):
     def __init__(self, process=None, **kwargs):
@@ -405,9 +404,9 @@ class ProcessSubscriberEndpointUnit(ProcessEndpointUnitMixin, SubscriberEndpoint
         if not self._routing_call:
             return SubscriberEndpointUnit._make_routing_call(self, call, timeout, *op_args, **op_kwargs)
 
-        ctx = self._process.get_context()       # pull onto the locals here, for debuggability with manhole
+        ctx = self._process.get_context()
         ar = self._routing_call(call, ctx, *op_args, **op_kwargs)
-        return ar.get() # timeout=timeout)  # REMOVED TIMEOUT
+        return ar.get()  # timeout=timeout)  # REMOVED TIMEOUT
 
 
 class ProcessSubscriber(Subscriber):

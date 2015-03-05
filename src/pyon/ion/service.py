@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Mechanisms for ION services and service management infrastructure"""
+"""Service process base class and service management"""
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 

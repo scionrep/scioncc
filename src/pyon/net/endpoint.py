@@ -342,6 +342,7 @@ class BaseEndpoint(object):
 
         return name
 
+
 class SendingBaseEndpoint(BaseEndpoint):
     def __init__(self, node=None, to_name=None, name=None, transport=None):
         BaseEndpoint.__init__(self, node=node, transport=transport)
@@ -620,7 +621,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
         Blocks until one message is received, or the optional timeout is reached.
 
         INBOUND INTERCEPTORS ARE PROCESSED HERE. If the Interceptor stack throws an IonException,
-        the response will be sent immediatly and the MessageObject returned to you will not have
+        the response will be sent immediately and the MessageObject returned to you will not have
         body/headers set and will have error set. You should expect to check body/headers or error.
 
         @raises ChannelClosedError  If the channel has been closed.
@@ -635,7 +636,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
         Receives num messages.
 
         INBOUND INTERCEPTORS ARE PROCESSED HERE. If the Interceptor stack throws an IonException,
-        the response will be sent immediatly and the MessageObject returned to you will not have
+        the response will be sent immediately and the MessageObject returned to you will not have
         body/headers set and will have error set. You should expect to check body/headers or error.
 
         Blocks until all messages received, or the optional timeout is reached.
@@ -688,6 +689,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
 
 class PublisherEndpointUnit(EndpointUnit):
     pass
+
 
 class Publisher(SendingBaseEndpoint):
     """
@@ -804,10 +806,10 @@ class BidirectionalEndpointUnit(EndpointUnit):
 class BidirectionalListeningEndpointUnit(EndpointUnit):
     pass
 
+
 #
 #  REQ / RESP (and RPC)
 #
-
 
 class RequestEndpointUnit(BidirectionalEndpointUnit):
     def _get_response(self, conv_id, timeout):
@@ -926,18 +928,22 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
 
     def _send(self, msg, headers=None, **kwargs):
         log_message("MESSAGE SEND >>> RPC-request", msg, headers, is_send=True)
-        global stats
-        t = Timer(logger=None) if stats.is_log_enabled() else None
+        timer = Timer(logger=None) if stats.is_log_enabled() else None
+
+        ######
+        ###### THIS IS WHERE A BLOCKING RPC REQUEST IS PERFORMED ######
+        ######
         res, res_headers = RequestEndpointUnit._send(self, msg, headers=headers, **kwargs)
-        if t:
+
+        if timer:
             # record elapsed time in RPC stats
             receiver = headers.get('receiver', '?')  # header field is generally: systemname,service_name
             parts = receiver.split(',')
-            if len(parts)==2:
-                receiver = parts[1]                  # want to log just the service_name for consistancy
+            if len(parts) == 2:
+                receiver = parts[1]                  # want to log just the service_name for consistency
             stepid = 'rpc-client.%s.%s=%s' % (receiver, headers.get('op', '?'), res_headers["status_code"])
-            t.complete_step(stepid)
-            stats.add(t)
+            timer.complete_step(stepid)
+            stats.add(timer)
         log_message("MESSAGE RECV >>> RPC-reply", res, res_headers, is_send=False)
 
         # Check response header
@@ -994,10 +1000,10 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
         headers['protocol'] = 'rpc'
         headers['language'] = 'ion-r2'
         headers['encoding'] = 'msgpack'
-        headers['format']   = raw_msg.__class__.__name__
+        headers['format'] = raw_msg.__class__.__name__
         headers['reply-by'] = 'todo'                        # set by _send override @TODO should be set here
 
-        #Use the headers for conv-id and conv-seq if passed in from higher level API
+        # Use the headers for conv-id and conv-seq if passed in from higher level API
         headers['conv-id'] = raw_headers['conv-id'] if raw_headers and 'conv-id' in raw_headers else self._build_conv_id()
         headers['conv-seq'] = raw_headers['conv-seq'] if raw_headers and 'conv-seq' in raw_headers else 1 #@TODO will not work well with agree/status etc
 
@@ -1102,6 +1108,7 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         try:
             new_msg, new_headers = ResponseEndpointUnit.intercept_in(self, msg, headers)
             return new_msg, new_headers
+
         except Exception as ex:
             log.debug("server exception being passed to client", exc_info=True)
             result = ""
@@ -1110,9 +1117,9 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
 
             response_headers = self._create_error_response(ex)
 
-            response_headers['protocol']    = headers.get('protocol', '')
-            response_headers['conv-id']     = headers.get('conv-id', '')
-            response_headers['conv-seq']    = headers.get('conv-seq', 1) + 1
+            response_headers['protocol'] = headers.get('protocol', '')
+            response_headers['conv-id'] = headers.get('conv-id', '')
+            response_headers['conv-seq'] = headers.get('conv-seq', 1) + 1
 
             self.send(result, response_headers)
 
@@ -1132,61 +1139,58 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         ts = get_ion_ts()
         response_headers['msg-rcvd'] = ts
 
-        global stats
-        t = Timer(logger=None) if stats.is_log_enabled() else None
+        timer = Timer(logger=None) if stats.is_log_enabled() else None
+
+        ######
+        ###### THIS IS WHERE AN ENDPOINT OPERATION EXCEPTION IS HANDLED  ######
+        ######
         try:
-            result, new_response_headers = ResponseEndpointUnit._message_received(self, msg, headers)       # execute interceptor stack, calls into our message_received
-            response_headers.update(new_response_headers)       # don't clobber our msg-rcvd header
+            # execute interceptor stack, calls into our message_received
+            result, new_response_headers = ResponseEndpointUnit._message_received(self, msg, headers)
+            response_headers.update(new_response_headers)
+
         except Exception as ex:
             log.debug("server exception being passed to client", exc_info=True)
             result = ""
             if isinstance(ex, IonException):
                 result = ex.get_stacks()
-
             response_headers = self._create_error_response(ex)
+
         finally:
-            # REPLIES: propogate protocol, conv-id, conv-seq
-            response_headers['protocol']    = headers.get('protocol', '')
-            response_headers['conv-id']     = headers.get('conv-id', '')
-            response_headers['conv-seq']    = headers.get('conv-seq', 1) + 1
+            # REPLIES: propagate some headers
+            response_headers['protocol'] = headers.get('protocol', '')
+            response_headers['conv-id'] = headers.get('conv-id', '')
+            response_headers['conv-seq'] = headers.get('conv-seq', 1) + 1
+        ######
+        ######
+        ######
 
-#            # record elapsed time in RPC stats
-#            receiver = headers.get('receiver', '?')  # header field is generally: systemname,service_name
-#            parts = receiver.split(',')
-#            if len(parts)==2:
-#                receiver = parts[1]                  # want to log just the service_name for consistancy
-#            stepid = 'client.%s.%s=%s' % (receiver, headers.get('op', '?'), res_headers["status_code"])
-#            t.complete_step(stepid)
-
-        if t:
+        if timer:
             # record elapsed time in RPC stats
-            op=headers.get('op', '')
+            op = headers.get('op', '')
             if op:
                 receiver = headers.get('receiver', '?')  # header field is generally: systemname,service_name
                 parts = receiver.split(',')
-                if len(parts)==2:
+                if len(parts) == 2:
                     receiver = parts[1]                  # want to log just the service_name for consistancy
                 stepid = 'rpc-server.%s.%s=%s' % (receiver, headers.get('op', '?'), response_headers["status_code"])
             else:
-                parts = headers.get('routing_key','unknown').split('.')
-                stepid = 'server.' + '.'.join( [ parts[i] for i in xrange(min(3,len(parts))) ] )
-            t.complete_step(stepid)
-            stats.add(t)
+                parts = headers.get('routing_key', 'unknown').split('.')
+                stepid = 'server.' + '.'.join( [ parts[i] for i in xrange(min(3, len(parts))) ] )
+            timer.complete_step(stepid)
+            stats.add(timer)
 
-        # sample (possibly) before we do any sending
-        self._sample_request(response_headers['status_code'], response_headers['error_message'], msg, headers, result, response_headers)
-
-        # possible to raise exception in sending interceptor stack, so if we catch an IonException, send that instead
         try:
             return self.send(result, response_headers)
         except IonException as ex:
+            # Catch exception within sending interceptor stack, so if we catch an IonException, send that instead
             result = ""
             response_headers = self._create_error_response(ex)
 
             response_headers['error_message'] = "(while trying to send RPC response for conv-id %s) %s" % (headers.get('conv-id'), response_headers['error_message'])
-            response_headers['protocol']      = headers.get('protocol', '')
-            response_headers['conv-id']       = headers.get('conv-id', '')
-            response_headers['conv-seq']      = headers.get('conv-seq', 1) + 1
+            response_headers['protocol'] = headers.get('protocol', '')
+            response_headers['conv-id'] = headers.get('conv-id', '')
+            response_headers['conv-seq'] = headers.get('conv-seq', 1) + 1
 
             return self.send(result, response_headers)
 
@@ -1198,10 +1202,15 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         return ResponseEndpointUnit._send(self, msg, headers=headers, **kwargs)
 
     def message_received(self, msg, headers):
+        """
+        Process a received message and deliver to a target object.
+        Exceptions raised during message processing will be passed through.
+        Subclasses can override this call.
+        """
         assert self._routing_obj, "How did I get created without a routing object?"
 
         cmd_arg_obj = msg
-        cmd_op      = headers.get('op', None)
+        cmd_op = headers.get('op', None)
 
         # get timeout
         timeout = self._calculate_timeout(headers)
@@ -1212,13 +1221,13 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         elif isinstance(cmd_arg_obj, dict):
             pass
         else:
-            raise BadRequest("Unknown message type, cannot convert into kwarg dict: %s" % str(type(cmd_arg_obj)))
+            raise BadRequest("Unknown message type, cannot convert into kwarg dict: %s" % type(cmd_arg_obj))
 
         # op name must exist!
         if not hasattr(self._routing_obj, cmd_op):
             raise BadRequest("Unknown op name: %s" % cmd_op)
 
-        ro_meth     = getattr(self._routing_obj, cmd_op)
+        ro_meth = getattr(self._routing_obj, cmd_op)
 
         # check arguments (as long as it is a function. might be a mock in testing.)
         # @TODO doesn't really feel correct.
@@ -1231,14 +1240,14 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
                     if not arg_name in ro_meth_args[0]:
                         return None, self._create_error_response(code=400, msg="Argument %s not present in op signature" % arg_name)
 
-        result = None
-        response_headers = {}
-
         ######
-        ###### THIS IS WHERE THE SERVICE OPERATION IS CALLED ######
+        ###### THIS IS WHERE THE ENDPOINT OPERATION IS CALLED ######
         ######
-        result              = self._make_routing_call(ro_meth, timeout, **cmd_arg_obj)
-        response_headers    = { 'status_code': 200, 'error_message': '' }
+        result = self._make_routing_call(ro_meth, timeout, **cmd_arg_obj)
+        response_headers = {'status_code': 200,
+                            'error_message': ''}
+        ######
+        ######
         ######
 
         return result, response_headers
@@ -1267,14 +1276,15 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         if ex is not None:
             if isinstance(ex, IonException):
                 code = ex.get_status_code()
-                # have seen exceptions where the "message" is really a tuple, and pika is not a fan: make sure it is str()'d
+                # Force str - otherwise pika aborts due to bad headers
                 msg = str(ex.get_error_message())
             else:
                 msg = "%s (%s)" % (str(ex.message), type(ex))
 
-        return {'status_code': code,
-                'error_message': msg,
-                'performative': 'failure'}
+        headers = {"status_code": code,
+                   "error_message": msg,
+                   "performative": "failure"}
+        return headers
 
     def _make_routing_call(self, call, timeout, *op_args, **op_kwargs):
         """
@@ -1290,88 +1300,11 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         #    # cleanup shouldn't be needed, executes in same greenlet as current
         #    raise exception.Timeout("Timed out making call to service (non-ION process)")
 
-    def _sample_request(self, status, status_descr, msg, headers, response, response_headers):
-        """
-        Performs sFlow sampling of a completed/errored RPC request (if configured to).
-
-        Makes two calls:
-        1) get_sflow_manager (overridden at process level)
-        2) make sample dict (the kwargs to sflow_manager.transaction, may be overridden where appropriate)
-
-        Then performs the transact call if the manager says to do so.
-        """
-
-    def _get_sample_name(self):
-        """
-        Gets the app_name that should be used for the sample.
-
-        Typically this would be a process id.
-        """
-        # at the rpc level we really don't know, we're not a process.
-        return "unknown-rpc-server"
-
-    def _build_sample(self, name, status, status_descr, msg, headers, response, response_headers, qlen):
-        """
-        Builds a transaction sample.
-
-        Should return a dict in the form of kwargs to be passed to SFlowManager.transaction.
-        @see sFlow application spec: http://sflow.org/sflow_application.txt
-        """
-        # build args to pass to transaction
-        #extra_attrs = {'conv-id': headers.get('conv-id', ''),
-        #               'service': response_headers.get('sender-service', '')}
-        extra_attrs = {'ql': qlen}      # queue length (both on server + delivered to this process)
-
-        # Message Latency
-        # Defined as difference between message sent timestamp and message received timestamp.
-        if 'msg-rcvd' in response_headers and 'ts' in headers:
-            rsts = int(headers['ts'])
-            mrts = int(response_headers['msg-rcvd'])
-
-            extra_attrs['ml'] = str(mrts - rsts)
-
-        # Process Saturation
-        # processing time / total time running, as an integer percentage
-        if 'process-saturation' in response_headers:
-            extra_attrs['ps'] = response_headers['process-saturation']
-
-        # Process ID
-        # for mapping extra attrs to a pid -> passed in as name here
-        extra_attrs['pid'] = name
-
-        # uS: process latency
-        # 1-way message latency (req to svc ONLY) + processing time
-        cur_time_ms = get_ion_ts_millis()
-        time_taken = (cur_time_ms - int(headers.get('ts', cur_time_ms))) * 1000      # sflow wants microseconds!
-
-        # build op name: typically sender-service.op, or falling back to sender.op
-        svc_name = response_headers.get('sender-service', response_headers.get('sender', headers.get('receiver', '')))
-        if "," in svc_name:
-            svc_name = svc_name.rsplit(',', 1)[-1]
-
-        op = headers.get('op', 'unknown')
-
-        status = ""
-
-        sample = {'app_name':     bootstrap.get_sys_name()[0:64],
-                  'op':           op[0:32],
-                  'attrs':        extra_attrs,
-                  'status_descr': status_descr[0:64],
-                  'status':       str(status),
-                  'req_bytes':    len(str(msg)),
-                  'resp_bytes':   len(str(response)),
-                  'uS':           time_taken,
-                  'initiator':    headers.get('sender', '')[0:64],
-                  'target':       svc_name[0:64] }
-
-        return sample
-
 
 class RPCServer(RequestResponseServer):
     endpoint_unit_type = RPCResponseEndpointUnit
 
     def __init__(self, service=None, **kwargs):
-        #log.debug("In RPCServer.__init__")
         assert service
         self._service = service
         RequestResponseServer.__init__(self, **kwargs)
@@ -1380,7 +1313,6 @@ class RPCServer(RequestResponseServer):
         """
         @TODO: push this into RequestResponseServer
         """
-        #log.debug("RPCServer.create_endpoint override")
         return RequestResponseServer.create_endpoint(self, routing_obj=self._service, **kwargs)
 
     def __str__(self):
@@ -1389,19 +1321,19 @@ class RPCServer(RequestResponseServer):
 
 def log_message(prefix="MESSAGE", msg=None, headers=None, recv=None, delivery_tag=None, is_send=True):
     """
-    Utility function to print an legible comprehensive summary of a received message.
-    @NOTE: This is an expensive operation
+    Print a comprehensive summary of a received message.
+    NOTE: This is an expensive operation
     """
     if rpclog.isEnabledFor(logging.DEBUG):
         try:
             headers = headers or {}
-            _sender = headers.get('sender', '?') + "(" + headers.get('sender-name', '') + ")"
+            _sender = headers.get("sender", "?") + "(" + headers.get("sender-name", "") + ")"
             _send_hl, _recv_hl = ("###", "") if is_send else ("", "###")
 
-            if recv and getattr(recv, '__iter__', False):
+            if recv and hasattr(recv, "__iter__"):
                 recv = ".".join(str(item) for item in recv if item)
-            _recv = headers.get('receiver', '?')
-            _opstat = "op=%s"%headers.get('op', '') if 'op' in headers else "status=%s"%headers.get('status_code', '')
+            _recv = headers.get("receiver", "?")
+            _opstat = "op=%s"%headers.get("op", "") if "op" in headers else "status=%s" % headers.get("status_code", "")
             try:
                 import msgpack
                 _msg = msgpack.unpackb(msg)
@@ -1417,7 +1349,7 @@ def log_message(prefix="MESSAGE", msg=None, headers=None, recv=None, delivery_ta
 
 
 def trigger_msg_out_callback(body, headers, ep_unit):
-    """Helper function to perform a message out callback"""
+    """Triggers a hook on message send"""
     if callback_msg_out:
         try:
             env = {}
@@ -1430,8 +1362,9 @@ def trigger_msg_out_callback(body, headers, ep_unit):
         except Exception as ex:
             log.warn("Message out callback error: %s", str(ex))
 
+
 def trigger_msg_in_callback(body, headers, delivery_tag, ep_unit):
-    """Helper function to perform a message in callback"""
+    """Triggers a hook on message receive"""
     if callback_msg_in:
         try:
             env = {}

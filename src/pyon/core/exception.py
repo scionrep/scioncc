@@ -166,11 +166,11 @@ class ExceptionFactory(object):
     def create_exception(self, code, message, stacks=None):
         """ build IonException from code, message, and optionally one or more stack traces """
         if str(code) in self._exception_map:
-            out = self._exception_map[str(code)](message)
+            new_exc = self._exception_map[str(code)](message)
         else:
-            out = self._default(message)
-# TEMPORARY: disable adding stacks here until issue fixed to avoid memory leak
-#        if stacks:
-#            for label, stack in stacks:
-#                out.add_stack(label, stack)
-        return out
+            new_exc = self._default(message)
+        # WARNING: previously, adding stacks here caused a memory leak
+        if stacks:
+            for label, stack in stacks:
+                new_exc.add_stack(label, stack)
+        return new_exc

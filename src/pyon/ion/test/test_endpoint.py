@@ -55,10 +55,6 @@ class TestProcessEndpointUnitMixin(PyonTestCase):
         mockipi.assert_has_calls([call(sentinel.proc_outgoing, sentinel.inv)])
         mocknpi.assert_has_calls([call(sentinel.msg_outgoing, sentinel.inv2)])
 
-    def test__get_sample_name(self):
-        ep = ProcessEndpointUnitMixin(process=Mock())
-        self.assertEquals(ep._get_sample_name(), str(ep._process.id))
-
 
     @patch('pyon.net.endpoint.BaseEndpoint._get_container_instance')
     def test__build_header_no_context(self, mockgci):
