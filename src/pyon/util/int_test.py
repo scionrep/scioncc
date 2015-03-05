@@ -54,10 +54,8 @@ class IonIntegrationTestCase(unittest.TestCase):
     def __repr__(self):
         name = self.id()
         name = name.split('.')
-        if name[0] not in ["ion", "pyon"]:
-            return "%s (%s)" % (name[-1], '.'.join(name[:-1]))
-        else:
-            return "%s ( %s )" % (name[-1], '.'.join(name[:-2]) + ":" + '.'.join(name[-2:]))
+        #return "%s (%s)" % (name[-1], '.'.join(name[:-1]))
+        return "%s ( %s )" % (name[-1], '.'.join(name[:-2]) + ":" + '.'.join(name[-2:]))
     __str__ = __repr__
 
 

@@ -2,9 +2,9 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 
-
 import collections
 import datetime
+import importlib
 import string
 import time
 import simplejson
@@ -16,6 +16,7 @@ from types import NoneType
 from copy import deepcopy
 
 DICT_LOCKING_ATTR = "__locked__"
+
 
 class DotNotationGetItem(object):
     """ Drive the behavior for DotList and DotDict lookups by dot notation, JSON-style. """
@@ -220,26 +221,28 @@ def named_any(name):
     @param name: The name of the object to return.
     @return: the Python object identified by 'name'.
     """
-    assert name, 'Empty module name'
+    if not name:
+        raise Exception("Empty module name")
     names = name.split('.')
 
-    topLevelPackage = None
-    moduleNames = names[:]
-    while not topLevelPackage:
-        if moduleNames:
-            trialname = '.'.join(moduleNames)
+    module = None
+    mod_mames = names[:]
+    obj_names = []
+    while not module:
+        if mod_mames:
+            trialname = '.'.join(mod_mames)
             try:
-                topLevelPackage = __import__(trialname)
-            except Exception, ex:
-                moduleNames.pop()
+                module = importlib.import_module(trialname)
+            except Exception as ex:
+                obj_names.append(mod_mames.pop())
         else:
             if len(names) == 1:
                 raise Exception("No module named %r" % (name,))
             else:
                 raise Exception('%r does not name an object' % (name,))
 
-    obj = topLevelPackage
-    for n in names[1:]:
+    obj = module
+    for n in reversed(obj_names):
         obj = getattr(obj, n)
 
     return obj
