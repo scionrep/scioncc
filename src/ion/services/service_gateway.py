@@ -83,6 +83,7 @@ class ServiceGateway(object):
         # Service screening
         self.service_blacklist = self.config.get_safe(CFG_PREFIX + ".service_blacklist") or []
         self.service_whitelist = self.config.get_safe(CFG_PREFIX + ".service_whitelist") or []
+        self.no_login_whitelist = set(self.config.get_safe(CFG_PREFIX + ".no_login_whitelist") or [])
 
         # Get the user_cache_size
         self.user_cache_size = self.config.get_safe(CFG_PREFIX + ".user_cache_size", DEFAULT_USER_CACHE_SIZE)
@@ -245,7 +246,8 @@ class ServiceGateway(object):
 
         # Validate requesting user and expiry and add governance headers
         ion_actor_id, expiry = self.get_governance_info_from_request(req_args)
-        ion_actor_id, expiry = self.validate_request(ion_actor_id, expiry)
+        in_login_whitelist = self.in_login_whitelist("request", service_name, operation)
+        ion_actor_id, expiry = self.validate_request(ion_actor_id, expiry, in_whitelist=in_login_whitelist)
         param_list["headers"] = self.build_message_headers(ion_actor_id, expiry)
 
         # Make service operation call
@@ -399,11 +401,16 @@ class ServiceGateway(object):
 
         return actor_id, expiry
 
-    def validate_request(self, ion_actor_id, expiry):
+    def in_login_whitelist(self, category, svc, op):
+        """Returns True if service op is whitelisted for anonymous access"""
+        entry = "%s/%s/%s" % (category, svc, op)
+        return entry in self.no_login_whitelist
+
+    def validate_request(self, ion_actor_id, expiry, in_whitelist=False):
         # There is no point in looking up an anonymous user - so return default values.
         if ion_actor_id == DEFAULT_ACTOR_ID:
             # Since this is an anonymous request, there really is no expiry associated with it
-            if self.require_login:
+            if not in_whitelist and self.require_login:
                 raise Unauthorized("Anonymous access not permitted")
             else:
                 return DEFAULT_ACTOR_ID, DEFAULT_EXPIRY
@@ -411,7 +418,7 @@ class ServiceGateway(object):
         try:
             user = self.idm_client.read_actor_identity(actor_id=ion_actor_id, headers=self._get_gateway_headers())
         except NotFound as e:
-            if self.require_login:
+            if not in_whitelist and self.require_login:
                 raise Unauthorized("Invalid identity", exc_id="01.10")
             else:
                 # If the user isn't found default to anonymous
@@ -426,7 +433,7 @@ class ServiceGateway(object):
         # The user has been validated as being known in the system, so not check the expiry and raise exception if
         # the expiry is not set to 0 and less than the current time.
         if 0 < int_expiry < current_time_millis():
-            if self.require_login:
+            if not in_whitelist and self.require_login:
                 raise Unauthorized("User authentication expired")
             else:
                 log.warn("User authentication expired")
