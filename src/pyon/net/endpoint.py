@@ -2,7 +2,8 @@
 
 """Provides the communication layer above channels."""
 
-from gevent import event, coros
+from gevent import event
+from gevent.lock import RLock
 from gevent.timeout import Timeout
 from zope import interface
 import pprint
@@ -965,7 +966,7 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
         return res, res_headers
 
     conv_id_counter = 0
-    _lock = coros.RLock()       # @TODO: is this safe?
+    _lock = RLock()       # @TODO: is this safe?
     _conv_id_root = None
 
     def _build_conv_id(self):

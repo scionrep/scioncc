@@ -14,7 +14,8 @@ from pyon.util.log import log
 from pyon.util.containers import DotDict
 from gevent.event import AsyncResult, Event
 from gevent.queue import Queue
-from gevent import coros, sleep
+from gevent import sleep
+from gevent.lock import RLock
 from gevent.timeout import Timeout
 from gevent.pool import Pool
 from contextlib import contextmanager
@@ -677,17 +678,17 @@ class LocalRouter(object):
         self._exchanges = {}                            # names -> { subscriber, topictrie(queue name) }
         self._queues = {}                               # names -> gevent queue
         self._bindings_by_queue = defaultdict(list)     # queue name -> [(ex, binding)]
-        self._lock_declarables = coros.RLock()          # exchanges, queues, bindings, routing method
+        self._lock_declarables = RLock()                # exchanges, queues, bindings, routing method
 
         # consumers
         self._consumers = defaultdict(list)             # queue name -> [ctag, channel._on_deliver]
         self._consumers_by_ctag = {}                    # ctag -> queue_name ??
         self._ctag_pool = IDPool()                      # pool of consumer tags
-        self._lock_consumers = coros.RLock()            # lock for interacting with any consumer related attrs
+        self._lock_consumers = RLock()                  # lock for interacting with any consumer related attrs
 
         # deliveries
         self._unacked = {}                              # dtag -> (ctag, msg)
-        self._lock_unacked = coros.RLock()              # lock for interacting with unacked field
+        self._lock_unacked = RLock()                    # lock for interacting with unacked field
 
         self._gl_msgs = None
         self._gl_pool = Pool()

@@ -3,7 +3,8 @@
 """AMQP messaging with Pika."""
 
 import gevent
-from gevent import event, coros
+from gevent import event
+from gevent.lock import RLock
 
 from pika.credentials import PlainCredentials
 from pika.connection import ConnectionParameters
@@ -30,7 +31,7 @@ class BaseNode(object):
         self.client = None
         self.running = False
         self.ready = event.Event()
-        self._lock = coros.RLock()
+        self._lock = RLock()
 
         self.interceptors = {}  # endpoint interceptors
 

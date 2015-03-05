@@ -10,7 +10,7 @@
 __author__ = 'Edward Hunter'
 
 
-from gevent.coros import RLock
+from gevent.lock import RLock
 
 class FSMError(Exception):
     pass
@@ -174,7 +174,7 @@ class ThreadSafeFSM(InstrumentFSM):
 
 """
 import gevent
-from gevent.coros import RLock
+from gevent.lock import RLock
 
 r = RLock()
 

@@ -8,7 +8,7 @@ from copy import deepcopy
 import time
 import re
 
-from gevent.coros import RLock
+from gevent.lock import RLock
 
 from pyon.agent.agent import ResourceAgent
 from pyon.core import exception

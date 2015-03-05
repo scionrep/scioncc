@@ -5,7 +5,7 @@ __author__ = 'Dave Foster <dfoster@asascience.com>'
 from pyon.ion.process import IonProcessThread
 from pyon.ion.endpoint import ProcessRPCServer
 from gevent.event import AsyncResult, Event
-from gevent.coros import Semaphore
+from gevent.lock import Semaphore
 from gevent.timeout import Timeout
 from pyon.util.unit_test import PyonTestCase
 from pyon.util.int_test import IonIntegrationTestCase

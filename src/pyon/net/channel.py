@@ -40,7 +40,7 @@ is closed)
 """
 from pyon.util.log import log
 from gevent import queue as gqueue
-from gevent import coros
+from gevent.lock import RLock
 from contextlib import contextmanager
 from gevent.event import AsyncResult, Event
 from pyon.net.transport import AMQPTransport, NameTrio
@@ -282,7 +282,7 @@ class BaseChannel(object):
         Attaches a bound transport and indicates this channel is now open.
         """
         self._transport = transport
-        self._lock = coros.RLock()
+        self._lock = RLock()
         self._fsm.process(self.I_ATTACH)
 
     def set_closed_error_callback(self, callback):
