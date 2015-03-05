@@ -127,6 +127,31 @@ Using IPython with buildout:
     > bin/ipython
 
 
+TEST
+====
+
+To run automated tests:
+    > bin/nosetests
+
+Test options (selection, can be combined):
+    > bin/nosetests -v      # List test names and status while running
+    > bin/nosetests -s      # Show console output while running
+
+You can run subsets of tests:
+    > bin/nosetests -a UNIT   # Unit tests only (mocked out backend dependencies)
+    > bin/nosetests -a INT    # Integration tests only (loads full service stack)
+    > bin/nosetests -a SMOKE  # Small cross-section of tests to quickly check function
+
+    > bin/nosetests scioncc.path.to.package  # Run a subset by code package
+    > bin/nosetests scioncc.path.to.package.module:TestClass.test_method  # Run a specific test
+
+Code coverage.
+    See http://nedbatchelder.com/code/coverage for details, options etc.
+    > bin/coverage bin/nosetests   # Can run with any test
+    > bin/coverage report
+    > bin/coverage html
+
+
 DEPLOYMENT
 ==========
 

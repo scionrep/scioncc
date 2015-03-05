@@ -132,6 +132,8 @@ RABBITMQ (MESSAGE BROKER):
 DOCKER INSTALL
 ==============
 
+Currently experimental - docker images not regularly maintained.
+
 Install a recent docker on Ubuntu 14.04:
     See https://docs.docker.com/installation/ubuntulinux/
     > curl -sSL https://get.docker.com/ubuntu/ | sudo sh

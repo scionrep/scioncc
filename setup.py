@@ -59,6 +59,7 @@ setup(  name='scioncc',
                 'generate_interfaces=scripts.generate_interfaces:main',
                 'store_interfaces=scripts.store_interfaces:main',
                 'clear_db=pyon.datastore.clear_db_util:main',
+                'coverage=scripts.coverage:main',
                 ]
             },
         dependency_links=[],
@@ -92,6 +93,7 @@ setup(  name='scioncc',
             'nose==1.1.2',
             'mock==0.8',
             'webtest==2.0.17',         # For service gateway test
+            'coverage==4.0a5',         # Code coverage
 
             # Check if all these are needed
             'graypy==0.2.11',          # For production logging

@@ -1,0 +1,18 @@
+[run]
+concurrency = gevent
+source =
+    src
+omit =
+    */__init__*
+    */test/*
+    */util/*_plugin*
+    */insulate*
+    */util/nose_gevent_profiler*
+    */util/unit_test*
+    */util/lru_cache*
+    */interceptor/sample*
+    */shell_api*
+    */datastore_admin*
+    */breakpoint*
+[html]
+directory = coverage_results

@@ -33,18 +33,21 @@
 
     <target name="clean" description="clean up">
         <delete>
+            <fileset dir="." includes=".coverage"/>
+            <fileset dir="." includes="*.pyc"/>
             <fileset dir="${src}" includes="**/*.pyc"/>
+            <fileset dir="logs" includes="*"/>
         </delete>
         <delete dir="interface"/>
         <delete dir="${build}"/>
         <delete dir="${dist}"/>
-        <delete dir="${src}/scioncc.egg-info"/>
-        <!--<antcall target="remeggs"/>-->
+        <delete dir="coverage_results"/>
     </target>
 
     <target name="clean-buildout"
         description="clean up buildout dirs" depends="clean" >
         <echo message="Clean up buildout directories.  Please run `python bootstrap.py` to start buildout."/>
+        <delete dir="logs"/>
         <delete dir="parts"/>
         <delete dir="develop-eggs"/>
         <delete dir="bin"/>
@@ -52,5 +55,6 @@
         <delete dir="eggs"/>
         <delete dir="build"/>
         <delete file=".installed.cfg"/>
+        <delete dir="scioncc.egg-info"/>
     </target>
 </project>
