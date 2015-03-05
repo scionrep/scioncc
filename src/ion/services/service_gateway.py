@@ -727,7 +727,7 @@ def custom_403(error):
 # -------------------------------------------------------------------------
 # Service calls
 
-# ROUTE: Get version information about this copy of coi-services
+# ROUTE: Ping with gateway version
 @sg_blueprint.route("/")
 def sg_index():
     return sg_instance.sg_index()
@@ -779,7 +779,7 @@ def delete_attachment(attachment_id):
     return sg_instance.delete_attachment(attachment_id)
 
 
-# ROUTE: Get version information about this copy of coi-services
+# ROUTE: Get version information about this copy of ScionCC
 @sg_blueprint.route("/version")
 def get_version_info():
     return sg_instance.get_version_info()

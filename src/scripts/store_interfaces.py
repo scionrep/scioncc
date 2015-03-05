@@ -29,10 +29,10 @@ def main():
         bin/python bin/store_interfaces  -s mysysname -fc
 
         Load object definition from a file
-        bin/python bin/store_interfaces  -s mysysname -of obj/data/coi/org.yml
+        bin/python bin/store_interfaces  -s mysysname -of obj/data/core/org.yml
 
         Load service definition from a file
-        bin/python bin/store_interfaces  -s mysysname -sf obj/services/coi/datastore_service.yml
+        bin/python bin/store_interfaces  -s mysysname -sf obj/services/core/datastore_service.yml
     '''
 
     parser = argparse.ArgumentParser()

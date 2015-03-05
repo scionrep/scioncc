@@ -68,7 +68,6 @@ class ProcessEndpointUnitMixin(EndpointUnit):
     def _build_header(self, raw_msg, raw_headers):
         """
         Builds the header for this Process-level RPC conversation.
-        https://confluence.oceanobservatories.org/display/syseng/CIAD+COI+OV+Common+Message+Format
         """
 
         header = EndpointUnit._build_header(self, raw_msg, raw_headers)

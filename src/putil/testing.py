@@ -1,19 +1,9 @@
 """
-testing utilities to check that modules can be imported
+Testing utilities to check that modules can be imported
 
-these are not tests directly -- see implementations in coi-services/core/test/test_project_imports.py
-and pyon/core/test/test_project_imports.py
-
-imports cannot be safely un-imported, so if you run test_can_import below, you cannot run test_can_import_from_any_dir in the same go.
+imports cannot be safely un-imported, so if you run test_can_import below,
+you cannot run test_can_import_from_any_dir in the same go.
 so to use, run one method per command.
-
-examples from pyon:
-    bin/nosetests pyon/core/test/test_project_imports.py:TestProjectImports.test_can_import
-    bin/nosetests pyon/core/test/test_project_imports.py:TestProjectImports.test_can_import_from_any_dir
-
-examples from coi-services:
-    bin/nosetests ion/core/test/test_project_imports.py:TestProjectImports.test_can_import
-    bin/nosetests ion/core/test/test_project_imports.py:TestProjectImports.test_can_import_from_any_dir
 """
 
 import unittest
@@ -36,8 +26,9 @@ class UtilTest(unittest.TestCase):
 
 class ImportTest(UtilTest):
     """
-    unit test that attempts to import every python file beneath the base directory given.
-    fail if any can not be imported
+    Base class for unit test that attempts to import every python file beneath
+    the base directory given. Fail if any can not be imported
+    Add setUp method to child class setting base_package and source_directory.
     """
 
     def test_can_import(self):

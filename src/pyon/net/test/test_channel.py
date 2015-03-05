@@ -800,7 +800,7 @@ class TestChannelInt(IonIntegrationTestCase):
 
     #@skip('Not working consistently on buildbot')
     def test_consume_one_message_at_a_time(self):
-        # end to end test for CIDEVCOI-547 requirements
+        # end to end test
         #    - Process P1 is producing one message every 5 seconds
         #    - Process P2 is producing one other message every 3 seconds
         #    - Process S creates a auto-delete=False queue without a consumer and without a binding
