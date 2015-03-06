@@ -133,3 +133,11 @@ TemporalBounds:
   start_datetime: ""
   # The end of the timespan (string with number of seconds since epoch)
   end_datetime: ""
+
+
+# Object holding additional details for an Org to be extended
+OrgDetails:
+
+
+# Object holding additional details for ActorIdentity to be extended
+IdentityDetails:

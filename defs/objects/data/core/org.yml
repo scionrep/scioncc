@@ -1,7 +1,3 @@
-# Object holding additional org details
-OrgDetails:
----
-
 # A domain of authority that provides the context within which policy applies to registered
 # member individuals and resources.
 Org: !Extends_SystemResource
