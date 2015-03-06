@@ -34,7 +34,7 @@ def main():
                         help='Do not check import all source modules')
     opts = parser.parse_args()
 
-    print "generate_interfaces: ION interface generator with options:" , str(opts)
+    print "generate_interfaces: SciON interface generator with options:" , str(opts)
 
     print "generate_interfaces: Create directories and cleaning up..."
     opts.system_name = opts.sysname or get_default_sysname()

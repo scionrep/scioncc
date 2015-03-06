@@ -12,7 +12,7 @@ from pyon.net.messaging import make_node
 from pyon.core.bootstrap import CFG, bootstrap_pyon
 
 def main():
-    parser = argparse.ArgumentParser(description="CC Control script")
+    parser = argparse.ArgumentParser(description="ScionCC Control")
     parser.add_argument("pidfile", help="pidfile to use. If not specified, uses the first one found.")
     parser.add_argument("command", help="command to send to the container agent", choices=IContainerAgent.names())
     parser.add_argument("commandargs", metavar="arg", nargs="*", help="arguments to the command being sent")

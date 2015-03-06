@@ -45,7 +45,7 @@ def main():
     options, extra = parser.parse_known_args()
     args, command_line_config = parse_args(extra)
 
-    print "store_interfaces: Storing ION config and interfaces in datastore, with options:" , str(options)
+    print "store_interfaces: Storing SciON config and interfaces, with options:" , str(options)
 
     # -------------------------------------------------------------------------
     # Store config and interfaces
