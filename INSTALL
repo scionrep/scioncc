@@ -6,6 +6,38 @@ SciON INSTALLATION
 PREREQUISITES
 =============
 
+LINUX (UBUNTU):
+---------------
+
+Use a fresh Ubuntu 14.04 VM with latest patches:
+    > sudo apt-get update
+    > sudo apt-get upgrade -y
+
+Execute dependencies install script (from repo root dir - only if you are comfortable):
+    Make sure no errors occur. NOTE: PostgreSQL 9.3 works too
+    > sudo sh misc/install/install_ubuntu.sh
+
+Set postgres superuser password and create users (replace xxxxx with a good password):
+    > sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'xxxxx';"
+    > sudo -u postgres createuser ion
+    > sudo -u postgres psql -U postgres -d postgres -c "alter user ion with password 'xxxxx';"
+
+Configure postgres:
+    > sudo vim /etc/postgresql/9.4/main/pg_hba.conf
+    # For rule all (1 line), change peer to md5 to enable password login
+    > sudo service postgresql restart
+
+Create virtualenv:
+    > cd
+    > mkdir .virtualenvs
+    > cat <<EOF >> .profile
+    export EDITOR="/usr/bin/vim"
+    export WORKON_HOME="~/.virtualenvs"
+    source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+    EOF
+    > source .profile
+
+
 MAC OS:
 -------
 
@@ -44,37 +76,6 @@ Troubleshooting Mac OS Python install (tested on Mac OS 10.9):
     > brew install python
     > easy_install --upgrade pip stevedore setuptools virtualenv virtualenvwrapper
 
-
-LINUX (UBUNTU):
----------------
-
-Use a fresh Ubuntu 14.04 VM with latest patches:
-    > sudo apt-get update
-    > sudo apt-get upgrade
-
-Execute dependencies install script (from repo root dir - only if you are comfortable):
-    # NOTE: PostgreSQL 9.3 works too if 9.4 makes trouble
-    > sudo sh misc/install/install_ubuntu.sh
-
-Set postgres superuser password and create users (replace xxxxx with a good password):
-    > sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'xxxxx';"
-    > sudo -u postgres createuser ion
-    > sudo -u postgres psql -U postgres -d postgres -c "alter user ion with password 'xxxxx';"
-
-Configure postgres:
-    > sudo vim /etc/postgresql/9.4/main/pg_hba.conf
-    # For rule all (1 line), change peer to md5 to enable password login
-    > sudo service postgresql restart
-
-Install virtualenv:
-    > cd
-    > mkdir .virtualenvs
-    > cat <<EOF >> .profile
-    export EDITOR="/usr/bin/vim"
-    export WORKON_HOME="~/.virtualenvs"
-    source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
-    EOF
-    > source .profile
 
 
 COMMON INSTALLATION
