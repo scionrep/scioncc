@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+"""Utility to bulk load resources into the system, e.g. for initial preload"""
+
 __author__ = 'Michael Meisinger'
 
 import yaml
@@ -9,9 +11,8 @@ import os
 from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_VALID
 from pyon.core.bootstrap import get_service_registry
 from pyon.ion.resource import get_restype_lcsm
-from pyon.public import ImmediateProcess, CFG, log, BadRequest, Inconsistent, NotFound, IonObject, RT, OT, AS, LCS, named_any, get_safe
+from pyon.public import CFG, log, BadRequest, Inconsistent, NotFound, IonObject, RT, OT, AS, LCS, named_any, get_safe
 from ion.util.parse_utils import get_typed_value
-
 
 # Well known action config keys
 KEY_SCENARIO = "scenario"
@@ -30,7 +31,7 @@ UUID_RE = '^[0-9a-fA-F]{32}$'
 class Preloader(object):
 
     def initialize_preloader(self, process, preload_cfg):
-        log.info('Initialize preloader')
+        log.info("Initialize preloader")
 
         self.process = process
         self.preload_cfg = preload_cfg
@@ -51,6 +52,7 @@ class Preloader(object):
 
     def preload_master(self, filename):
         """Executes a preload master file"""
+        log.info("Preloading from master file: %s", filename)
         with open(filename, "r") as f:
             master_yml = f.read()
         master_cfg = yaml.load(master_yml)
@@ -78,6 +80,7 @@ class Preloader(object):
     def _execute_action(self, action):
         """Executes a preload action"""
         action_type = action["action"]
+        #log.debug("Preload action %s id=%s", action_type, action.get("id", ""))
         scope, func_type = action_type.split(":", 1)
         default_funcname = "_load_%s_%s" % (scope, func_type)
         action_func = getattr(self.process, default_funcname, None)
@@ -112,7 +115,7 @@ class Preloader(object):
         Look in the resource registry for any resources that have a preload ID on them so that
         they can be referenced under this preload ID during this load run.
         """
-        log.debug("Preparing for incremental preload. Loading prior preloaded resources for reference")
+        log.debug("Loading prior preloaded resources for reference")
 
         res_objs, res_keys = self.rr.find_resources_ext(alt_id_ns="PRE", id_only=False)
         res_preload_ids = [key['alt_id'] for key in res_keys]
