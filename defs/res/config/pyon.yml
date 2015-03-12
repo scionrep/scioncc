@@ -232,6 +232,7 @@ process:
 
   admin_ui:                  # Config for admin UI, started with --mx option
     web_server:
+      hostname: ""
       port: 8080
     association_graph: False    # Show D3 graph of associations
     read_only: False            # Run in read-only mode
@@ -239,7 +240,7 @@ process:
   ui_server:
     server:
       enabled: true
-      hostname: localhost
+      hostname: ""
       port: 4000
       socket_io: false
       log_access: true

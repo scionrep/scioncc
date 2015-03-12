@@ -42,7 +42,7 @@ class AdminUI(StandaloneProcess):
     def on_init(self):
 
         self.http_server = None
-        self.server_hostname = DEFAULT_WEB_SERVER_HOSTNAME
+        self.server_hostname = self.CFG.get_safe(CFG_PREFIX + '.web_server.hostname', DEFAULT_WEB_SERVER_HOSTNAME)
         self.server_port = self.CFG.get_safe(CFG_PREFIX + '.web_server.port', DEFAULT_WEB_SERVER_PORT)
         self.web_server_enabled = True
         self.logging = None
