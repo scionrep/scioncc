@@ -872,15 +872,15 @@ class TestGovernanceInt(IonIntegrationTestCase):
 
         #Verify that anonymous user cannot find a list of enrolled users in an Org
         with self.assertRaises(Unauthorized) as cm:
-            actors = self.org_client.find_enrolled_users(self.ion_org._id, headers=self.anonymous_actor_headers)
-        self.assertIn('org_management(find_enrolled_users) has been denied',cm.exception.message)
+            actors = self.org_client.list_enrolled_actors(self.ion_org._id, headers=self.anonymous_actor_headers)
+        self.assertIn('org_management(list_enrolled_actors) has been denied',cm.exception.message)
 
         #Verify that a user without the proper Org Manager cannot find a list of enrolled users in an Org
         with self.assertRaises(Unauthorized) as cm:
-            actors = self.org_client.find_enrolled_users(self.ion_org._id, headers=actor_header)
-        self.assertIn( 'org_management(find_enrolled_users) has been denied',cm.exception.message)
+            actors = self.org_client.list_enrolled_actors(self.ion_org._id, headers=actor_header)
+        self.assertIn( 'org_management(list_enrolled_actors) has been denied',cm.exception.message)
 
-        actors = self.org_client.find_enrolled_users(self.ion_org._id, headers=self.system_actor_header)
+        actors = self.org_client.list_enrolled_actors(self.ion_org._id, headers=self.system_actor_header)
         self.assertEqual(len(actors),3)  # WIll include the ION system actor
 
         #Create a second Org
@@ -958,7 +958,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         negotiations = self.org_client.find_user_negotiations(actor_id, org2_id, headers=actor_header)
         self.assertEqual(len(negotiations),2)
 
-        actors = self.org_client.find_enrolled_users(org2_id, headers=self.system_actor_header)
+        actors = self.org_client.list_enrolled_actors(org2_id, headers=self.system_actor_header)
         self.assertEqual(len(actors),0)
 
         #Check the get extended marine facility to check on the open and closed negotiations when called by normal user
@@ -982,7 +982,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         sap_response = Negotiation.create_counter_proposal(negotiations[0], ProposalStatusEnum.ACCEPTED, ProposalOriginatorEnum.PROVIDER)
         sap_response2 = self.org_client.negotiate(sap_response, headers=self.system_actor_header )
 
-        actors = self.org_client.find_enrolled_users(org2_id, headers=self.system_actor_header)
+        actors = self.org_client.list_enrolled_actors(org2_id, headers=self.system_actor_header)
         self.assertEqual(len(actors),1)
 
         #User tried requesting enrollment again - this should fail
@@ -1049,20 +1049,20 @@ class TestGovernanceInt(IonIntegrationTestCase):
         #Build the message headers used with this user
         actor_header = get_actor_header(actor_id)
 
-        actors = self.org_client.find_enrolled_users(self.ion_org._id, headers=self.system_actor_header)
+        actors = self.org_client.list_enrolled_actors(self.ion_org._id, headers=self.system_actor_header)
         self.assertEqual(len(actors),3)  # WIll include the ION system actor and the non user actor from setup
 
         ## test_org_roles and policies
 
-        roles = self.org_client.find_org_roles(self.ion_org._id)
+        roles = self.org_client.list_org_roles(self.ion_org._id)
         self.assertEqual(len(roles),3)
         self.assertItemsEqual([r.governance_name for r in roles], [MODERATOR_ROLE, MEMBER_ROLE, SUPERUSER_ROLE])
 
-        roles = self.org_client.find_org_roles_by_user(self.ion_org._id, self.system_actor._id, headers=self.system_actor_header)
+        roles = self.org_client.list_enrolled_actors(self.ion_org._id, self.system_actor._id, headers=self.system_actor_header)
         self.assertEqual(len(roles),3)
         self.assertItemsEqual([r.governance_name for r in roles], [MEMBER_ROLE, MODERATOR_ROLE, SUPERUSER_ROLE])
 
-        roles = self.org_client.find_org_roles_by_user(self.ion_org._id, actor_id, headers=self.system_actor_header)
+        roles = self.org_client.list_enrolled_actors(self.ion_org._id, actor_id, headers=self.system_actor_header)
         self.assertEqual(len(roles),1)
         self.assertItemsEqual([r.governance_name for r in roles], [MEMBER_ROLE])
 
@@ -1078,7 +1078,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         org2 = self.org_client.find_org(ORG2)
         self.assertEqual(org2_id, org2._id)
 
-        roles = self.org_client.find_org_roles(org2_id)
+        roles = self.org_client.list_org_roles(org2_id)
         self.assertEqual(len(roles),2)
         self.assertItemsEqual([r.governance_name for r in roles], [MODERATOR_ROLE, MEMBER_ROLE])
 
@@ -1087,17 +1087,17 @@ class TestGovernanceInt(IonIntegrationTestCase):
 
         #First try to add the user role anonymously
         with self.assertRaises(Unauthorized) as cm:
-            self.org_client.add_user_role(org2_id, operator_role, headers=self.anonymous_actor_headers)
-        self.assertIn('org_management(add_user_role) has been denied',cm.exception.message)
+            self.org_client.add_org_role(org2_id, operator_role, headers=self.anonymous_actor_headers)
+        self.assertIn('org_management(add_org_role) has been denied',cm.exception.message)
 
-        self.org_client.add_user_role(org2_id, operator_role, headers=self.system_actor_header)
+        self.org_client.add_org_role(org2_id, operator_role, headers=self.system_actor_header)
 
-        roles = self.org_client.find_org_roles(org2_id)
+        roles = self.org_client.list_org_roles(org2_id)
         self.assertEqual(len(roles),3)
         self.assertItemsEqual([r.governance_name for r in roles], [MODERATOR_ROLE, MEMBER_ROLE,  OPERATOR_ROLE])
 
         #Add the same role to the first Org as well
-        self.org_client.add_user_role(self.ion_org._id, operator_role, headers=self.system_actor_header)
+        self.org_client.add_org_role(self.ion_org._id, operator_role, headers=self.system_actor_header)
 
         # test proposals roles.
 
@@ -1142,7 +1142,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         negotiations = self.org_client.find_user_negotiations(actor_id, org2_id, headers=actor_header)
         self.assertEqual(len(negotiations),1)
 
-        actors = self.org_client.find_enrolled_users(org2_id, headers=self.system_actor_header)
+        actors = self.org_client.list_enrolled_actors(org2_id, headers=self.system_actor_header)
         self.assertEqual(len(actors),0)
 
         #Manager approves proposal
@@ -1152,7 +1152,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         sap_response = Negotiation.create_counter_proposal(negotiations[0], ProposalStatusEnum.ACCEPTED, ProposalOriginatorEnum.PROVIDER)
         sap_response2 = self.org_client.negotiate(sap_response, headers=self.system_actor_header )
 
-        actors = self.org_client.find_enrolled_users(org2_id, headers=self.system_actor_header)
+        actors = self.org_client.list_enrolled_actors(org2_id, headers=self.system_actor_header)
         self.assertEqual(len(actors),1)
 
         #Create a proposal to add a role to a user
@@ -1306,7 +1306,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
         org2 = self.org_client.find_org(ORG2)
         self.assertEqual(org2_id, org2._id)
 
-        roles = self.org_client.find_org_roles(org2_id)
+        roles = self.org_client.list_org_roles(org2_id)
         self.assertEqual(len(roles),2)
         self.assertItemsEqual([r.governance_name for r in roles], [MODERATOR_ROLE, MEMBER_ROLE])
 
@@ -1314,8 +1314,8 @@ class TestGovernanceInt(IonIntegrationTestCase):
         operator_role = IonObject(RT.UserRole, governance_name=OPERATOR_ROLE,name='Instrument Operator', description='Instrument Operator')
 
         #And add it to all Orgs
-        self.org_client.add_user_role(self.ion_org._id, operator_role, headers=self.system_actor_header)
-        self.org_client.add_user_role(org2_id, operator_role, headers=self.system_actor_header)
+        self.org_client.add_org_role(self.ion_org._id, operator_role, headers=self.system_actor_header)
+        self.org_client.add_org_role(org2_id, operator_role, headers=self.system_actor_header)
 
         #Add the OPERATOR_ROLE to the User for the ION Org
         self.org_client.grant_role(self.ion_org._id, actor_id, OPERATOR_ROLE, headers=self.system_actor_header)

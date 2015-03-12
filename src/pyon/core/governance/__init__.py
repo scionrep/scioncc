@@ -189,7 +189,7 @@ def get_valid_resource_commitments(resource_id=None, actor_id=None):
 
     try:
         gov_controller = bootstrap.container_instance.governance_controller
-        commitments,_ = gov_controller.rr.find_objects(resource_id, PRED.hasCommitment, RT.Commitment)
+        commitments, _ = gov_controller.rr.find_subjects(RT.Commitment, PRED.hasTarget, resource_id, id_only=False)
         if not commitments:
             return None
 

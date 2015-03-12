@@ -384,7 +384,7 @@ class GovernanceIntTest(IonIntegrationTestCase):
 
         self.rr = self.container.resource_registry
 
-    def add_user_role(self, org='', user_role=None):
+    def add_org_role(self, org='', user_role=None):
         """Adds a UserRole to an Org. Will call Policy Management Service to actually
         create the role object that is passed in, if the role by the specified
         name does not exist. Throws exception if either id does not exist.
@@ -407,7 +407,7 @@ class GovernanceIntTest(IonIntegrationTestCase):
         ion_org._id = ion_org_id
 
         manager_role = IonObject(RT.UserRole, name='Org Manager', governance_name=MODERATOR_ROLE, description='Org Manager')
-        manager_role_id = self.add_user_role(ion_org, manager_role)
+        manager_role_id = self.add_org_role(ion_org, manager_role)
 
         member_role = IonObject(RT.UserRole, name='Org Member', governance_name=MEMBER_ROLE, description='Org Member')
 
@@ -433,11 +433,11 @@ class GovernanceIntTest(IonIntegrationTestCase):
 
 
         member2_role = IonObject(RT.UserRole, governance_name=MEMBER_ROLE, name='Org Member', description='Org Member')
-        member2_role_id = self.add_user_role(org2, member2_role)
+        member2_role_id = self.add_org_role(org2, member2_role)
 
         operator2_role = IonObject(RT.UserRole, governance_name='OPERATOR', name='Instrument Operator',
                                    description='Instrument Operator')
-        operator2_role_id = self.add_user_role(org2, operator2_role)
+        operator2_role_id = self.add_org_role(org2, operator2_role)
 
         self.rr.create_association(actor_id, PRED.hasRole, member2_role_id)
 

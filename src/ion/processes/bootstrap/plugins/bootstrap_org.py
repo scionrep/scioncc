@@ -36,7 +36,7 @@ class BootstrapOrg(BootstrapPlugin):
         # Instantiate initial set of User Roles for this Org
         superuser_role = UserRole(governance_name=SUPERUSER_ROLE, name='Superuser role',
                                   description='Has all permissions system wide')
-        org_ms_client.add_user_role(self.org_id, superuser_role)
+        org_ms_client.add_org_role(self.org_id, superuser_role)
         org_ms_client.grant_role(self.org_id, system_actor_id, SUPERUSER_ROLE)
 
         # Make the ION system agent a manager for the ION Org

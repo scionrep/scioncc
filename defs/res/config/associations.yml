@@ -15,6 +15,10 @@ AssociationDefinitions:
     domain: [Org, Collection]
     range: [Resource]
     docstring: References a resource belonging to Org or a Collection
+  - predicate: hasTarget
+    domain: [Commitment]
+    range: [Resource]
+    docstring: References a resource referenced by a Commitment
   - predicate: hasOwner
     domain: [Resource]
     range: [ActorIdentity]
@@ -34,7 +38,7 @@ AssociationDefinitions:
     range: [Policy]
     docstring: Indicates the policy for the resource
   - predicate: hasCommitment
-    domain: [ActorIdentity, Resource, Org]
+    domain: [ActorIdentity, Org]
     range: [Commitment]
     docstring: References a Commitment for an identity (that is committed) or a resource (that is used)
   - predicate: hasContract

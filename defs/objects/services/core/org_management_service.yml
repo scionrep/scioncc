@@ -58,9 +58,8 @@ methods:
 
   find_org:
     docstring: |
-      Returns the Org object for the specified name.
-      Throws exception if name does not match any persisted Org
-      objects.
+      Returns the Org object for the specified name. Returns the system root Org
+      if no name provided.
     in:
       name: ""
     out:
@@ -72,11 +71,10 @@ methods:
   # -----------------
 
   #@AlwaysVerifyPolicy
-  add_user_role:
+  add_org_role:
     docstring: |
-       Adds a UserRole to an Org. Will call Policy Management Service to actually
-       create the role object that is passed in, if the role by the specified
-       name does not exist. Throws exception if either id does not exist.
+       Adds a UserRole to an Org, if the role by the specified
+       name does not exist.
     in:
       org_id: ""
       user_role: !UserRole
@@ -86,11 +84,10 @@ methods:
       NotFound: object with specified name does not exist
 
   #@AlwaysVerifyPolicy
-  remove_user_role:
+  remove_org_role:
     docstring: |
        Removes a UserRole from an Org. The UserRole will not be removed if there are
-       users associated with the UserRole unless the force_removal paramater is set to True
-       Throws exception if either id does not exist.
+       users associated with the UserRole unless the force_removal parameter is set to True
     in:
       org_id: ""
       role_name: ""
@@ -101,7 +98,7 @@ methods:
 
   find_org_role_by_name:
     docstring: |
-      Returns the User Role object for the specified name in the Org.
+      Returns the UserRole object for the specified name in the Org.
       Throws exception if name does not match any persisted User Role or the Org does not exist.
       objects.
     in:
@@ -112,7 +109,7 @@ methods:
     throws:
       NotFound: object with specified name or if does not exist
 
-  find_org_roles:
+  list_org_roles:
     docstring: |
       Returns a list of roles available in an Org. Will throw a not NotFound exception
       if none of the specified ids do not exist.
@@ -176,8 +173,7 @@ methods:
       Returns a list of negotiations for a specified Actor. All negotiations for all Orgs will be returned
       unless an org_id is specified. An optional proposal_type can be supplied
       or else all proposals will be returned. An optional negotiation_status can be provided
-      or else all proposals will be returned. Will throw a not NotFound exception
-      if any of the specified ids do not exist.
+      or else all proposals will be returned.
     in:
       actor_id: ""
       org_id: ""
@@ -193,27 +189,25 @@ methods:
   #@AlwaysVerifyPolicy
   enroll_member:
     docstring: |
-      Enrolls a specified actor into the specified Org so that they may find and negotiate to use resources
-      of the Org. Membership in the ION Org is implied by registration with the system, so a membership
-      association to the ION Org is not maintained. Throws a NotFound exception if neither id is found.
+      Enrolls an actor into an Org so that they may find and negotiate to use
+      resources of the Org. Membership in the ION Org is implied by registration
+      with the system, so a membership association to the ION Org is not maintained.
     in:
       org_id: ""
       actor_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
   #@AlwaysVerifyPolicy
   cancel_member_enrollment:
     docstring: |
-      Cancels the membership of a specific actor actor within the specified Org. Once canceled, the actor will no longer
-      have access to the resource of that Org. Throws a NotFound exception if neither id is found.
+      Cancels the membership of a specific actor actor within the specified Org.
+      Once canceled, the actor will no longer have access to the resource of that Org.
     in:
       org_id: ""
       actor_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
@@ -242,7 +236,7 @@ methods:
       NotFound: object with specified id does not exist
 
   #@AlwaysVerifyPolicy
-  find_enrolled_users:
+  list_enrolled_actors:
     docstring: |
       Returns a list of actors enrolled in an Org. Will throw a not NotFound exception
       if none of the specified ids do not exist.
@@ -254,7 +248,7 @@ methods:
       NotFound: object with specified id does not exist
 
   #@AlwaysVerifyPolicy
-  find_enrolled_orgs:
+  list_orgs_for_actor:
     docstring: |
       Returns a list of Orgs that the actor is enrolled in. Will throw a not NotFound exception
       if none of the specified ids do not exist.
@@ -279,7 +273,6 @@ methods:
       role_name: ""
       scope: !RoleScope
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
@@ -293,7 +286,6 @@ methods:
       actor_id: ""
       role_name: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
@@ -311,64 +303,48 @@ methods:
     throws:
       NotFound: object with specified id does not exist
 
-  find_org_roles_by_user:
+  list_actor_roles:
     docstring: |
-      Returns a list of User Roles for a specific actor in an Org.
-      Will throw a not NotFound exception if either of the IDs do not exist.
+      Returns a list of UserRoles for a specific actor, optionally only within in an Org.
+      The org_governance_name is contained within each UserRole object
     in:
-      org_id: ""
       actor_id: ""
+      org_id: ""
     out:
       user_role_list: []
     throws:
       NotFound: object with specified id does not exist
-
-
-  find_all_roles_by_user:
-    docstring: |
-      Returns a list of all User Roles roles by Org associated with the specified actor.
-      Will throw a not NotFound exception if either of the IDs do not exist.
-    in:
-      actor_id: ""
-    out:
-      user_roles_by_org: {}
-    throws:
-      NotFound: object with specified id does not exist
-
-
 
   # ---------------------------
 
   #@AlwaysVerifyPolicy
   share_resource:
     docstring: |
-      Share a specified resource with the specified Org. Once shared, the resource will be added to a directory
-      of available resources within the Org. Throws a NotFound exception if neither id is found.
+      Share a resource with the specified Org. Once shared, the resource will be added to a directory
+      of available resources within the Org.
     in:
       org_id: ""
       resource_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
   #@AlwaysVerifyPolicy
   unshare_resource:
     docstring: |
-      Unshare a specified resource with the specified Org. Once unshared, the resource will be removed from a directory
-      of available resources within the Org. Throws a NotFound exception if neither id is found.
+      Unshare a resource with the specified Org. Once unshared, the resource will be
+      removed from the directory of available resources within the Org.
     in:
       org_id: ""
       resource_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
   #@OperationVerb=GET
   is_resource_shared:
     docstring: |
-       Returns True if the specified resource_id has been shared in the specified org_id; otherwise False is returned.
+       Returns True if the resource has been shared in the specified org_id; otherwise False is returned.
     in:
       org_id: ""
       resource_id: ""
@@ -378,10 +354,32 @@ methods:
       BadRequest: if either org_id or resource_id is not specified
 
   #@AlwaysVerifyPolicy
+  list_shared_resources:
+    docstring: |
+      Returns a list of resources shared in an Org.
+    in:
+      org_id: ""
+    out:
+      resource_list: []
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@AlwaysVerifyPolicy
+  list_orgs_for_resource:
+    docstring: |
+      Returns a list of Orgs that the resource is shared in.
+    in:
+      resource_id: ""
+    out:
+      org_list: []
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@AlwaysVerifyPolicy
   acquire_resource:
     docstring: |
-      Creates a Commitment Resource for the specified resource for a specified actor withing the specified Org as defined in the
-      proposal. Once shared, the resource is committed to the actor. Throws a NotFound exception if none of the ids are found.
+      Creates a Commitment for the specified resource for a specified actor withing the specified Org
+      as defined in the proposal. Once shared, the resource is committed to the actor.
     in:
       sap: !AcquireResourceProposal
     out:
@@ -409,11 +407,10 @@ methods:
   #@AlwaysVerifyPolicy
   release_commitment:
     docstring: |
-      Release the commitment that was created for resources. Throws a NotFound exception if none of the ids are found.
+      Release the commitment that was created for resources.
     in:
       commitment_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
@@ -470,7 +467,6 @@ methods:
       org_id: ""
       affiliate_org_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist
 
@@ -483,6 +479,5 @@ methods:
       org_id: ""
       affiliate_org_id: ""
     out:
-      success: True
     throws:
       NotFound: object with specified id does not exist

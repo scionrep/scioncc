@@ -50,7 +50,7 @@ class Preloader(object):
         self.resource_objs = {}         # Holds a mapping of preload IDs to the actual resource objects
         self.resource_assocs = {}       # Holds a mapping of existing associations list by predicate
 
-    def preload_master(self, filename):
+    def preload_master(self, filename, skip_steps=None):
         """Executes a preload master file"""
         log.info("Preloading from master file: %s", filename)
         with open(filename, "r") as f:
@@ -60,6 +60,9 @@ class Preloader(object):
             raise BadRequest("Invalid preload steps file")
 
         for step in master_cfg["steps"]:
+            if skip_steps and step in skip_steps:
+                log.info("Skipping step %s" % step)
+                continue
             step_filename = "%s/%s.yml" % (os.path.dirname(filename), step)
             self._execute_step(step_filename)
 

@@ -586,7 +586,10 @@ class ServiceGateway(object):
                     return headers
 
             # The user's roles were not cached so hit the datastore to find it.
-            org_roles = self.org_client.find_all_roles_by_user(actor_id, headers=self._get_gateway_headers())
+            role_list = self.org_client.list_actor_roles(actor_id, headers=self._get_gateway_headers())
+            org_roles = {}
+            for role in role_list:
+                org_roles.setdefault(role.org_governance_name, []).append(role)
 
             role_header = get_role_message_headers(org_roles)
 
