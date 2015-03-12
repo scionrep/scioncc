@@ -1,9 +1,9 @@
 name: org_management
 
 docstring: |
-  Services to define and administer a facility (synonymous Org, community), to enroll/remove members and
-  to provide access to the resources of an Org to enrolled or affiliated entities (identities). Contains
-  contract and commitment repository
+  Services to define and administer an Org (aka facility, community), to enroll/remove members,
+  to grant/revoke roles and to provide access to the resources of an Org to enrolled or affiliated
+  entities (identities). Maintains resource contracts and commitments.
 
 dependencies: [resource_registry]
 
@@ -391,7 +391,7 @@ methods:
   create_resource_commitment:
     docstring: |
       Creates a Commitment Resource for the specified resource for a specified actor withing the specified Org. Once shared,
-      the resource is committed to the actor. Throws a NotFound exception if none of the ids are found.
+      the resource is committed to the actor.
     in:
       org_id: ""
       actor_id: ""
@@ -411,6 +411,22 @@ methods:
     in:
       commitment_id: ""
     out:
+    throws:
+      NotFound: object with specified id does not exist
+
+  #@AlwaysVerifyPolicy
+  find_commitments:
+    docstring: |
+      Returns all commitments in specified org and optionally a given actor and/or optionally a given resource.
+      If exclusive == True, only return exclusive commitments.
+    in:
+      org_id: ""
+      resource_id: ""
+      actor_id: ""
+      exclusive: False
+      include_expired: False
+    out:
+      commitment_list: []
     throws:
       NotFound: object with specified id does not exist
 
@@ -441,6 +457,21 @@ methods:
       success: True
     throws:
       BadRequest: if resource_id is not specified
+
+  #@AlwaysVerifyPolicy
+  find_acquired_resources:
+    docstring: |
+      Returns a list of resources acquired within the specified Org, optionally for the specified
+      actor. If exclusive == True, only return exclusively acquired resources
+    in:
+      org_id: ""
+      actor_id: ""
+      exclusive: False
+      include_expired: False
+    out:
+      resource_list: []
+    throws:
+      NotFound: object with specified id does not exist
 
   # -------
 

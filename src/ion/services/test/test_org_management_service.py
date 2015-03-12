@@ -7,7 +7,7 @@ from nose.plugins.attrib import attr
 from pyon.util.int_test import IonIntegrationTestCase
 
 from pyon.core.governance import MODERATOR_ROLE, OPERATOR_ROLE, MEMBER_ROLE
-from pyon.public import PRED, RT, BadRequest, NotFound
+from pyon.public import PRED, RT, BadRequest, NotFound, get_ion_ts_millis
 
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
@@ -153,12 +153,41 @@ class TestOrgManagementServiceInt(IonIntegrationTestCase):
         inst_obj = TestInstrument(name="Test instrument")
         inst_id, _ = self.resource_registry.create(inst_obj)
 
+        self.assertFalse(self.org_management_service.is_resource_acquired(resource_id=inst_id))
+
         self.org_management_service.share_resource(org_id, inst_id)
         res_ids, _ = self.resource_registry.find_objects(org_id, PRED.hasResource, id_only=True)
         self.assertEquals(1, len(res_ids))
 
+        cmt_id = self.org_management_service.create_resource_commitment(org_id, actor_id, inst_id)
 
+        self.assertTrue(self.org_management_service.is_resource_acquired(resource_id=inst_id))
+        self.assertFalse(self.org_management_service.is_resource_acquired_exclusively(resource_id=inst_id))
 
+        cmt_objs = self.org_management_service.find_commitments(org_id=org_id)
+        self.assertEquals(1, len(cmt_objs))
+        cmt_objs = self.org_management_service.find_commitments(resource_id=inst_id)
+        self.assertEquals(1, len(cmt_objs))
+        cmt_objs = self.org_management_service.find_commitments(actor_id=actor_id)
+        self.assertEquals(1, len(cmt_objs))
+
+        res_objs = self.org_management_service.find_acquired_resources(org_id=org_id)
+        self.assertEquals(1, len(res_objs))
+        res_objs = self.org_management_service.find_acquired_resources(actor_id=actor_id)
+        self.assertEquals(1, len(res_objs))
+
+        cmt_id = self.org_management_service.create_resource_commitment(org_id, actor_id, inst_id, exclusive=True,
+                                                                        expiration=get_ion_ts_millis()+1000)
+
+        self.assertTrue(self.org_management_service.is_resource_acquired(resource_id=inst_id))
+        self.assertTrue(self.org_management_service.is_resource_acquired_exclusively(resource_id=inst_id))
+
+        cmt_objs = self.org_management_service.find_commitments(org_id=org_id, exclusive=True)
+        self.assertEquals(1, len(cmt_objs))
+        cmt_objs = self.org_management_service.find_commitments(resource_id=inst_id, exclusive=True)
+        self.assertEquals(1, len(cmt_objs))
+        cmt_objs = self.org_management_service.find_commitments(actor_id=actor_id, exclusive=True)
+        self.assertEquals(1, len(cmt_objs))
 
         self.org_management_service.unshare_resource(org_id, inst_id)
         res_ids, _ = self.resource_registry.find_objects(org_id, PRED.hasResource, id_only=True)

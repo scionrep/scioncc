@@ -7,7 +7,7 @@ from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, OPERATOR_ROLE
 from pyon.core.governance.negotiation import Negotiation
 from pyon.core.registry import issubtype
 from pyon.ion.directory import Directory
-from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier
+from pyon.util.containers import is_basic_identifier, get_ion_ts, create_basic_identifier, get_ion_ts_millis
 
 from interface.objects import ProposalStatusEnum, ProposalOriginatorEnum, NegotiationStatusEnum
 from interface.services.core.iorg_management_service import BaseOrgManagementService
@@ -682,9 +682,13 @@ class OrgManagementService(BaseOrgManagementService):
         """Creates a Commitment for the specified resource for a specified actor within
         the specified Org. Once shared, the resource is committed to the actor.
         """
-        org_obj = self._validate_resource_id("org_id", org_id, RT.Org)
+        org_obj = self._validate_resource_id("org_id", org_id, RT.Org, optional=True)
         actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
         resource_obj = self._validate_resource_id("resource_id", resource_id)
+
+        if org_id:
+            # Check that resource is shared in Org?
+            pass
 
         res_commitment = IonObject(OT.ResourceCommitment, resource_id=resource_id, exclusive=exclusive)
 
@@ -694,15 +698,17 @@ class OrgManagementService(BaseOrgManagementService):
         commitment._id, commitment._rev = self.rr.create(commitment)
 
         # Creating associations to all related objects
-        self.rr.create_association(org_id, PRED.hasCommitment, commitment._id)
         self.rr.create_association(actor_id, PRED.hasCommitment, commitment._id)
         self.rr.create_association(commitment._id, PRED.hasTarget, resource_id)
 
-        self.event_pub.publish_event(event_type=OT.ResourceCommitmentCreatedEvent,
-                                     origin=org_id, origin_type="Org", sub_type=resource_obj.type_,
-                                     description="The resource has been committed by the Org",
-                                     resource_id=resource_id, org_name=org_obj.name,
-                                     commitment_id=commitment._id, commitment_type=commitment.commitment.type_)
+        if org_id:
+            self.rr.create_association(org_id, PRED.hasCommitment, commitment._id)
+
+            self.event_pub.publish_event(event_type=OT.ResourceCommitmentCreatedEvent,
+                                         origin=org_id, origin_type="Org", sub_type=resource_obj.type_,
+                                         description="The resource has been committed by the Org",
+                                         resource_id=resource_id, org_name=org_obj.name,
+                                         commitment_id=commitment._id, commitment_type=commitment.commitment.type_)
 
         return commitment._id
 
@@ -719,6 +725,39 @@ class OrgManagementService(BaseOrgManagementService):
                                      description="The resource has been uncommitted by the Org",
                                      resource_id=commitment_obj.commitment.resource_id,
                                      commitment_id=commitment_id, commitment_type=commitment_obj.commitment.type_)
+
+    def find_commitments(self, org_id='', resource_id='', actor_id='', exclusive=False, include_expired=False):
+        """Returns all commitments in specified org and optionally a given actor and/or optionally a given resource.
+        If exclusive == True, only return exclusive commitments.
+        """
+        self._validate_resource_id("org_id", org_id, RT.Org, optional=True)
+        self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity, optional=True)
+        if not org_id and not resource_id and not actor_id:
+            raise BadRequest("Must restrict search for commitments")
+
+        if resource_id:
+            com_objs, _ = self.rr.find_subjects(RT.Commitment, PRED.hasTarget, resource_id, id_only=False)
+            if actor_id:
+                com_objs = [c for c in com_objs if c.consumer == actor_id]
+            if org_id:
+                com_objs = [c for c in com_objs if c.provider == org_id]
+        elif actor_id:
+            com_objs, _ = self.rr.find_objects(actor_id, PRED.hasCommitment, RT.Commitment, id_only=False)
+            if org_id:
+                com_objs = [c for c in com_objs if c.provider == org_id]
+        else:
+            com_objs, _ = self.rr.find_objects(org_id, PRED.hasCommitment, RT.Commitment, id_only=False)
+
+        if exclusive:
+            com_objs = [c for c in com_objs if c.commitment.type_ == OT.ResourceCommitment and c.commitment.exclusive]
+        else:
+            com_objs = [c for c in com_objs if c.commitment.type_ != OT.ResourceCommitment or (
+                        c.commitment.type_ == OT.ResourceCommitment and not c.commitment.exclusive)]
+        if not include_expired:
+            cur_time = get_ion_ts_millis()
+            com_objs = [c for c in com_objs if int(c.expiration) == 0 or cur_time < int(c.expiration)]
+
+        return com_objs
 
     def is_resource_acquired(self, actor_id="", resource_id=""):
         """Returns True if the specified resource_id has been acquired. The actor_id
@@ -740,24 +779,28 @@ class OrgManagementService(BaseOrgManagementService):
             raise BadRequest("The resource_id argument is missing")
 
         try:
-            cur_time = int(get_ion_ts())
-            commitments, _ = self.rr.find_subjects(RT.Commitment, PRED.hasTarget, resource_id, id_only=False)
-            for com in commitments:
-                if exclusive:
-                    # Can only be committed if expiration != 0 and still within
-                    if (actor_id is None or actor_id == com.consumer) and com.commitment.exclusive and \
-                            int(com.expiration) > 0 and cur_time < int(com.expiration):
-                        return True
-                else:
-                    # If the expiration != 0 make sure it has not expired
-                    if (actor_id is None or actor_id == com.consumer) and (
-                            (int(com.expiration) == 0) or (int(com.expiration) > 0 and cur_time < int(com.expiration))):
-                        return True
+            com_objs = self.find_commitments(resource_id=resource_id, actor_id=actor_id, exclusive=exclusive)
+            return bool(com_objs)
 
         except Exception as ex:
             log.exception("Error checking acquired status, actor_id=%s, resource_id=%s" % (actor_id, resource_id))
 
         return False
+
+    def find_acquired_resources(self, org_id='', actor_id='', exclusive=False, include_expired=False):
+        if not org_id and not actor_id:
+            raise BadRequest("Must provide org_id or actor_id")
+
+        com_objs = self.find_commitments(org_id=org_id, actor_id=actor_id,
+                                         exclusive=exclusive, include_expired=include_expired)
+
+        res_ids = {c.commitment.resource_id for c in com_objs if c.commitment.type_ == OT.ResourceCommitment}
+        res_objs = self.rr.read_mult(list(res_ids))
+
+        return res_objs
+
+    # -------------------------------------------------------------------------
+    # Org containers
 
     def is_in_org(self, container):
         container_list, _ = self.rr.find_subjects(RT.Org, PRED.hasResource, container)
