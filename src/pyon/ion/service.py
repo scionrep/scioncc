@@ -8,7 +8,6 @@ from types import ModuleType
 from zope.interface import implementedBy
 
 from pyon.core.exception import BadRequest, ServerError
-from pyon.core.registry import issubtype
 from pyon.util.log import log
 from pyon.util.containers import named_any, itersubclasses
 from pyon.util.context import LocalContextMixin
@@ -123,6 +122,7 @@ class BaseService(LocalContextMixin):
             raise BadRequest("Argument '%s': missing" % arg_name)
         resource_obj = self.clients.resource_registry.read(resource_id)
         if res_type:
+            from pyon.core.registry import issubtype
             if allow_subtype and not issubtype(resource_obj.type_, res_type):
                 raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
             elif not allow_subtype and resource_obj.type_ != res_type:
