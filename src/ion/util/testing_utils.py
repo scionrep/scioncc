@@ -65,6 +65,6 @@ def create_dummy_events(event_list, container=None):
     container = container or bootstrap.container_instance
     ev_by_alias = {}
     for (alias, event) in event_list:
-        evid, _ = container.event_repository.put_event(event)
+        evid = container.event_repository.put_event(event)
         ev_by_alias[alias] = evid
     return ev_by_alias

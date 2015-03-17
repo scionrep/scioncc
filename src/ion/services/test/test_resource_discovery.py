@@ -302,7 +302,7 @@ class ResourceQueryTest(IonIntegrationTestCase):
         ]
         ev_by_alias = {}
         for (alias, event) in events:
-            evid, _ = self.container.event_repository.put_event(event)
+            evid = self.container.event_repository.put_event(event)
             ev_by_alias[alias] = evid
 
         # ----------------------------------------------------

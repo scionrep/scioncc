@@ -276,6 +276,9 @@ class BaseEventSubscriberMixin(object):
 
 
 class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
+    """Manages a subscription to an event queue for a select set of event types or
+    event origins or other specialized binding.
+    """
 
     ALL_EVENTS = "#"
 
@@ -351,9 +354,10 @@ class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
 
         return ch
 
+
 class EventRepository(object):
     """
-    Class that uses a data store to provide a persistent repository for ION events.
+    Front-end to a persistent persistent repository of events.
     """
 
     def __init__(self, datastore_manager=None, container=None):
@@ -377,13 +381,23 @@ class EventRepository(object):
         self.event_store.close()
 
     def put_event(self, event):
+        """
+        Places an event object into the event repository. Retains event_ids if existing.
+        Returns event_id of new event.
+        """
         log.trace("Store event persistently %s", event)
         if not isinstance(event, Event):
             raise BadRequest("event must be type Event, not %s" % type(event))
         event_id = event.__dict__.pop("_id", None)
-        return self.event_store.create(event, event_id)
+        new_event_id, _ = self.event_store.create(event, event_id)
+        return new_event_id
 
     def put_events(self, events):
+        """
+        Place given list of event objects into the event repository. Retains event_ids if existing
+        and otherwise creates event_ids.
+        Returns list of event_ids in same order and index as original list of events objects.
+        """
         log.debug("Store %s events persistently", len(events))
         if type(events) is not list:
             raise BadRequest("events must be type list, not %s" % type(events))
@@ -391,16 +405,24 @@ class EventRepository(object):
             raise BadRequest("events must all be type Event")
 
         if events:
-            return self.event_store.create_mult(events, allow_ids=True)
+            event_res = self.event_store.create_mult(events, allow_ids=True)
+            return [eid for success, eid, eobj in event_res]
         else:
             return None
 
     def get_event(self, event_id):
+        """
+        Returns the event object for given event_id or raises NotFound
+        """
         log.trace("Retrieving persistent event for id=%s", event_id)
         event_obj = self.event_store.read(event_id)
         return event_obj
 
     def find_events(self, event_type=None, origin=None, start_ts=None, end_ts=None, id_only=False, **kwargs):
+        """
+        Returns an ordered list of event objects for given query arguments.
+        Return format is list of (event_id, event_key, event object) tuples
+        """
         log.trace("Retrieving persistent event for event_type=%s, origin=%s, start_ts=%s, end_ts=%s, descending=%s, limit=%s",
                   event_type, origin, start_ts, end_ts, kwargs.get("descending", None), kwargs.get("limit", None))
         events = None

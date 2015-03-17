@@ -82,7 +82,7 @@ def main():
     print "generate_interfaces: Generating service interfaces from service definitions..."
     exitcode = service_object.generate(opts)
 
-    print "generate_interfaces: Completed with exit code:" , exitcode
+    #print "generate_interfaces: Completed with exit code:", exitcode
     sys.exit(exitcode)
 
 if __name__ == '__main__':

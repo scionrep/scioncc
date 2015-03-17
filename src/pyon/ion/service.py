@@ -8,6 +8,7 @@ from types import ModuleType
 from zope.interface import implementedBy
 
 from pyon.core.exception import BadRequest, ServerError
+from pyon.core.registry import issubtype
 from pyon.util.log import log
 from pyon.util.containers import named_any, itersubclasses
 from pyon.util.context import LocalContextMixin
@@ -110,18 +111,22 @@ class BaseService(LocalContextMixin):
         if not condition:
             raise BadRequest(errorstr)
 
-    def _validate_resource_id(self, arg_name, resource_id, res_type=None, optional=False):
+    def _validate_resource_id(self, arg_name, resource_id, res_type=None, optional=False, allow_subtype=True):
         """
         Check that the given argument is a resource id, by retrieving the resource from the
-        resource registry. Additionally checks type and returns the result object
+        resource registry. Additionally, checks type and returns the result object.
+        Supports optional argument and subtypes.
         """
         if optional and not resource_id:
             return
         if not resource_id:
             raise BadRequest("Argument '%s': missing" % arg_name)
         resource_obj = self.clients.resource_registry.read(resource_id)
-        if res_type and resource_obj.type_ != res_type:
-            raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
+        if res_type:
+            if allow_subtype and not issubtype(resource_obj.type_, res_type):
+                raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
+            elif not allow_subtype and resource_obj.type_ != res_type:
+                raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
         return resource_obj
 
     def _validate_resource_obj(self, arg_name, resource_obj, res_type=None, optional=False, checks=""):

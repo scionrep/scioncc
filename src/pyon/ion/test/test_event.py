@@ -366,7 +366,7 @@ class TestEventRepository(IonUnitTestCase):
         event_repo1 = EventRepository(dsm)
 
         event1 = Event(origin="resource1")
-        event_id, _ = event_repo.put_event(event1)
+        event_id = event_repo.put_event(event1)
 
         event1r = event_repo.get_event(event_id)
         self.assertEquals(event1.origin, event1r.origin)
@@ -375,7 +375,7 @@ class TestEventRepository(IonUnitTestCase):
         events2 = []
         for i in xrange(5):
             ev = Event(origin="resource2", ts_created=str(ts + i))
-            event_id, _ = event_repo.put_event(ev)
+            event_id = event_repo.put_event(ev)
             events2.append((ev,event_id))
 
         events_r = event_repo.find_events(origin='resource2')
@@ -400,7 +400,7 @@ class TestEventRepository(IonUnitTestCase):
         self.assertEquals(len(events_r), 2)
 
         event3 = ResourceLifecycleEvent(origin="resource3")
-        event_id, _ = event_repo.put_event(event3)
+        event_id = event_repo.put_event(event3)
 
         events_r = event_repo.find_events(event_type="ResourceLifecycleEvent")
         self.assertEquals(len(events_r), 1)
@@ -487,7 +487,7 @@ class TestEventRepoInt(IonIntegrationTestCase):
         ]
         ev_by_alias = {}
         for (alias, event) in events:
-            evid, _ = self.container.event_repository.put_event(event)
+            evid = self.container.event_repository.put_event(event)
             ev_by_alias[alias] = evid
 
         # --- Basic event queries

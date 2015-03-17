@@ -10,7 +10,7 @@ from flask_socketio import SocketIO, SocketIOServer
 import gevent
 from gevent.wsgi import WSGIServer
 
-from pyon.public import StandaloneProcess, log, BadRequest, OT, get_ion_ts_millis
+from pyon.public import StandaloneProcess, log, BadRequest, NotFound, OT, get_ion_ts_millis
 from pyon.util.containers import named_any, current_time_millis
 from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth
 
@@ -46,6 +46,7 @@ class UIServer(StandaloneProcess):
         # Configuration
         self.server_enabled = self.CFG.get_safe(CFG_PREFIX + ".server.enabled") is True
         self.server_debug = self.CFG.get_safe(CFG_PREFIX + ".server.debug") is True
+        # Note: this may be the empty string. Using localhost does not make the server publicly accessible
         self.server_hostname = self.CFG.get_safe(CFG_PREFIX + ".server.hostname", DEFAULT_WEB_SERVER_HOSTNAME)
         self.server_port = self.CFG.get_safe(CFG_PREFIX + ".server.port", DEFAULT_WEB_SERVER_PORT)
         self.server_log_access = self.CFG.get_safe(CFG_PREFIX + ".server.log_access") is True
@@ -60,7 +61,7 @@ class UIServer(StandaloneProcess):
         self.extension_objs = []
 
         # TODO: What about https?
-        self.base_url = "http://%s:%s" % (self.server_hostname, self.server_port)
+        self.base_url = "http://%s:%s" % (self.server_hostname or "localhost", self.server_port)
         self.gateway_base_url = None
 
         self.idm_client = IdentityManagementServiceProcessClient(process=self)
@@ -146,21 +147,39 @@ class UIServer(StandaloneProcess):
     # -------------------------------------------------------------------------
     # Authentication
 
+    def auth_external(self, username, ext_user_id, ext_id_provider="ext"):
+        """
+        Given username and user identifier from an external identity provider (IdP),
+        retrieve actor_id and establish user session. Return user info from session.
+        Convention is that system local username is ext_id_provider + ":" + username,
+        e.g. "ext:john@gmail.com"
+        Raise NotFound if user not registered in system. Caller can react and create
+        a user account through the normal system means
+        @param username  the user name the user recognizes (can be an email address)
+        @param ext_user_id  a unique identifier coming from the external IdP
+        @param ext_id_provider  identifies the external IdP service
+        """
+        try:
+            if ext_user_id and ext_id_provider and username:
+                local_username = "%s:%s" % (ext_id_provider, username)
+                actor_id = self.idm_client.find_actor_identity_by_username(local_username)
+                user_info = self._get_user_info(actor_id, local_username)
+
+                return build_json_response(user_info)
+
+            else:
+                raise BadRequest("External user info missing")
+
+        except Exception:
+            return build_json_error()
+
     def login(self):
         try:
             username = get_arg("username")
             password = get_arg("password")
             if username and password:
                 actor_id = self.idm_client.check_actor_credentials(username, password)
-                actor_user = self.idm_client.read_identity_details(actor_id)
-                if actor_user.type_ != OT.UserIdentityDetails:
-                    raise BadRequest("Bad identity details")
-
-                full_name = actor_user.contact.individual_names_given + " " + actor_user.contact.individual_name_family
-
-                valid_until = int(get_ion_ts_millis() / 1000 + self.session_timeout)
-                set_auth(actor_id, username, full_name, valid_until=valid_until)
-                user_info = get_auth()
+                user_info = self._get_user_info(actor_id, username)
                 return build_json_response(user_info)
 
             else:
@@ -168,6 +187,18 @@ class UIServer(StandaloneProcess):
 
         except Exception:
             return build_json_error()
+
+    def _get_user_info(self, actor_id, username=None):
+        actor_user = self.idm_client.read_identity_details(actor_id)
+        if actor_user.type_ != OT.UserIdentityDetails:
+            raise BadRequest("Bad identity details")
+
+        full_name = actor_user.contact.individual_names_given + " " + actor_user.contact.individual_name_family
+
+        valid_until = int(get_ion_ts_millis() / 1000 + self.session_timeout)
+        set_auth(actor_id, username, full_name, valid_until=valid_until)
+        user_info = get_auth()
+        return user_info
 
     def get_session(self):
         try:
