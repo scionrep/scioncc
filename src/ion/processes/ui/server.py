@@ -152,16 +152,16 @@ class UIServer(StandaloneProcess):
         Given username and user identifier from an external identity provider (IdP),
         retrieve actor_id and establish user session. Return user info from session.
         Convention is that system local username is ext_id_provider + ":" + username,
-        e.g. "ext:john@gmail.com"
-        Raise NotFound if user not registered in system. Caller can react and create
+        e.g. "ext_johnbean"
+        Return NotFound if user not registered in system. Caller can react and create
         a user account through the normal system means
-        @param username  the user name the user recognizes (can be an email address)
+        @param username  the user name the user recognizes.
         @param ext_user_id  a unique identifier coming from the external IdP
         @param ext_id_provider  identifies the external IdP service
         """
         try:
             if ext_user_id and ext_id_provider and username:
-                local_username = "%s:%s" % (ext_id_provider, username)
+                local_username = "%s_%s" % (ext_id_provider, username)
                 actor_id = self.idm_client.find_actor_identity_by_username(local_username)
                 user_info = self._get_user_info(actor_id, local_username)
 
