@@ -21,7 +21,7 @@ from pyon.public import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES
 from pyon.util.lru_cache import LRUCache
 from pyon.util.containers import current_time_millis
 
-from ion.util.ui_utils import CONT_TYPE_JSON, json_dumps, json_loads, encode_ion_object, get_auth
+from ion.util.ui_utils import CONT_TYPE_JSON, json_dumps, json_loads, encode_ion_object, get_auth, clear_auth
 
 from interface.services.core.idirectory_service import DirectoryServiceProcessClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
@@ -419,6 +419,11 @@ class ServiceGateway(object):
             user = self.idm_client.read_actor_identity(actor_id=ion_actor_id, headers=self._get_gateway_headers())
         except NotFound as e:
             if not in_whitelist and self.require_login:
+                # This could be a restart of the system with a new preload.
+                # TODO: Invalidate Flask sessions on relaunch/bootstrap with creating new secret
+                user_session = get_auth()
+                if user_session.get("actor_id", None) == ion_actor_id:
+                    clear_auth()
                 raise Unauthorized("Invalid identity", exc_id="01.10")
             else:
                 # If the user isn't found default to anonymous
