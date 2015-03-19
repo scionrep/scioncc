@@ -517,8 +517,9 @@ class EventQuery(DatastoreQueryBuilder):
     Helper class to build datastore queries for the event repository.
     Based on the DatastoreQueryBuilder
     """
-    def __init__(self):
-        super(EventQuery, self).__init__(datastore=DataStore.DS_EVENTS, profile=DataStore.DS_PROFILE.EVENTS)
+    def __init__(self, order_by=None, limit=0, skip=0):
+        super(EventQuery, self).__init__(datastore=DataStore.DS_EVENTS, profile=DataStore.DS_PROFILE.EVENTS,
+                                         order_by=order_by, limit=limit, skip=skip)
 
     def filter_type(self, type_expr, cmpop=None):
         return self.txt_cmp(DQ.ATT_TYPE, type_expr, cmpop)

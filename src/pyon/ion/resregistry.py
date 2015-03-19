@@ -841,8 +841,9 @@ class ResourceQuery(DatastoreQueryBuilder):
     Based on the DatastoreQueryBuilder
     """
 
-    def __init__(self):
-        super(ResourceQuery, self).__init__(datastore=DataStore.DS_RESOURCES, profile=DataStore.DS_PROFILE.RESOURCES)
+    def __init__(self, order_by=None, limit=0, skip=0):
+        super(ResourceQuery, self).__init__(datastore=DataStore.DS_RESOURCES, profile=DataStore.DS_PROFILE.RESOURCES,
+                                            order_by=order_by, limit=limit, skip=skip)
 
     def filter_type(self, type_expr):
         return self.eq_in(DQ.ATT_TYPE, type_expr)
