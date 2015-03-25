@@ -280,6 +280,9 @@ service:
         license:
           name: APACHE 2.0
           url: https://github.com/scionrep/scioncc/blob/master/LICENSE
+      externalDocs:
+        description: ScionCC service gateway
+        url: https://github.com/scionrep/scioncc/wiki/Service-Gateway
       exclude_services: [container_agent, hello, resource_agent, sample]
 
 units: res/config/units/udunits2.xml

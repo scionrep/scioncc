@@ -151,6 +151,13 @@ class ServiceGateway(object):
     def sg_index(self):
         return self.gateway_json_response(SG_IDENTIFICATION)
 
+    def _add_cors_headers(self, resp):
+        # Set CORS headers so that a Swagger client on a different domain can read spec
+        resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
+        resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Request-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport,  *"
+
     def get_service_spec(self, service_name=None, spec_name=None):
         try:
             if not self._swagger_gen:
@@ -161,11 +168,7 @@ class ServiceGateway(object):
             swagger_json = self._swagger_gen.get_spec(service_name)
 
             resp = flask.make_response(flask.jsonify(swagger_json))
-            # Set CORS headers so that a Swagger client on a different domain can read spec
-            resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
-            resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
-            resp.headers["Access-Control-Allow-Origin"] = "*"
-            resp.headers["Access-Control-Request-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport,  *"
+            self._add_cors_headers(resp)
             return resp
 
         except Exception as ex:
@@ -397,6 +400,15 @@ class ServiceGateway(object):
             actor_id = user_session["actor_id"]
             expiry = str(int(user_session.get("valid_until", 0)) * 1000)
             log.info("Request associated with session actor_id=%s, expiry=%s", actor_id, expiry)
+
+        # Developer access using api_key
+        if self.develop_mode and "api_key" in request.args and request.args["api_key"]:
+            actor_id = str(request.args["api_key"])
+            expiry = str(int(user_session.get("valid_until", 0)) * 1000)
+            if 0 < int(expiry) < current_time_millis():
+                expiry = str(current_time_millis() + 10000)
+                # flask.session["valid_until"] = int(expiry / 1000)
+            log.info("Request associated with actor_id=%s, expiry=%s from developer api_key", actor_id, expiry)
 
         # Try to find auth token override
         # Check in headers for OAuth bearer token
@@ -688,7 +700,10 @@ class ServiceGateway(object):
         """Private implementation of standard flask jsonify to specify the use of an encoder to walk ION objects
         """
         resp_obj = json_dumps(response_data, default=encode_ion_object, indent=None if request.is_xhr else 2)
-        return self.response_class(resp_obj, mimetype=CONT_TYPE_JSON)
+        resp = self.response_class(resp_obj, mimetype=CONT_TYPE_JSON)
+        if self.develop_mode and "api_key" in request.args and request.args["api_key"]:
+            self._add_cors_headers(resp)
+        return resp
 
     def gateway_json_response(self, response_data):
         """Returns the normal service gateway response as JSON"""

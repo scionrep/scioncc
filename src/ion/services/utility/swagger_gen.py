@@ -33,6 +33,9 @@ class SwaggerSpecGenerator(object):
             ],
         }
         output["info"].update(self.config.get("info", {}))
+        if self.config.get("externalDocs", {}):
+            output["externalDocs"] = self.config["externalDocs"]
+
         output["tags"] = self._gen_tags(service_name)
         output["paths"] = self._gen_paths(service_name)
 
@@ -45,7 +48,18 @@ class SwaggerSpecGenerator(object):
             for svc_name in sorted(sr.services_by_name):
                 if svc_name in self.config.get("exclude_services", []):
                     continue
-                tag_entry = dict(name=svc_name, description="")
+                svc_schema = sr.services[svc_name].schema
+                tag_entry = dict(name=svc_name, description=svc_schema["description"])
+                if self.config.get("externalDocs", {}):
+                    tag_entry["externalDocs"] = self.config["externalDocs"]
+                tags.append(tag_entry)
+        else:
+            svc_def = sr.services.get(service_name, None)
+            if svc_def:
+                svc_schema = svc_def.schema
+                tag_entry = dict(name=service_name, description=svc_schema["description"])
+                if self.config.get("externalDocs", {}):
+                    tag_entry["externalDocs"] = self.config["externalDocs"]
                 tags.append(tag_entry)
 
         return tags
@@ -61,6 +75,12 @@ class SwaggerSpecGenerator(object):
                 # For operations
                 for op_name in svc_schema["op_list"]:
                     self._add_service_op_entries(paths, svc_name, op_name, svc_schema)
+        else:
+            svc_def = sr.services.get(service_name, None)
+            if svc_def:
+                svc_schema = svc_def.schema
+                for op_name in svc_schema["op_list"]:
+                    self._add_service_op_entries(paths, service_name, op_name, svc_schema)
 
         return paths
 
@@ -127,5 +147,7 @@ class SwaggerSpecGenerator(object):
                     ": JSON with keys status and result: list of %s" % (", ".join(op_schema["out_list"]))
 
         self._add_throws(path_entry, op_schema)
+
+        path_entry["externalDocs"] = {"$ref": "#/externalDocs"}
 
         paths.setdefault(path_key, {})["get"] = path_entry
