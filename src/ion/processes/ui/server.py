@@ -84,7 +84,14 @@ class UIServer(StandaloneProcess):
                 app.register_blueprint(sg_blueprint, url_prefix=self.service_gateway_prefix)
 
             for ext_cls in self.extensions:
-                cls = named_any(ext_cls)
+                try:
+                    cls = named_any(ext_cls)
+                except AttributeError as ae:
+                    # Try to nail down the error
+                    import importlib
+                    importlib.import_module(ext_cls.rsplit(".", 1)[0])
+                    raise
+
                 self.extension_objs.append(cls())
 
             for ext_obj in self.extension_objs:

@@ -98,7 +98,7 @@ class SwaggerSpecGenerator(object):
         op_schema = svc_schema["operations"][op_name]
         path_entry = dict(
             tags=[service_name],
-            summary=op_schema["description"].split(".", 1)[0],
+            summary=op_schema["description"].split(". ", 1)[0],
             description=op_schema["description"],
             operationId="%s/%s" % (service_name, op_name),
             produces=["application/json"],

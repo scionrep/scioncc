@@ -186,7 +186,13 @@ class ProcManager(object):
         # PROCESS TYPE. Determines basic process context (messaging, service interface)
         # One of the constants defined at the top of this file
 
-        service_cls = named_any("%s.%s" % (module, cls))
+        try:
+            service_cls = named_any("%s.%s" % (module, cls))
+        except AttributeError as ae:
+            # Try to nail down the error
+            import importlib
+            importlib.import_module(module)
+            raise
         process_type = get_safe(process_cfg, "process.type") or getattr(service_cls, "process_type", "service")
 
         process_start_mode = get_safe(config, "process.start_mode")
