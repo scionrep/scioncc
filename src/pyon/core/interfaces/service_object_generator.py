@@ -758,7 +758,7 @@ class ServiceObjectGenerator:
             out_obj = getattr(interface.messages, "%s_%s_out" % (svc_name, op_name))
             for out_arg, out_arg_def in out_def.iteritems():
                 op_def["out"][out_arg] = get_param_entry(out_arg, out_arg_def, out_obj)
-            op_def["doc"] = sanitize_doc(op_def["doc"])
+            op_def["description"] = sanitize_doc(op_def.pop("doc"))
 
         schema_obj = dict(name=svc_name,
                           description=sanitize_doc(svc_def['docstring']),

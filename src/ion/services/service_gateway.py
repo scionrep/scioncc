@@ -21,6 +21,7 @@ from pyon.public import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES
 from pyon.util.lru_cache import LRUCache
 from pyon.util.containers import current_time_millis
 
+from ion.services.utility.swagger_gen import SwaggerSpecGenerator
 from ion.util.ui_utils import CONT_TYPE_JSON, json_dumps, json_loads, encode_ion_object, get_auth, clear_auth
 
 from interface.services.core.idirectory_service import DirectoryServiceProcessClient
@@ -85,6 +86,12 @@ class ServiceGateway(object):
         self.service_whitelist = self.config.get_safe(CFG_PREFIX + ".service_whitelist") or []
         self.no_login_whitelist = set(self.config.get_safe(CFG_PREFIX + ".no_login_whitelist") or [])
 
+        # Swagger spec generation support
+        self.swagger_cfg = self.config.get_safe(CFG_PREFIX + ".swagger_spec") or {}
+        self._swagger_gen = None
+        if self.swagger_cfg.get("enable", None) is True:
+            self._swagger_gen = SwaggerSpecGenerator(config=self.swagger_cfg)
+
         # Get the user_cache_size
         self.user_cache_size = self.config.get_safe(CFG_PREFIX + ".user_cache_size", DEFAULT_USER_CACHE_SIZE)
 
@@ -143,6 +150,27 @@ class ServiceGateway(object):
 
     def sg_index(self):
         return self.gateway_json_response(SG_IDENTIFICATION)
+
+    def get_service_spec(self, service_name=None, spec_name=None):
+        try:
+            if not self._swagger_gen:
+                raise NotFound("Spec not available")
+            if spec_name != "swagger.json":
+                raise NotFound("Unknown spec format")
+
+            swagger_json = self._swagger_gen.get_spec(service_name)
+
+            resp = flask.make_response(flask.jsonify(swagger_json))
+            # Set CORS headers so that a Swagger client on a different domain can read spec
+            resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
+            resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Request-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport,  *"
+            return resp
+
+        except Exception as ex:
+            return self.gateway_error_response(ex)
+
 
     def process_gateway_request(self, service_name=None, operation=None, id_param=None):
         """
@@ -746,6 +774,12 @@ def custom_403(error):
 @sg_blueprint.route("/")
 def sg_index():
     return sg_instance.sg_index()
+
+
+@sg_blueprint.route("/spec/<spec_name>", methods=["GET"])
+@sg_blueprint.route("/spec/<service_name>/<spec_name>", methods=["GET"])
+def get_service_spec(service_name=None, spec_name=None):
+    return sg_instance.get_service_spec(service_name, spec_name)
 
 
 # ROUTE: Make a service request
