@@ -8,6 +8,8 @@ __author__ = 'Adam R. Smith, Thomas Lennan, Stephen Henrie, Dave Foster, Seman S
 import datetime
 import fnmatch
 import inspect
+import json
+import keyword
 import pkgutil
 import os
 import re
@@ -45,11 +47,16 @@ from pyon.ion.endpoint import ProcessRPCClient
 from pyon.util.log import log
 ${dep_client_imports}
 
+${service_schema}
+
 ${clientsholder}
 
 ${classes}
 
 ${client}
+'''
+    , 'service_schema':
+'''SCHEMA_JSON = """${schema_json}"""
 '''
     , 'clientsholder':
 '''class ${name}DependentClients(BaseClients):
@@ -74,6 +81,7 @@ ${methods}
 '''class Base${name}(BaseService):
     implements(I${name})
 ${classdocstring}
+    SCHEMA_JSON=SCHEMA_JSON
 ${servicename}
 ${dependencies}
 
@@ -717,6 +725,51 @@ class ServiceObjectGenerator:
             res.append(cls)
         return res
 
+    def generate_service_schema(self, svc_def, meth_list, methods_schema):
+        def sanitize_doc(docstr):
+            docstr = docstr or ""
+            return docstr.replace("\n", " ").strip()
+
+        def get_param_entry(arg_name, arg_def, msg_obj):
+            TYPE_MAP = {"OrderedDict": "dict"}
+            param_schema = msg_obj._schema[arg_name]
+            description = re.sub(r'\\(.)', r'\1', param_schema["description"])
+            entry = dict(name=arg_name, default=arg_def,
+                         type=TYPE_MAP.get(type(arg_def).__name__, type(arg_def).__name__),
+                         description=description,
+                         decorators=param_schema["decorators"])
+            if type(entry["default"]) is str and entry["default"].startswith("!"):
+                entry["type"] = entry["default"][1:]
+            return entry
+
+        # This should be ok - it indirectly uses the result of the prior step
+        import interface.messages
+
+        svc_name = svc_def['name']
+        for op_name, op_def in methods_schema.iteritems():
+            in_def = op_def.pop("in") or {}
+            op_def["in_list"], op_def["in"] = in_def.keys(), {}
+            in_obj = getattr(interface.messages, "%s_%s_in" % (svc_name, op_name))
+            for in_arg, in_arg_def in in_def.iteritems():
+                op_def["in"][in_arg] = get_param_entry(in_arg, in_arg_def, in_obj)
+
+            out_def = op_def.pop("out") or {}
+            op_def["out_list"], op_def["out"] = out_def.keys(), {}
+            out_obj = getattr(interface.messages, "%s_%s_out" % (svc_name, op_name))
+            for out_arg, out_arg_def in out_def.iteritems():
+                op_def["out"][out_arg] = get_param_entry(out_arg, out_arg_def, out_obj)
+            op_def["doc"] = sanitize_doc(op_def["doc"])
+
+        schema_obj = dict(name=svc_name,
+                          description=sanitize_doc(svc_def['docstring']),
+                          spec=svc_def.get('spec', None) or "",
+                          dependencies=svc_def['dependencies'],
+                          op_list=meth_list.keys(),
+                          operations=methods_schema)
+        schema_json = json.dumps(schema_obj, sort_keys=True, indent=4)
+        return schema_json
+
+
     def generate_service(self, interface_file, svc_def, client_defs, opts):
         """
         Generates a single service/client/interface definition.
@@ -742,12 +795,14 @@ class ServiceObjectGenerator:
         class_methods = []
         client_methods = []
         doc_methods = []
+        methods_schema = {}
 
         for op_name, op_def in meth_list.iteritems():
             if not op_def:
                 continue
 
             def_docstring, def_spec, def_in, def_out, def_throws = op_def.get('docstring', "@todo document this interface!!!"), op_def.get('spec', None), op_def.get('in', None), op_def.get('out', None), op_def.get('throws', None)
+            methods_schema[op_name] = {"in": def_in, "out": def_out, "throws": def_throws, "doc": def_docstring, "spec": def_spec}
             # multiline docstring for method
             docstring_lines = def_docstring.split('\n')
 
@@ -766,9 +821,11 @@ class ServiceObjectGenerator:
                     docstring_formatted += "\n        "
                 docstring_formatted += docstring_line
 
-            # headers is reserved keyword, catch problems here!
-            if def_in is not None and 'headers' in def_in:
-                raise StandardError("Reserved argument name 'headers' found in method '%s' of service '%s', please rename" % (op_name, service_name))
+            # headers is reserved keyword, catch problems here! Also catch Python keywords
+            if def_in is not None:
+                for in_param in def_in:
+                    if in_param == 'headers' or keyword.iskeyword(in_param):
+                        raise StandardError("Reserved argument name '%s' found in method '%s' of service '%s', please rename" % (in_param, op_name, service_name))
 
             args_str, class_args_str = self.build_args_str(def_in, False), self.build_args_str(def_in, True)
             docstring_str = templates['methdocstr'].substitute(methoddocstr=self.build_args_doc_string(docstring_formatted, def_spec, def_in, def_out, def_throws))
@@ -831,6 +888,9 @@ class ServiceObjectGenerator:
                                                methods=methods_str,
                                                classmethods=classmethods_str)
 
+        schema_json = self.generate_service_schema(svc_def, meth_list, methods_schema)
+        service_schema_str = templates['service_schema'].substitute(schema_json=schema_json)
+
         # dependent clients generation
         clients_holder_str = templates['clientsholder'].substitute(name=class_name,
                                                                    dep_clients=dep_clients_str,
@@ -853,6 +913,7 @@ class ServiceObjectGenerator:
 
 
         interface_contents = templates['file'].substitute(dep_client_imports=dep_client_imports_str,
+                                                          service_schema=service_schema_str,
                                                           clientsholder=clients_holder_str,
                                                           classes=_class,
                                                           when_generated=self.currtime,

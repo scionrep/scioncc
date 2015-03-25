@@ -4,6 +4,7 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 
+import json
 from types import ModuleType
 from zope.interface import implementedBy
 
@@ -227,9 +228,9 @@ class IonServiceDefinition(object):
     """
     Provides a walkable structure for ION service metadata and object definitions.
     """
-    def __init__(self, name, dependencies=[], version=''):
+    def __init__(self, name, dependencies=None, version=''):
         self.name = name
-        self.dependencies = list(dependencies)
+        self.dependencies = list(dependencies or [])
         self.version = version
         self.operations = []
 
@@ -244,6 +245,9 @@ class IonServiceDefinition(object):
 
         # Points to process client class
         self.client = None
+
+        # Contains a dict schema
+        self.schema = None
 
         # Points to non-process client class
         self.simple_client = None
@@ -327,6 +331,10 @@ class IonServiceRegistry(object):
             if cls.name:
                 self.services_by_name[cls.name] = cls
                 self.add_servicedef_entry(cls.name, "base", cls)
+                try:
+                    self.add_servicedef_entry(cls.name, "schema", json.loads(cls.SCHEMA_JSON))
+                except Exception as ex:
+                    log.exception("Cannot parse service schema " + cls.name)
                 interfaces = list(implementedBy(cls))
                 if interfaces:
                     self.add_servicedef_entry(cls.name, "interface", interfaces[0])

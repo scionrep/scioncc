@@ -153,9 +153,9 @@ class MessageObjectGenerator:
                         else:
                             init_lines.append('  ' + line + '\n')
                             if not description:
-                                description = line.strip()[1:]
+                                description = line.strip()
                             else:
-                                description = description + ' ' + line.strip()[1:]
+                                description = description + ' ' + line.strip()
 
                         index += 1
                         continue
@@ -165,7 +165,8 @@ class MessageObjectGenerator:
                         try:
                             value = line.split(":", 1)[1].strip()
                             if '#' in value:
-                                dsc = value.split('#', 1)[1].strip()[1:]
+                                #dsc = value.split('#', 1)[1].strip()[1:]
+                                dsc = value.split('#', 1)[1].strip()
                                 value = value.split('#')[0].strip()
                                 # Get inline comment
                                 if not description:
