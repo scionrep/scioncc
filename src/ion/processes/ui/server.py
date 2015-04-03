@@ -56,7 +56,7 @@ class UIServer(StandaloneProcess):
         self.session_timeout = int(self.CFG.get_safe(CFG_PREFIX + ".security.session_timeout") or DEFAULT_SESSION_TIMEOUT)
 
         self.has_service_gateway = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.enabled") is True
-        self.service_gateway_prefix = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.url_prefix") or DEFAULT_GATEWAY_PREFIX
+        self.service_gateway_prefix = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.url_prefix", DEFAULT_GATEWAY_PREFIX)
         self.extensions = self.CFG.get_safe(CFG_PREFIX + ".extensions") or []
         self.extension_objs = []
 

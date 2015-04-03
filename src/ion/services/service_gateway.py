@@ -85,6 +85,7 @@ class ServiceGateway(object):
         self.service_blacklist = self.config.get_safe(CFG_PREFIX + ".service_blacklist") or []
         self.service_whitelist = self.config.get_safe(CFG_PREFIX + ".service_whitelist") or []
         self.no_login_whitelist = set(self.config.get_safe(CFG_PREFIX + ".no_login_whitelist") or [])
+        self.set_cors_headers = self.config.get_safe(CFG_PREFIX + ".set_cors") is True
 
         # Swagger spec generation support
         self.swagger_cfg = self.config.get_safe(CFG_PREFIX + ".swagger_spec") or {}
@@ -701,7 +702,7 @@ class ServiceGateway(object):
         """
         resp_obj = json_dumps(response_data, default=encode_ion_object, indent=None if request.is_xhr else 2)
         resp = self.response_class(resp_obj, mimetype=CONT_TYPE_JSON)
-        if self.develop_mode and "api_key" in request.args and request.args["api_key"]:
+        if self.develop_mode and (self.set_cors_headers or ("api_key" in request.args and request.args["api_key"])):
             self._add_cors_headers(resp)
         return resp
 
