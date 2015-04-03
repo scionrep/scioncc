@@ -9,6 +9,9 @@ Credentials:
   password_salt: ""
   password_hash: ""
 
+# Enumerates the possible types of security tokens
+AuthStatusEnum: !enum (values=(ENABLED, LOCKED, DISABLED), default=ENABLED)
+
 ---
 
 # A registered system identity
@@ -17,9 +20,24 @@ ActorIdentity: !Extends_SystemResource
   actor_type: ""
   # Additional details object depending on actor type
   details: !IdentityDetails
+
   # Login credentials
   #@ContentType=Credentials
   credentials: []
+  # Current authentication status
+  auth_status: !AuthStatusEnum
+  # Number of successful authentications
+  auth_count: 0
+  # Number of failed logins since last successful login
+  auth_fail_count: 0
+  # Last successful login
+  auth_ts_last: ""
+  # Last successful login
+  auth_ts_last_fail: ""
+  # Session information (cleared on
+  session: {}
+  # Session expiry
+  session_expiry: ""
 
 
 # Details for an individual registered with the system, with contact and profile information.

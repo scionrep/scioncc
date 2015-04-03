@@ -6,9 +6,9 @@ from uuid import uuid4
 import bcrypt
 
 #from pyon.core.security.authentication import Authentication
-from pyon.public import log, RT, OT, Inconsistent, NotFound, BadRequest, get_ion_ts_millis, Unauthorized
+from pyon.public import log, RT, OT, Inconsistent, NotFound, BadRequest, get_ion_ts_millis, get_ion_ts, Unauthorized
 
-from interface.objects import SecurityToken, TokenTypeEnum, Credentials
+from interface.objects import SecurityToken, TokenTypeEnum, Credentials, AuthStatusEnum
 
 from interface.services.core.iidentity_management_service import BaseIdentityManagementService
 
@@ -161,17 +161,53 @@ class IdentityManagementService(BaseIdentityManagementService):
 
         actor_id = self.find_actor_identity_by_username(username)
         actor_obj = self.read_actor_identity(actor_id)
+        try:
+            if actor_obj.auth_status != AuthStatusEnum.ENABLED:
+                raise NotFound("identity not enabled")
 
-        cred_obj = None
-        for cred in actor_obj.credentials:
-            if cred.username == username:
-                cred_obj = cred
-                break
+            cred_obj = None
+            for cred in actor_obj.credentials:
+                if cred.username == username:
+                    cred_obj = cred
+                    break
 
-        if bcrypt.hashpw(password, cred_obj.password_salt) != cred_obj.password_hash:
-            raise NotFound("Invalid password")
+            if bcrypt.hashpw(password, cred_obj.password_salt) != cred_obj.password_hash:
+                # Failed login
+                if password:    # Only record fail if password is non-empty and wrong
+                    actor_obj.auth_fail_count += 1
+                    actor_obj.auth_ts_last_fail = get_ion_ts()
+                    max_fail_cnt = IdentityUtils.get_auth_fail_lock_count()
+                    if actor_obj.auth_fail_count > max_fail_cnt:
+                        actor_obj.auth_status = AuthStatusEnum.LOCKED
 
-        return actor_obj._id
+                raise NotFound("Invalid password")
+
+            # Success
+            actor_obj.auth_count += 1
+            actor_obj.auth_fail_count = 0
+            actor_obj.auth_ts_last = get_ion_ts()
+
+            return actor_obj._id
+
+        finally:
+            # Lower level RR call to avoid credentials clearing
+            self.rr.update(actor_obj)
+
+    def set_actor_auth_status(self, actor_id='', status=None):
+        actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)
+        if not status:
+            raise BadRequest("Invalid argument status")
+
+        prev_status = actor_obj.auth_status
+        actor_obj.auth_status = status
+
+        if status == AuthStatusEnum.ENABLED:
+            actor_obj.auth_fail_count = 0
+
+        # Lower level RR call to avoid credentials clearing
+        self.rr.update(actor_obj)
+
+        return prev_status
 
     # -------------------------------------------------------------------------
     # Identity details (user profile) handling
@@ -312,4 +348,8 @@ class IdentityUtils(object):
             raise BadRequest("Invalid type")
         if len(password) < 3:
             raise BadRequest("Password too short")
+
+    @classmethod
+    def get_auth_fail_lock_count(cls, id_provider=None):
+        return 5
     

@@ -142,6 +142,17 @@ methods:
       BadRequest: for invalid arguments
       NotFound: if actor not found
 
+  set_actor_auth_status:
+    docstring: |
+      Sets the auth status for an actor.
+    in:
+      actor_id: ""
+      status: !AuthStatusEnum
+    out:
+      prev_status: !AuthStatusEnum
+    throws:
+      BadRequest: for invalid arguments
+      NotFound: if actor not found
 
   # -----------------
   # Working with user profiles

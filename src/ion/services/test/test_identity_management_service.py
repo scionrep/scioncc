@@ -13,7 +13,7 @@ from interface.services.core.iidentity_management_service import IdentityManagem
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
-from interface.objects import ActorIdentity, UserIdentityDetails, Credentials
+from interface.objects import ActorIdentity, AuthStatusEnum, UserIdentityDetails, Credentials
 
 
 @attr('INT', group='coi')
@@ -101,6 +101,18 @@ class TestIdentityManagementServiceInt(IonIntegrationTestCase):
         self.identity_management_service.set_user_password("jdoe1", "mypasswd1")
         actor_id1 = self.identity_management_service.check_actor_credentials("jdoe1", "mypasswd1")
         self.assertEquals(actor_id1, actor_id)
+
+        for i in range(6):
+            with self.assertRaises(NotFound):
+                self.identity_management_service.check_actor_credentials("jdoe1", "mypasswd0")
+
+        with self.assertRaises(NotFound):
+            self.identity_management_service.check_actor_credentials("jdoe1", "mypasswd1")
+
+        self.identity_management_service.set_actor_auth_status(actor_id, AuthStatusEnum.ENABLED)
+        actor_id1 = self.identity_management_service.check_actor_credentials("jdoe1", "mypasswd1")
+        self.assertEquals(actor_id1, actor_id)
+
 
     def _do_test_profile(self, actor_id):
         actor_details1 = self.identity_management_service.read_identity_details(actor_id)
