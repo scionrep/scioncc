@@ -5,7 +5,7 @@ service gateway and web sockets"""
 
 __author__ = 'Michael Meisinger, Stephen Henrie'
 
-from flask import Flask
+from flask import Flask, Response
 from flask_socketio import SocketIO, SocketIOServer
 import gevent
 from gevent.wsgi import WSGIServer
@@ -54,6 +54,8 @@ class UIServer(StandaloneProcess):
         self.server_socket_io = self.CFG.get_safe(CFG_PREFIX + ".server.socket_io") is True
         self.server_secret = self.CFG.get_safe(CFG_PREFIX + ".security.secret") or ""
         self.session_timeout = int(self.CFG.get_safe(CFG_PREFIX + ".security.session_timeout") or DEFAULT_SESSION_TIMEOUT)
+        self.set_cors_headers = self.CFG.get_safe(CFG_PREFIX + ".server.set_cors") is True
+        self.develop_mode = self.CFG.get_safe(CFG_PREFIX + ".server.develop_mode") is True
 
         self.has_service_gateway = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.enabled") is True
         self.service_gateway_prefix = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.url_prefix", DEFAULT_GATEWAY_PREFIX)
@@ -225,19 +227,33 @@ class UIServer(StandaloneProcess):
             return build_json_error()
 
 
+
+
+def enable_crosref(resp):
+    if ui_instance.develop_mode and ui_instance.set_cors_headers:
+        if isinstance(resp, basestring):
+            resp = Response(resp)
+        resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
+        resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Request-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport,  *"
+    return resp
+
+
 # -------------------------------------------------------------------------
 # Authentication routes
 
+
 @app.route('/auth/login', methods=['GET', 'POST'])
 def login_route():
-    return ui_instance.login()
+    return enable_crosref(ui_instance.login())
 
 
 @app.route('/auth/session', methods=['GET', 'POST'])
 def session_route():
-    return ui_instance.get_session()
+    return enable_crosref(ui_instance.get_session())
 
 
 @app.route('/auth/logout', methods=['GET', 'POST'])
 def logout_route():
-    return ui_instance.logout()
+    return enable_crosref(ui_instance.logout())
