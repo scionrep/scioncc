@@ -415,9 +415,13 @@ class ServiceGateway(object):
         # Check in headers for OAuth bearer token
         auth_hdr = request.headers.get("authorization", None)
         if auth_hdr:
-            token_parts = auth_hdr.split(" ")
-            if len(token_parts) == 2 and token_parts[0].lower() == "bearer":
-                authtoken = token_parts[1]
+            valid, req = self.process.oauth.verify_request(["scioncc"])
+            if valid:
+                actor_id = flask.g.oauth_user.get("actor_id", "")
+                if actor_id:
+                    log.info("Request associated with actor_id=%s, expiry=%s from OAuth token", actor_id, expiry)
+                    return actor_id, DEFAULT_EXPIRY
+
         if not authtoken:
             if json_params:
                 if "authtoken" in json_params:

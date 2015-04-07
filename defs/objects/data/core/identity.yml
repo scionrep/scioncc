@@ -49,17 +49,26 @@ UserIdentityDetails: !Extends_IdentityDetails
   # Key-value properties for the user; e.g. for configuration or UI preferences
   profile: {}
 
+OAuthClientIdentityDetails: !Extends_IdentityDetails
+  # Is this a confidential client?
+  is_confidential: False
+  # Client secret
+  client_secret: ""
+  # Space separated list of https URLs for secure redirect
+  redirect_uris: ""
+  # Space separated list of scopes
+  default_scopes: ""
 
 # Enumerates the possible types of security tokens
-TokenTypeEnum: !enum (values=(ACTOR_SECRET, ACTOR_AUTH), default=ACTOR_SECRET)
+TokenTypeEnum: !enum (values=(ACTOR_SECRET, ACTOR_AUTH, OAUTH_GRANT, OAUTH_ACCESS, OAUTH_REFRESH), default=ACTOR_SECRET)
 ---
 
 # Holds information for a user specific authorization token
 SecurityToken:
   # The token secret
   token_string: ""
-  # The type of token - one of ACTOR_SECRET, ACTOR_AUTH
-  token_type: ""
+  # The type of token - one of enum
+  token_type: !TokenTypeEnum
   # Timestamp (UNIX epoch) for when the token expires in UTC
   expires : ""
   # One of OPEN, VERIFIED, EXPIRED

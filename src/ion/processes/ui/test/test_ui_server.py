@@ -14,7 +14,7 @@ from interface.services.core.iidentity_management_service import IdentityManagem
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
-from interface.objects import Org, UserRole, ActorIdentity, UserIdentityDetails
+from interface.objects import Org, UserRole, ActorIdentity, UserIdentityDetails, OAuthClientIdentityDetails
 
 
 @attr('INT', group='coi')
@@ -58,14 +58,14 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertEquals("", resp_json["result"]["username"])
 
-        resp = session.get(self.ui_base_url + "/auth/login?username=jdoe&password=foo")
+        resp = session.post(self.ui_base_url + "/auth/login", data=dict(username="jdoe", password="foo"))
         self._assert_json_response(resp, None, status=404)
 
         resp = session.get(self.ui_base_url + "/auth/session")
         resp_json = self._assert_json_response(resp, None)
         self.assertEquals("", resp_json["result"]["username"])
 
-        resp = session.get(self.ui_base_url + "/auth/login?username=jdoe&password=mypasswd")
+        resp = session.post(self.ui_base_url + "/auth/login", data=dict(username="jdoe", password="mypasswd"))
         resp_json = self._assert_json_response(resp, None)
         self.assertIn("actor_id", resp_json["result"])
         self.assertIn("username", resp_json["result"])
@@ -94,7 +94,7 @@ class TestUIServer(IonIntegrationTestCase):
         self._assert_json_response(resp, SG_IDENTIFICATION)
 
         # TEST: Login
-        resp = session.get(self.ui_base_url + "/auth/login?username=jdoe&password=mypasswd")
+        resp = session.post(self.ui_base_url + "/auth/login", data=dict(username="jdoe", password="mypasswd"))
         resp_json = self._assert_json_response(resp, None)
         self.assertEquals("jdoe", resp_json["result"]["username"])
 
@@ -188,3 +188,29 @@ class TestUIServer(IonIntegrationTestCase):
             else:
                 self.fail("Unsupported result type")
         return resp_json
+
+    def test_ui_oauth2(self):
+        actor_identity_obj = ActorIdentity(name="John Doe")
+        actor_id = self.idm_client.create_actor_identity(actor_identity_obj)
+        self.idm_client.set_actor_credentials(actor_id, "jdoe", "mypasswd")
+
+        actor_details = UserIdentityDetails()
+        actor_details.contact.individual_names_given = "John"
+        actor_details.contact.individual_name_family = "Doe"
+        self.idm_client.define_identity_details(actor_id, actor_details)
+
+        client_obj = ActorIdentity(name="UI Client", details=OAuthClientIdentityDetails(default_scopes="scioncc"))
+        client_id = self.idm_client.create_actor_identity(client_obj)
+
+        session = requests.session()
+
+        # TEST: OAuth2 authorize
+        auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
+        resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+        access_token = resp.json()
+
+        # TEST: Service access
+        resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                           headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+        resp_json = self._assert_json_response(resp, None)
+        #self.assertIn(actor_id, resp_json["result"][0])

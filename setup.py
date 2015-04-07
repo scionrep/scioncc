@@ -88,6 +88,12 @@ setup(  name='scioncc',
             'lovely.buildouthttp==0.6.1',    # For buildout
             'pyzmq==2.2.0',            # For IPython manhole
             'gevent_zeromq==0.2.5',
+            'flask-oauthlib==0.9.1',
+            'requests-oauthlib==0.4.2',
+
+            # Pin dependent libraries
+            'cffi==0.9.2',
+            'oauthlib==0.7.2',
 
             # Test support
             'nose==1.1.2',

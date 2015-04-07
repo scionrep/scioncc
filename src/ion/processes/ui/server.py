@@ -5,17 +5,20 @@ service gateway and web sockets"""
 
 __author__ = 'Michael Meisinger, Stephen Henrie'
 
-from flask import Flask, Response
+import flask
+from flask import Flask, Response, request, render_template
 from flask_socketio import SocketIO, SocketIOServer
+from flask_oauthlib.provider import OAuth2Provider
 import gevent
 from gevent.wsgi import WSGIServer
+from datetime import datetime, timedelta
 
 from pyon.public import StandaloneProcess, log, BadRequest, NotFound, OT, get_ion_ts_millis
 from pyon.util.containers import named_any, current_time_millis
-from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth
+from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth, OAuthClientObj, OAuthTokenObj
 
 from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
-
+from interface.objects import SecurityToken, TokenTypeEnum
 
 DEFAULT_WEB_SERVER_HOSTNAME = ""
 DEFAULT_WEB_SERVER_PORT = 4000
@@ -26,6 +29,7 @@ CFG_PREFIX = "process.ui_server"
 
 # Initialize the main Flask app
 app = Flask("ui_server", static_folder=None, template_folder=None)
+oauth = OAuth2Provider(app)
 ui_instance = None
 
 
@@ -42,6 +46,7 @@ class UIServer(StandaloneProcess):
         self.http_server = None
         self.socket_io = None
         self.service_gateway = None
+        self.oauth = oauth
 
         # Configuration
         self.server_enabled = self.CFG.get_safe(CFG_PREFIX + ".server.enabled") is True
@@ -243,8 +248,7 @@ def enable_crosref(resp):
 # -------------------------------------------------------------------------
 # Authentication routes
 
-
-@app.route('/auth/login', methods=['GET', 'POST'])
+@app.route('/auth/login', methods=['POST'])
 def login_route():
     return enable_crosref(ui_instance.login())
 
@@ -257,3 +261,130 @@ def session_route():
 @app.route('/auth/logout', methods=['GET', 'POST'])
 def logout_route():
     return enable_crosref(ui_instance.logout())
+
+
+# -------------------------------------------------------------------------
+# OAuth2 routes and callbacks
+
+@oauth.clientgetter
+def load_client(client_id):
+    log.info("OAuth:load_client(%s)", client_id)
+    try:
+        if client_id:
+            actor_obj = ui_instance.idm_client.read_actor_identity(client_id)
+            client = OAuthClientObj.from_actor_identity(actor_obj)
+            flask.g.client_id = client_id
+            return client
+    except NotFound:
+        pass
+    except BadRequest:
+        pass
+    return None
+
+@oauth.grantgetter
+def load_grant(client_id, code):
+    print "### load_grant", client_id, code
+    return {}
+
+@oauth.grantsetter
+def save_grant(client_id, code, request, *args, **kwargs):
+    print "### save_grant", client_id, code
+    # decide the expires time yourself
+    expires = datetime.utcnow() + timedelta(seconds=100)
+    grant = {}
+    return grant
+
+@oauth.tokengetter
+def load_token(access_token=None, refresh_token=None):
+    log.info("OAuth:load_token access=%s refresh=%s", access_token, refresh_token)
+    try:
+        if access_token:
+            token_id = str("access_token_%s" % access_token)
+            token_obj = ui_instance.container.object_store.read(token_id)
+            token = OAuthTokenObj.from_security_token(token_obj)
+            flask.g.oauth_user = token.user
+            return token
+        elif refresh_token:
+            token_id = str("refresh_token_%s" % refresh_token)
+            token_obj = ui_instance.container.object_store.read(token_id)
+            token = OAuthTokenObj.from_security_token(token_obj)
+            return token
+    except NotFound:
+        pass
+    return None
+
+@oauth.tokensetter
+def save_token(token, request, *args, **kwargs):
+    log.info("OAuth:save_token=%s", token)
+    expires = str(get_ion_ts_millis() + 1000*token["expires_in"])
+    actor_id = flask.g.actor_id
+    access_token_str = str(token["access_token"])
+    refresh_token_str = str(token["refresh_token"])
+    scopes = str(token["scope"])
+
+    # Access token
+    token_obj = SecurityToken(token_type=TokenTypeEnum.OAUTH_ACCESS, token_string=access_token_str,
+                              expires=expires, status="OPEN", actor_id=actor_id,
+                              attributes=dict(access_token=access_token_str, refresh_token=refresh_token_str,
+                                              scopes=scopes, client_id=flask.g.client_id))
+    token_id = "access_token_%s" % access_token_str
+    ui_instance.container.object_store.create(token_obj, token_id)
+
+    # Refresh token
+    token_obj = SecurityToken(token_type=TokenTypeEnum.OAUTH_REFRESH, token_string=refresh_token_str,
+                              expires=expires, status="OPEN", actor_id=actor_id,
+                              attributes=dict(access_token=access_token_str, refresh_token=refresh_token_str,
+                                              scopes=scopes, client_id=flask.g.client_id))
+    token_id = "refresh_token_%s" % refresh_token_str
+    ui_instance.container.object_store.create(token_obj, token_id)
+
+@oauth.usergetter
+def get_user(username, password, *args, **kwargs):
+    # Required for password credential authentication
+    log.info("OAuth:get_user(%s)", username)
+    if username and password:
+        try:
+            actor_id = ui_instance.idm_client.check_actor_credentials(username, password)
+            flask.g.actor_id = actor_id
+            return {"actor_id": actor_id}
+        except NotFound:
+            pass
+    return None
+
+@app.route('/oauth/authorize', methods=['GET', 'POST'])
+#@require_login
+@oauth.authorize_handler
+def authorize(*args, **kwargs):
+    if request.method == 'GET':
+        client_id = kwargs.get('client_id')
+        client = {}
+        kwargs['client'] = client
+    template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Authorization</title>
+</head>
+<body>
+  <p>Client: {{ client.client_id }}</p>
+  <p>User: {{ user.username }}</p>
+  <form action="/oauth/authorize" method="post">
+    <p>Allow access?</p>
+    <input type="hidden" name="client_id" value="{{ client.client_id }}">
+    <input type="hidden" name="scope" value="{{ scopes|join(' ') }}">
+    <input type="hidden" name="response_type" value="{{ response_type }}">
+    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+    {% if state %}
+    <input type="hidden" name="state" value="{{ state }}">
+    {% endif %}
+    <input type="submit" name="confirm" value="yes">
+    <input type="submit" name="confirm" value="no">
+  </form>
+</body>
+"""
+    return None
+
+@app.route('/oauth/token', methods=['POST'])
+@oauth.token_handler
+def access_token():
+    return None
