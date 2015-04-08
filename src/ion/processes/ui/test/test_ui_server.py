@@ -7,7 +7,7 @@ import json
 import requests
 
 from pyon.util.int_test import IonIntegrationTestCase
-from pyon.public import PRED, RT, BadRequest, NotFound, CFG
+from pyon.public import PRED, RT, BadRequest, NotFound, CFG, log
 from ion.util.ui_utils import CONT_TYPE_JSON
 
 from interface.services.core.iidentity_management_service import IdentityManagementServiceClient
@@ -200,17 +200,27 @@ class TestUIServer(IonIntegrationTestCase):
         self.idm_client.define_identity_details(actor_id, actor_details)
 
         client_obj = ActorIdentity(name="UI Client", details=OAuthClientIdentityDetails(default_scopes="scioncc"))
-        client_id = self.idm_client.create_actor_identity(client_obj)
+        client_actor_id = self.idm_client.create_actor_identity(client_obj)
+        client_id = "ui"
+        self.idm_client.set_actor_credentials(client_actor_id, "client:"+client_id, "client_secret")
 
         session = requests.session()
 
         # TEST: OAuth2 authorize
+        log.info("------------ Get token")
         auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
         resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
         access_token = resp.json()
 
         # TEST: Service access
+        log.info("------------ Access")
         resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
                            headers={"Authorization": "Bearer %s" % access_token["access_token"]})
         resp_json = self._assert_json_response(resp, None)
         #self.assertIn(actor_id, resp_json["result"][0])
+
+        # TEST: Get new access token
+        log.info("------------ Refresh token")
+        auth_params = {"client_id": client_id, "grant_type": "refresh_token", "refresh_token": access_token["refresh_token"]}
+        resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+        access_token1 = resp.json()

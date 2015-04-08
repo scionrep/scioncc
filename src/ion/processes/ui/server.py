@@ -31,6 +31,7 @@ CFG_PREFIX = "process.ui_server"
 app = Flask("ui_server", static_folder=None, template_folder=None)
 oauth = OAuth2Provider(app)
 ui_instance = None
+client_cache = {}
 
 
 class UIServer(StandaloneProcess):
@@ -61,6 +62,9 @@ class UIServer(StandaloneProcess):
         self.session_timeout = int(self.CFG.get_safe(CFG_PREFIX + ".security.session_timeout") or DEFAULT_SESSION_TIMEOUT)
         self.set_cors_headers = self.CFG.get_safe(CFG_PREFIX + ".server.set_cors") is True
         self.develop_mode = self.CFG.get_safe(CFG_PREFIX + ".server.develop_mode") is True
+
+        self.oauth_enabled = self.CFG.get_safe(CFG_PREFIX + ".oauth.enabled") is True
+        self.oauth_scope = self.CFG.get_safe(CFG_PREFIX + ".oauth.default_scope") or "scioncc"
 
         self.has_service_gateway = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.enabled") is True
         self.service_gateway_prefix = self.CFG.get_safe(CFG_PREFIX + ".service_gateway.url_prefix", DEFAULT_GATEWAY_PREFIX)
@@ -216,6 +220,31 @@ class UIServer(StandaloneProcess):
 
     def get_session(self):
         try:
+            # Get session based on OAuth token
+            auth_hdr = request.headers.get("authorization", None)
+            if auth_hdr:
+                valid, req = self.oauth.verify_request([self.oauth_scope])
+                if valid:
+                    actor_id = flask.g.oauth_user.get("actor_id", "")
+                    actor_user = self.idm_client.read_actor_identity(actor_id)
+                    session_attrs = dict(is_logged_in=True, is_registered=True, attributes={}, roles={})
+                    if actor_user.session:
+                        session_attrs.update(actor_user.session)
+
+                    return build_json_response(session_attrs)
+
+            # Support quick reload
+            access_token = flask.session.get("access_token", None)
+            actor_id = flask.session.get("actor_id", None)
+            if access_token and actor_id:
+                actor_user = self.idm_client.read_actor_identity(actor_id)
+                session_attrs = dict(access_token=access_token, is_logged_in=True, is_registered=True, attributes={}, roles={})
+                if actor_user.session:
+                    session_attrs.update(actor_user.session)
+
+                return build_json_response(session_attrs)
+
+            # Get session from Flask session and cookie
             user_info = get_auth()
             if 0 < int(user_info.get("valid_until", 0)) * 1000 < current_time_millis():
                 clear_auth()
@@ -232,9 +261,7 @@ class UIServer(StandaloneProcess):
             return build_json_error()
 
 
-
-
-def enable_crosref(resp):
+def enable_cors(resp):
     if ui_instance.develop_mode and ui_instance.set_cors_headers:
         if isinstance(resp, basestring):
             resp = Response(resp)
@@ -250,17 +277,17 @@ def enable_crosref(resp):
 
 @app.route('/auth/login', methods=['POST'])
 def login_route():
-    return enable_crosref(ui_instance.login())
+    return enable_cors(ui_instance.login())
 
 
 @app.route('/auth/session', methods=['GET', 'POST'])
 def session_route():
-    return enable_crosref(ui_instance.get_session())
+    return enable_cors(ui_instance.get_session())
 
 
 @app.route('/auth/logout', methods=['GET', 'POST'])
 def logout_route():
-    return enable_crosref(ui_instance.logout())
+    return enable_cors(ui_instance.logout())
 
 
 # -------------------------------------------------------------------------
@@ -269,16 +296,42 @@ def logout_route():
 @oauth.clientgetter
 def load_client(client_id):
     log.info("OAuth:load_client(%s)", client_id)
+    client = None
+    if client_id and client_id in client_cache:
+        client = client_cache[client_id]
     try:
-        if client_id:
-            actor_obj = ui_instance.idm_client.read_actor_identity(client_id)
+        if client_id and not client:
+            actor_id = ui_instance.idm_client.find_actor_identity_by_username("client:" + client_id)
+            actor_obj = ui_instance.idm_client.read_actor_identity(actor_id)
             client = OAuthClientObj.from_actor_identity(actor_obj)
-            flask.g.client_id = client_id
-            return client
-    except NotFound:
+            client_cache[client_id] = client
+    except (NotFound, BadRequest):
         pass
-    except BadRequest:
-        pass
+    if client:
+        flask.g.client_id = client_id
+    return client
+
+@oauth.usergetter
+def get_user(username, password, *args, **kwargs):
+    # Required for password credential authentication
+    log.info("OAuth:get_user(%s)", username)
+    if username and password:
+        try:
+            actor_id = ui_instance.idm_client.check_actor_credentials(username, password)
+            actor_user = ui_instance.idm_client.read_actor_identity(actor_id)
+            if actor_user.details.type_ != OT.UserIdentityDetails:
+                log.warn("Bad identity details")
+                return None
+
+            full_name = actor_user.details.contact.individual_names_given + " " + actor_user.details.contact.individual_name_family
+            valid_until = int(get_ion_ts_millis() / 1000 + ui_instance.session_timeout)
+            user_session = {"actor_id": actor_id, "user_id": actor_id, "username": username, "full_name": full_name, "valid_until": valid_until}
+            actor_user.session = user_session
+            ui_instance.container.resource_registry.update(actor_user)
+            flask.g.actor_id = actor_id
+            return user_session
+        except NotFound:
+            pass
     return None
 
 @oauth.grantgetter
@@ -288,6 +341,7 @@ def load_grant(client_id, code):
 
 @oauth.grantsetter
 def save_grant(client_id, code, request, *args, **kwargs):
+    """Saves a grant made by the user on provider to client"""
     print "### save_grant", client_id, code
     # decide the expires time yourself
     expires = datetime.utcnow() + timedelta(seconds=100)
@@ -303,11 +357,16 @@ def load_token(access_token=None, refresh_token=None):
             token_obj = ui_instance.container.object_store.read(token_id)
             token = OAuthTokenObj.from_security_token(token_obj)
             flask.g.oauth_user = token.user
+            flask.g.actor_id = token.user["actor_id"]
+            flask.session["access_token"] = access_token
+            flask.session["actor_id"] = token.user["actor_id"]
             return token
         elif refresh_token:
             token_id = str("refresh_token_%s" % refresh_token)
             token_obj = ui_instance.container.object_store.read(token_id)
             token = OAuthTokenObj.from_security_token(token_obj)
+            flask.g.oauth_user = token.user
+            flask.g.actor_id = token.user["actor_id"]
             return token
     except NotFound:
         pass
@@ -337,19 +396,6 @@ def save_token(token, request, *args, **kwargs):
                                               scopes=scopes, client_id=flask.g.client_id))
     token_id = "refresh_token_%s" % refresh_token_str
     ui_instance.container.object_store.create(token_obj, token_id)
-
-@oauth.usergetter
-def get_user(username, password, *args, **kwargs):
-    # Required for password credential authentication
-    log.info("OAuth:get_user(%s)", username)
-    if username and password:
-        try:
-            actor_id = ui_instance.idm_client.check_actor_credentials(username, password)
-            flask.g.actor_id = actor_id
-            return {"actor_id": actor_id}
-        except NotFound:
-            pass
-    return None
 
 @app.route('/oauth/authorize', methods=['GET', 'POST'])
 #@require_login

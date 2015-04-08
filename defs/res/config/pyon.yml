@@ -248,6 +248,9 @@ process:
     security:
       secret: ""             # Server secret for cookie encryption
       session_timeout: 900   # Timeout in seconds
+    oauth:
+      enabled: true
+      default_scope: scioncc
     service_gateway:
       enabled: true
       url_prefix: /service
