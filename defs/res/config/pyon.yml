@@ -88,6 +88,7 @@ server:
     default_database: postgres  # Postgres' internal database
     database: ion               # Database name for SciON (will be sysname prefixed)
     connection_pool_max: 5      # Number of connections for entire container
+    db_init: res/datastore/postgresql/db_init.sql
 
   smtp:
     # Outgoing email server

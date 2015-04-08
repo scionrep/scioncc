@@ -51,7 +51,13 @@ Install python 2.7.x
 Basic packages
     > brew install git libevent libyaml rabbitmq pkg-config
 
-Install postgres with postgis extension
+Install Postgresql with postgis extension (version >= 9.3).
+    Easiest install with Postgres, PostGIS, PLV8 etc:
+    Download Postgres.app from http://http://postgresapp.com, unzip, drag into Applications, start.
+    Add to path in .profile or similar for command line tools:
+    > export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/9.4/bin
+
+    Alternative install via brew (note: PLV8 does not install properly)
     > brew install postgres postgis
 
     As user postgres:

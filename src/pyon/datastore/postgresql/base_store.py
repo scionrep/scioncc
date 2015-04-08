@@ -74,6 +74,7 @@ class PostgresDataStore(DataStore):
         self.database = self.config.get('database', None) or DEFAULT_DBNAME
         self.default_database = self.config.get('default_database', None) or 'postgres'
         self.pool_maxsize = int(self.config.get('connection_pool_max', 4))
+        self.db_init = self.config.get('db_init', None) or "res/datastore/postgresql/db_init.sql"
 
         # Database (Postgres database) and datastore (database table) name handling.
         # Scope database with given scope (e.g. sysname).
@@ -131,7 +132,7 @@ class PostgresDataStore(DataStore):
                               tracer=self._call_tracer, trace_stmt="EXECUTE db_init.sql") as conn2:
             with conn2.cursor() as cur:
                 db_init = None
-                with open("res/datastore/postgresql/db_init.sql", "r") as f:
+                with open(self.db_init, "r") as f:
                     db_init = f.read()
                 if db_init:
                     cur.execute(db_init)
