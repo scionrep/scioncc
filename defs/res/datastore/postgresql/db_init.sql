@@ -5,214 +5,171 @@ CREATE EXTENSION pg_trgm;
 -- PostGIS extensions
 CREATE EXTENSION postgis;
 CREATE EXTENSION postgis_topology;
+-- create extension fuzzystrmatch;
 
 
--- Python language extension
-CREATE EXTENSION plpythonu;
+-- JavaScript language extention
+CREATE EXTENSION plv8;
 
 -- Functions to query JSON columns
--- See here for originals:
+-- See here for originals(before porting to node.js):
 -- https://gist.github.com/tobyhede/2715918/raw/370a4defac00d085a5351e084cb42b9d8ccb1092/postsql.sql
+
 
 CREATE OR REPLACE FUNCTION json_string(data json, key text) RETURNS TEXT AS
 $$
-import json
-res = json.loads(data)
-keys = key.split('.')
-
-for k in keys:
-  if res: res = res.get(k, None)
-
-return str(res) if res else None
+var res = data;
+var keys = key.split(".");
+for(var i=0; i<keys.length; i++){
+    if(res){
+        res = res[keys[i]];
+    }
+}
+if(res === undefined){
+    res = null;
+}
+return res;
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
+LANGUAGE plv8 IMMUTABLE STRICT;
 
-
-CREATE OR REPLACE FUNCTION json_int(data json, key text) RETURNS INT AS
-$$
-import json
-res = json.loads(data)
-keys = key.split('.')
-
-for k in keys:
-  if res: res = res.get(k, None)
-
-try:
-  if res is not None: res=int(res)
-except Exception:
-  res = None
-
-return res
-$$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
-
-CREATE OR REPLACE FUNCTION json_int_array(data json, key text) RETURNS INT[] AS
-$$
-import json
-res = json.loads(data)
-keys = key.split('.')
-
-for k in keys:
-  if res: res = res.get(k, None)
-
-if res is not None and not isinstance(res, list):
-  res = [res]
-
-if isinstance(res, list):
-  try:
-    res = [int(l) for l in res]
-  except Exception:
-    res = None
-
-  return res
-$$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
-
-CREATE OR REPLACE FUNCTION json_float(data json, key text) RETURNS DOUBLE PRECISION AS
-$$
-import json
-res = json.loads(data)
-keys = key.split('.')
-
-for k in keys:
-  if res: res = res.get(k, None)
-
-try:
-  if res is not None: res=float(res)
-except Exception:
-  res = None
-
-return res
-$$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
-
-CREATE OR REPLACE FUNCTION json_bool(data json, key text) RETURNS BOOLEAN AS
-$$
-import json
-res = json.loads(data)
-keys = key.split('.')
-
-for k in keys:
-  if res: res = res.get(k, None)
-
-if res is not None: res=bool(res)
-return res
-$$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
-
--- Special access functions
 -- Results in a list of attributes
 CREATE OR REPLACE FUNCTION json_attrs(data json) RETURNS TEXT[] AS
 $$
-import json
-res = json.loads(data)
-
-return res.keys()
+return Object.keys(data);
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
+LANGUAGE plv8 IMMUTABLE STRICT;
 
 -- Results in a list of nested object types
 CREATE OR REPLACE FUNCTION json_nested(data json) RETURNS TEXT[] AS
 $$
-import json
-res = json.loads(data)
-nested = set([res[k]['type_'] for k,v in res.iteritems() if isinstance(v, dict) and v.get('type_', None)])
-
-return list(nested)
+var res = [];
+for(var key in data){
+    if (data.hasOwnProperty(key) && (!(data[key] instanceof Array)) && (data[key]) && (data[key]["type_"])){
+        res.push(data[key]["type_"]);
+    }
+}
+return res;
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
+LANGUAGE plv8 IMMUTABLE STRICT;
 
 
 -- Results in a list of keywords
 CREATE OR REPLACE FUNCTION json_keywords(data json) RETURNS TEXT[] AS
 $$
-import json
-res = json.loads(data)
-keywords = []
-kw_list = res.get('keywords', None)
-if kw_list and isinstance(kw_list, list):
-  for kw in kw_list:
-    keywords.append(kw)
-
-return keywords
+var res = [];
+if(data["keywords"] && (data["keywords"] instanceof Array)){
+    res = data["keywords"];
+}
+return res;
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
+LANGUAGE plv8 IMMUTABLE STRICT;
 
 -- Results in a special attribute extracted from object
 CREATE OR REPLACE FUNCTION json_specialattr(data json) RETURNS TEXT AS
 $$
-import json
-res = json.loads(data)
-special = None
-doc_type = res.get('type_', None)
-if doc_type == "ActorIdentity" and isinstance(res.get('details', None), dict) and isinstance(res["details"].get('contact', None), dict):
-  email = res["details"]['contact'].get('email', None)
-  if email:
-    special = "contact.email=%s" % email
-elif doc_type == "Org" and res.get('org_governance_name', None):
-  special = "org_governance_name=%s" % res['org_governance_name']
-elif doc_type == "UserRole" and res.get('governance_name', None):
-  special = "governance_name=%s" % res['governance_name']
-
-return special
+function is_object(obj){
+    return obj && (obj instanceof Object) && !(obj instanceof Array);
+}
+var special = null;
+doc_type = data["type_"];
+switch ( doc_type){
+    case "ActorIdentity": if (is_object(data["details"]) && is_object(data["details"]["contact"]) && data["details"]["contact"]["email"]){
+                            special = "contact.email=" + data["details"]["contact"]["email"];
+                          }
+                          break;
+    case "Org": if (data["org_governance_name"]){
+                    special = "org_governance_name=" + data["org_governance_name"];
+                }
+                break;
+    case "UserRole": if (data["governance_name"]){
+                        special = "governance_name=" + data["governance_name"];
+                     }
+                     break;
+}
+return special;
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
+LANGUAGE plv8 IMMUTABLE STRICT;
 
 -- Results in a list of alternative id namespaces
 CREATE OR REPLACE FUNCTION json_altids_ns(data json) RETURNS TEXT[] AS
 $$
-import json
-res = json.loads(data)
-alts = set()
-kw_list = res.get('alt_ids', None)
-if kw_list and isinstance(kw_list, list):
-  for kw in kw_list:
-    parts = kw.split(':',1)
-    alts.add(parts[0] if len(parts) > 1 else '_')
-
-return sorted(alts)
+var alts = {};
+var kw_list = data["alt_ids"];
+var parts, alts_list;
+if(kw_list && (kw_list instanceof Array)){
+    for(var i=0; i<kw_list.length; i++){
+        parts = kw_list[i].split(":");
+        if (parts.length > 1){
+            alts[parts[0]] = 1;
+        } else{
+            alts["_"] = 1;
+        }
+    }
+}
+alts_list = Object.keys(alts);
+alts_list.sort();
+return alts_list;
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
+LANGUAGE plv8 IMMUTABLE STRICT;
 
 -- Results in a list of alternative ids
 CREATE OR REPLACE FUNCTION json_altids_id(data json) RETURNS TEXT[] AS
 $$
-import json
-res = json.loads(data)
-alts = set()
-kw_list = res.get('alt_ids', None)
-if kw_list and isinstance(kw_list, list):
-  for kw in kw_list:
-    parts = kw.split(':',1)
-    alts.add(parts[-1])
-
-return sorted(alts)
+var delimeter = ":";
+var alts_list, alt, i, delimeter_pos, kw;
+var alts_set = {};
+var kw_list = data["alt_ids"];
+if(kw_list && (kw_list instanceof Array)){
+    for(i=0; i<kw_list.length; i++){
+        kw = kw_list[i];
+        delimeter_pos = kw.indexOf(delimeter);
+        if(delimeter_pos == -1){
+            alt = kw;
+        } else {
+            alt = kw.substring(delimeter_pos+1);
+        }
+        alts_set[alt] = true;
+    }
+}
+alts_list = Object.keys(alts_set);
+alts_list.sort();
+return alts_list;
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
-
+LANGUAGE plv8 IMMUTABLE STRICT;
 
 -- Results in all attributes in one big string for full text query
 CREATE OR REPLACE FUNCTION json_allattr(data json) RETURNS TEXT AS
 $$
-import json
-res = json.loads(data)
-no_attrs = set(["_id","_rev","type_","ts_created","ts_updated","lcstate","availability"])
-ok_types = set([unicode,str,int,long,float])
-parts = []
-for k,v in res.iteritems():
-  if k not in no_attrs and type(v) in ok_types:
-    if type(v) is unicode:
-      v = v.encode("utf8")
-    parts.append(str(v)[:500])
-
-return " ".join(parts)
+var part, key;
+var parts = [];
+var max_length = 500;
+var no_attrs = {
+    "_id": true,
+    "_rev": true,
+    "type_": true,
+    "ts_created": true,
+    "ts_updated": true,
+    "lcstate": true,
+    "availability": true
+};
+// Ignore boolean. Because it was ignored in original PL/Python implementation
+var ok_types = {
+    "string": true,
+    "number": true
+};
+for(key in data){
+    if(data.hasOwnProperty(key)){
+        if(!no_attrs[key] && ok_types[typeof data[key]]){
+            part = data[key];
+            if(part.length > max_length){
+                part = part.substring(0, max_length);
+            }
+            parts.push(part);
+        }
+    }
+}
+return parts.join(" ");
 $$
-LANGUAGE plpythonu IMMUTABLE STRICT;
+LANGUAGE plv8 IMMUTABLE STRICT;
+
+
