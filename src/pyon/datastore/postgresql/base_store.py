@@ -233,8 +233,9 @@ class PostgresDataStore(DataStore):
             with conn.cursor() as cur:
                 try:
                     cur.execute(profile_sql % dict(ds=qual_ds_name))
-                except ProgrammingError:
-                    raise BadRequest("Datastore with name %s already exists" % datastore_name)
+                except ProgrammingError as err:
+                    # Todo: correct error messages
+                    raise BadRequest("Datastore error " + err.message)
                 except DatabaseError as de:
                     raise BadRequest("Datastore %s create error: %s" % (datastore_name, de))
                 except Exception as de:
