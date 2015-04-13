@@ -40,17 +40,77 @@ class PostgresQueryBuilder(object):
         DatastoreQueryBuilder.check_query(query)
         self.query = query
         self.basetable = basetable
-        if self.query["query_args"].get("ds_sub", ""):
-            self.basetable += "_" + self.query["query_args"]["ds_sub"]
-        self.cols = ["id"]
-        if not self.query["query_args"].get("id_only", True):
-            self.cols.append("doc")
+        self.from_tables = basetable
         self._valcnt = 0
         self.values = {}
         self.query_params = query.get("query_params", {})
+        self.ds_sub = self.query["query_args"].get("ds_sub", "")
+        self.query_format = self.query["query_args"].get("format", "")
+        self.table_aliases = [self.basetable]
+        self.has_basic_cols = True
 
-        self.where = self._build_where(self.query["where"])
-        self.order_by = self._build_order_by(self.query["order_by"])
+        if self.query_format == "sql":
+            self.basic_cols = False
+            self.cols = self.query["returns"]
+            self.from_tables = self.query["from"]
+            self.table_aliases = []
+            self.where = self.query.get("where", None)
+            self.group_by = self.query.get("group_by", None)
+            self.having = self.query.get("having", None)
+            self.order_by = self.query.get("order_by", None)
+
+        elif self.query_format == "complex":
+            # Build list of return values
+            self.cols = ["base.id"]
+            if not self.query["query_args"].get("id_only", True):
+                self.cols.append("base.doc")
+            if self.query.get("returns", None):
+                if self.query["returns"][0] is True:
+                    self.cols.extend(self.query["returns"][1:])
+                else:
+                    self.has_basic_cols = False
+                    self.cols = self.query["returns"][1:]
+
+            # Build FROM fragment with aliases using base table and provided list of other tables
+            # Convention for table aliases:
+            #   base table (resources, associations, events) as base
+            #   subsequent from tables t0, t1 etc
+            self.table_aliases = ["base"]
+            self.from_tables += " AS base"
+            if self.query.get("from", None):
+                for i, from_table in enumerate(self.query["from"]):
+                    if " as " in from_table.lower():
+                        self.table_aliases.append(from_table[from_table.lower().find(" as ") + 4:])
+                        self.from_tables += ",%s" % from_table
+                    else:
+                        f_alias = "t%s" % i
+                        self.table_aliases.append(f_alias)
+                        self.from_tables += ",%s as %s" % (from_table, f_alias)
+
+            if self.query.get("where_join", None):
+                self.where = "(" + self._build_where(self.query["where"]) + ") AND ((" + ") AND (".join(self.query["where_join"]) + "))"
+            else:
+                self.where = self._build_where(self.query["where"])
+
+            self.order_by = self._build_order_by(self.query["order_by"])
+
+            self.group_by = self.query.get("group_by", None)
+            self.having = self.query.get("having", None)
+
+        else:
+            self.cols = ["id"]
+            if not self.query["query_args"].get("id_only", True):
+                self.cols.append("doc")
+
+            if self.ds_sub:
+                self.basetable += "_" + self.query["query_args"]["ds_sub"]
+                self.from_tables = self.basetable
+                self.table_aliases = [self.basetable]
+
+            self.where = self._build_where(self.query["where"])
+            self.order_by = self._build_order_by(self.query["order_by"])
+            self.group_by = None
+            self.having = None
 
     def _value(self, value):
         """Saves a value for later type conformant insertion into the query"""
@@ -121,7 +181,12 @@ class PostgresQueryBuilder(object):
                                              self._value("[%s,%s]" % (self._sub_param(x1),
                                                                       self._sub_param(y1))))
         elif op.startswith(DQ.GOP_PREFIX):
-            if op.endswith('_geom'):
+            if op == DQ.GOP_DISTANCE:
+                colname, point_x, point_y, dist, cmpop = args
+                return "ST_Distance_Sphere(%s, ST_SetSRID(ST_Point(%s, %s),4326)) %s %s" % (
+                    table_prefix+colname, self._value(self._sub_param(point_x)), self._value(self._sub_param(point_y)),
+                    self.OP_STR[cmpop], self._value(self._sub_param(dist)))
+            elif op.endswith('_geom'):
                 colname, wkt, buf = args
                 # PostGIS geometry from WKT http://postgis.net/docs/ST_GeomFromEWKT.html
                 geom_from_wkt = 'ST_GeomFromEWKT(\'SRID=4326;%s\')' % (wkt)
@@ -263,10 +328,16 @@ class PostgresQueryBuilder(object):
         frags.append("SELECT ")
         frags.append(",".join(self.cols))
         frags.append(" FROM ")
-        frags.append(self.basetable)
+        frags.append(self.from_tables)
         if self.where:
             frags.append(" WHERE ")
             frags.append(self.where)
+        if self.group_by:
+            frags.append(" GROUP BY ")
+            frags.append(self.group_by)
+            if self.having:
+                frags.append(" HAVING ")
+                frags.append(self.having)
         if self.order_by:
             frags.append(" ORDER BY ")
             frags.append(self.order_by)
@@ -277,7 +348,9 @@ class PostgresQueryBuilder(object):
             frags.append(" OFFSET ")
             frags.append(str(qargs["skip"]))
 
-        return "".join(frags)
+        query_str = "".join(frags)
+        #print query_str
+        return query_str
 
     def get_values(self):
         return self.values
@@ -293,3 +366,6 @@ class PostgresQueryBuilder(object):
         elif profile == DataStore.DS_PROFILE.EVENTS:
             return col in {"id", "type_", "origin", "origin_type", "sub_type", "actor_id"}
         raise BadRequest("Unknown query profile")
+
+    def get_base_alias(self):
+        return "base"

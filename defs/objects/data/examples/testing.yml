@@ -15,10 +15,12 @@ TestDevice: !Extends_TaskableResource
 
 TestInstrument: !Extends_TestDevice
   firmware_version: ""
+  boundary: {}
 
 
 TestPlatform: !Extends_TestDevice
   hardware_version: ""
+  boundary: {}
 
 
 TestSite: !Extends_AppResource
@@ -26,6 +28,7 @@ TestSite: !Extends_AppResource
   geospatial_bounds: !GeospatialBounds
   geospatial_crs: !GeospatialCoordinateReferenceSystem
   temporal_bounds: !TemporalBounds
+  boundary: {}
 
 
 TestDataset: !Extends_InformationResource

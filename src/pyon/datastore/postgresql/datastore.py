@@ -726,19 +726,22 @@ class PostgresPyonDataStore(PostgresDataStore):
         @retval  list of resource ids or resource objects matching query (dependent on id_only value)
         """
         qual_ds_name = self._get_datastore_name()
+        query_ds_sub = query["query_args"].get("ds_sub", None)
+        query_format = query["query_args"].get("format", "")
 
         pqb = PostgresQueryBuilder(query, qual_ds_name)
-        if self.profile == DataStore.DS_PROFILE.RESOURCES and not query["query_args"].get("ds_sub", None):
-            pqb.where = self._add_access_filter(access_args, qual_ds_name, pqb.where, pqb.values, add_where=False)
+        if self.profile == DataStore.DS_PROFILE.RESOURCES and not query_ds_sub:
+            table_alias = qual_ds_name if query_format != "complex" else "base"
+            pqb.where = self._add_access_filter(access_args, table_alias, pqb.where, pqb.values, add_where=False)
 
         if self.profile == DataStore.DS_PROFILE.RESOURCES:
-            pqb.where = self._add_deleted_filter(pqb.basetable, query["query_args"].get("ds_sub", None),
+            pqb.where = self._add_deleted_filter(pqb.table_aliases[0], query_ds_sub,
                                                  pqb.where, pqb.values,
                                                  show_all=query["query_args"].get("show_all", False))
 
         with self.pool.cursor(**self.cursor_args) as cur:
             exec_query = pqb.get_query()
-            cur.execute(pqb.get_query(), pqb.get_values())
+            cur.execute(exec_query, pqb.get_values())
             rows = cur.fetchall()
             log.info("find_by_query() QUERY: %s (%s rows)", cur.query, cur.rowcount)
             query_res = {}
@@ -748,13 +751,23 @@ class PostgresPyonDataStore(PostgresDataStore):
             query_res["rowcount"] = cur.rowcount
 
         id_only = query["query_args"].get("id_only", True)
-        if id_only:
-            res_ids = [self._prep_id(row[0]) for row in rows]
-            return res_ids
-        else:
-            res_docs = [self._persistence_dict_to_ion_object(row[-1]) for row in rows]
-            return res_docs
+        if query_format == "complex" and pqb.has_basic_cols:
+            # Return format is list of lists
+            if id_only:
+                res_vals = [[self._prep_id(row[0])] + list(row[1:]) for row in rows]
+            else:
+                res_vals = [[self._persistence_dict_to_ion_object(row[1])] + list(rows[2:]) for row in rows]
 
+        elif query_format == "complex":
+            res_vals = [list(row) for row in rows]
+
+        else:
+            if id_only:
+                res_vals = [self._prep_id(row[0]) for row in rows]
+            else:
+                res_vals = [self._persistence_dict_to_ion_object(row[-1]) for row in rows]
+
+        return res_vals
 
     # -------------------------------------------------------------------------
     # Internal operations

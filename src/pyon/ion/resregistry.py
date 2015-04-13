@@ -99,9 +99,9 @@ class ResourceRegistry(object):
 
         if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
             self.event_pub.publish_event(event_type="ResourceModifiedEvent",
-                                     origin=res_id, origin_type=object.type_,
-                                     sub_type="CREATE",
-                                     mod_type=ResourceModificationType.CREATE)
+                                         origin=res_id, origin_type=object.type_,
+                                         sub_type="CREATE",
+                                         mod_type=ResourceModificationType.CREATE)
 
         return res
 
@@ -132,8 +132,8 @@ class ResourceRegistry(object):
         # Publish events
         for resobj, (rid, rrv) in zip(res_list, rid_list):
             self.event_pub.publish_event(event_type="ResourceModifiedEvent",
-                origin=rid, origin_type=resobj.type_,
-                mod_type=ResourceModificationType.CREATE)
+                                         origin=rid, origin_type=resobj.type_,
+                                         mod_type=ResourceModificationType.CREATE)
 
         return rid_list
 
@@ -197,9 +197,9 @@ class ResourceRegistry(object):
 
         if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
             self.event_pub.publish_event(event_type="ResourceModifiedEvent",
-                                     origin=res_obj._id, origin_type=res_obj.type_,
-                                     sub_type="DELETE",
-                                     mod_type=ResourceModificationType.DELETE)
+                                         origin=res_obj._id, origin_type=res_obj.type_,
+                                         sub_type="DELETE",
+                                         mod_type=ResourceModificationType.DELETE)
 
         return res
 
@@ -216,6 +216,7 @@ class ResourceRegistry(object):
         """
         This is the official "delete" for resource objects: they are set to DELETED lcstate.
         All associations are set to deleted as well.
+        DELETED resources will not show up in resource search results (but still can be read).
         """
         res_obj = self.read(resource_id)
         old_state = res_obj.lcstate
@@ -238,10 +239,10 @@ class ResourceRegistry(object):
 
         if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
             self.event_pub.publish_event(event_type="ResourceLifecycleEvent",
-                                     origin=res_obj._id, origin_type=res_obj.type_,
-                                     sub_type="%s.%s" % (res_obj.lcstate, res_obj.availability),
-                                     lcstate=res_obj.lcstate, availability=res_obj.availability,
-                                     lcstate_before=old_state, availability_before=res_obj.availability)
+                                         origin=res_obj._id, origin_type=res_obj.type_,
+                                         sub_type="%s.%s" % (res_obj.lcstate, res_obj.availability),
+                                         lcstate=res_obj.lcstate, availability=res_obj.availability,
+                                         lcstate_before=old_state, availability_before=res_obj.availability)
 
 
     def execute_lifecycle_transition(self, resource_id='', transition_event=''):
@@ -281,11 +282,11 @@ class ResourceRegistry(object):
 
         if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
             self.event_pub.publish_event(event_type="ResourceLifecycleEvent",
-                                     origin=res_obj._id, origin_type=res_obj.type_,
-                                     sub_type="%s.%s" % (res_obj.lcstate, res_obj.availability),
-                                     lcstate=res_obj.lcstate, availability=res_obj.availability,
-                                     lcstate_before=old_lcstate, availability_before=old_availability,
-                                     transition_event=transition_event)
+                                         origin=res_obj._id, origin_type=res_obj.type_,
+                                         sub_type="%s.%s" % (res_obj.lcstate, res_obj.availability),
+                                         lcstate=res_obj.lcstate, availability=res_obj.availability,
+                                         lcstate_before=old_lcstate, availability_before=old_availability,
+                                         transition_event=transition_event)
 
         return "%s_%s" % (res_obj.lcstate, res_obj.availability)
 
@@ -338,10 +339,10 @@ class ResourceRegistry(object):
 
         if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
             self.event_pub.publish_event(event_type="ResourceLifecycleEvent",
-                                     origin=res_obj._id, origin_type=res_obj.type_,
-                                     sub_type="%s.%s" % (res_obj.lcstate, res_obj.availability),
-                                     lcstate=res_obj.lcstate, availability=res_obj.availability,
-                                     lcstate_before=old_lcstate, availability_before=old_availability)
+                                         origin=res_obj._id, origin_type=res_obj.type_,
+                                         sub_type="%s.%s" % (res_obj.lcstate, res_obj.availability),
+                                         lcstate=res_obj.lcstate, availability=res_obj.availability,
+                                         lcstate_before=old_lcstate, availability_before=old_availability)
 
 
     # -------------------------------------------------------------------------
@@ -470,7 +471,7 @@ class ResourceRegistry(object):
             pt = Predicates.get(predicate)
         except AttributeError:
             raise BadRequest("Predicate unknown %s" % predicate)
-        if not subject_type in pt['domain']:
+        if subject_type not in pt['domain']:
             found_st = False
             for domt in pt['domain']:
                 if subject_type in getextends(domt):
@@ -478,7 +479,7 @@ class ResourceRegistry(object):
                     break
             if not found_st:
                 raise BadRequest("Illegal subject type %s for predicate %s" % (subject_type, predicate))
-        if not object_type in pt['range']:
+        if object_type not in pt['range']:
             found_ot = False
             for rant in pt['range']:
                 if object_type in getextends(rant):
@@ -611,6 +612,11 @@ class ResourceRegistry(object):
     # Resource find operations
 
     def read_object(self, subject="", predicate="", object_type="", assoc="", id_only=False):
+        """
+        Short form of find_objects, returning the one object of a subject resource for given
+        predicate, object type or already retrieved association.
+        Raises NotFound if no resource found or Inconsistent if more than one resource.
+        """
         if assoc:
             if type(assoc) is str:
                 assoc = self.read_association(assoc)
@@ -625,6 +631,11 @@ class ResourceRegistry(object):
             return obj_list[0] if id_only else self.read(obj_list[0])
 
     def read_subject(self, subject_type="", predicate="", object="", assoc="", id_only=False):
+        """
+        Short form of find_subjects, returning the one subject of a object resource for given
+        predicate, subject type or already retrieved association.
+        Raises NotFound if no resource found or Inconsistent if more than one resource.
+        """
         if assoc:
             if type(assoc) is str:
                 assoc = self.read_association(assoc)
@@ -650,6 +661,28 @@ class ResourceRegistry(object):
 
     def find_associations(self, subject="", predicate="", object="", assoc_type=None, id_only=False, anyside=None, query=None,
                           limit=None, skip=None, descending=None, access_args=None):
+        """Return a list of association objects or association ids based on given arguments.
+        Internally applies one of several search strategies. Search strategies cannot be combined (use
+        AssociationQuery for more advanced combinations of filters and search strategies).
+        Return order may or may not be defined given the search strategy.
+        This function applies visibility filter based on given access_args and does not return
+        associations in is_deleted state, or associations referencing resources in DELETED state.
+
+        Available searches (with their arguments):
+        - subject, predicate?, object?
+        - predicate, subject?, object?
+        - object, predicate?, subject?
+        - assoc_type : Deprecated, non functional
+        - anyside : ID is either subject of object. Internal: value can also be a list of 2-tuples (predicate, id).
+        - query : Execute given a datastore query expression dict (AssociationQuery)
+
+        Other arguments apply to all queries:
+        - id_only  If True, return list of IDs instead of list of objects
+        - limit  Return at most limit entries
+        - skip  Return entries after skipping n entries
+        - descending  Return entries in reverse order
+        - access_args  dict with info about calling actor id, org memberships and superusers for visibility filter
+        """
         return self.rr_store.find_associations(subject, predicate, object, assoc_type, id_only=id_only, anyside=anyside,
                                                query=query, limit=limit, skip=skip, descending=descending, access_args=access_args)
 
@@ -670,6 +703,9 @@ class ResourceRegistry(object):
         return assoc[0]
 
     def find_resources(self, restype="", lcstate="", name="", id_only=False, access_args=None):
+        """Return a list of resource objects or resource ids based on given arguments.
+        Simplified form of find_resource_ext with limited options.
+        """
         return self.rr_store.find_resources(restype, lcstate, name, id_only=id_only, access_args=access_args)
 
     def find_resources_ext(self, restype="", lcstate="", name="",
@@ -678,6 +714,29 @@ class ResourceRegistry(object):
                            limit=None, skip=None, descending=None, id_only=False,
                            query=None,
                            access_args=None):
+        """Return a list of resource objects or resource ids based on given arguments.
+        Internally applies one of several search strategies. Search strategies cannot be combined (use
+        ResourceQuery for more advanced combinations of filters and search strategies).
+        Return order may or may not be defined given the search strategy.
+        This function applies visibility filter based on given access_args and does not return
+        resources in DELETED state.
+
+        Available searches (with their arguments):
+        - restype, lcstate?
+        - name, restype?
+        - keyword, restype? : Find resources where keywords is within keywords list
+        - nested_type, restype? : Find resources that have an object type as direct attribute
+        - attr_name, attr_value? : Find resources with an attribute of specific value (only limited attrs supported)
+        - alt_id, alt_id_ns? : Find resources by alt_id value or alt_id namespace or both
+        - query : Execute given a datastore query expression dict (ResourceQuery)
+
+        Other arguments apply to all queries:
+        - id_only  If True, return list of IDs instead of list of objects
+        - limit  Return at most limit entries
+        - skip  Return entries after skipping n entries
+        - descending  Return entries in reverse order
+        - access_args  dict with info about calling actor id, org memberships and superusers for visibility filter
+        """
         return self.rr_store.find_resources_ext(restype=restype, lcstate=lcstate, name=name,
             keyword=keyword, nested_type=nested_type,
             attr_name=attr_name, attr_value=attr_value, alt_id=alt_id, alt_id_ns=alt_id_ns,
@@ -709,14 +768,6 @@ class ResourceRegistry(object):
 
     def get_resource_extension(self, resource_id='', resource_extension='', computed_resource_type=None, ext_associations=None, ext_exclude=None, **kwargs ):
         """Returns any ExtendedResource object containing additional related information derived from associations
-
-        @param resource_id    str
-        @param resource_extension    str
-        @param ext_associations    dict
-        @param ext_exclude    list
-        @retval extended_resource    ExtendedResource
-        @throws BadRequest    A parameter is missing
-        @throws NotFound    An object with the specified resource_id does not exist
         """
         if not resource_id:
             raise BadRequest("The resource_id parameter is empty")
@@ -740,12 +791,6 @@ class ResourceRegistry(object):
 
     def prepare_resource_support(self, resource_type='', resource_id=''):
         """Returns a structured dict with information to help create/update a resource
-
-        @param resource_type    str
-        @param resource_id    str
-        @retval resource_data    GenericPrepareSupport
-        @throws BadRequest    A parameter is missing
-        @throws NotFound    An object with the specified resource_id does not exist
         """
 
         if not resource_type:
@@ -773,9 +818,9 @@ class ResourceRegistry(object):
 
 class ResourceRegistryServiceWrapper(object):
     """
-    The purpose of this class is to map the service interface of the resource_registry service (YML)
-    to the container's resource registry instance.
-    In particular it extracts the actor from the current message context for use as owner.
+    Class that maps the service interface of the resource_registry service (YML)
+    to the container's resource registry instance and smooth over the differences.
+    In particular it extracts the actor from the current message context for use as owner argument.
     """
     def __init__(self, rr, process):
         self._rr = rr
@@ -837,8 +882,8 @@ class ResourceRegistryServiceWrapper(object):
 
 class ResourceQuery(DatastoreQueryBuilder):
     """
-    Helper class to build datastore queries for the resource registry.
-    Based on the DatastoreQueryBuilder
+    Helper class to build datastore queries for the resource registry, returning resource objects
+    based on various filters.
     """
 
     def __init__(self, order_by=None, limit=0, skip=0):
@@ -902,9 +947,15 @@ class ResourceQuery(DatastoreQueryBuilder):
 
 
 class AssociationQuery(DatastoreQueryBuilder):
-    def __init__(self):
+    """
+    Helper class to build datastore queries for the resource registry, returning association objects
+    based on various filters.
+    """
+
+    def __init__(self, order_by=None, limit=0, skip=0):
         super(AssociationQuery, self).__init__(datastore=DataStore.DS_RESOURCES,
-                                               profile=DataStore.DS_PROFILE.RESOURCES, ds_sub="assoc")
+                                               profile=DataStore.DS_PROFILE.RESOURCES, ds_sub="assoc",
+                                               order_by=order_by, limit=limit, skip=skip)
 
     def filter_subject(self, expr):
         return self.eq_in(DQ.AA_SUBJECT, expr)
@@ -926,3 +977,51 @@ class AssociationQuery(DatastoreQueryBuilder):
 
     def filter_subject_descendants(self, parent=None, subject_type=None, predicate=None, max_depth=0):
         return self.op_expr(self.ASSOP_DESCEND_S, parent, subject_type, predicate, max_depth)
+
+
+class ComplexRRQuery(ResourceQuery):
+    """
+    Helper class to build datastore queries for the resource registry for complex queries, returning
+    aggregates, groupings, function results etc.
+    """
+    def __init__(self, order_by=None, limit=0, skip=0):
+        super(ComplexRRQuery, self).__init__(order_by=order_by, limit=limit, skip=skip)
+        self.query["query_args"]["format"] = "complex"
+
+    # def _set_returns_sql(self, returns_sql):
+    #     self.query["returns"] = returns_sql
+    #
+    # def _set_from_sql(self, from_sql):
+    #     self.query["from"] = from_sql
+    #
+    # def _set_where_sql(self, where_sql):
+    #     self.query["where"] = where_sql
+    #
+    # def _set_group_by_sql(self, group_by_sql, having_sql=None):
+    #     self.query["group_by"] = group_by_sql
+    #     self.query["having"] = having_sql
+    #
+    # def set_sql(self, returns_sql, from_sql, where_sql=None, group_by_sql=None, having_sql=None):
+    #     self.query["query_args"]["format"] = "sql"
+    #     self._set_returns_sql(returns_sql)
+    #     self._set_from_sql(from_sql)
+    #     self._set_where_sql(where_sql)
+    #     self._set_group_by_sql(group_by_sql, having_sql)
+
+    def set_returns(self, return_list, keep_basic=True):
+        if not return_list or not isinstance(return_list, list):
+            raise BadRequest("Invalid return_list")
+        self.query["returns"] = [keep_basic is True] + return_list
+
+    def set_join_tables(self, tables, where_join):
+        if not tables or not isinstance(tables, list):
+            raise BadRequest("Invalid tables")
+        if not where_join or not isinstance(where_join, list):
+            raise BadRequest("Invalid where_join")
+
+        self.query["from"] = tables
+        self.query["where_join"] = where_join
+
+    def set_group_by(self, group_by, having=None):
+        self.query["group_by"] = group_by
+        self.query["having"] = having

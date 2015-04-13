@@ -2,6 +2,7 @@
 
 __author__ = 'Michael Meisinger'
 
+import json
 import uuid
 from nose.plugins.attrib import attr
 
@@ -9,7 +10,7 @@ from pyon.util.int_test import IonIntegrationTestCase
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound, Inconsistent, BadRequest
 from pyon.ion.resource import PRED, RT, LCS, AS, LCE, lcstate, create_access_args
-from pyon.ion.resregistry import ResourceQuery, AssociationQuery
+from pyon.ion.resregistry import ResourceQuery, AssociationQuery, ComplexRRQuery
 
 from interface.objects import Attachment, AttachmentType, ResourceVisibilityEnum
 
@@ -767,3 +768,125 @@ class TestResourceRegistry(IonIntegrationTestCase):
         # --- Clean up
 
         self.rr.rr_store.delete_mult(res_by_name.values())
+
+    def test_complex_query(self):
+        def bnds(x1, y1, s=5):
+            x2 = x1 + s
+            y2 = x1 + s
+            vals = dict(x1=x1, x2=x2, y1=y1, y2=y2)
+            return dict(boundary="POLYGON((%(x1)s %(y1)s,%(x1)s %(y2)s,%(x2)s %(y2)s,%(x1)s %(y2)s,%(x1)s %(y1)s))" % vals)
+
+        res_objs = [
+            (IonObject(RT.TestSite, name="PS0"), ),
+
+            (IonObject(RT.TestPlatform, name="PD00"), ),
+            (IonObject(RT.TestInstrument, name="ID000", boundary=bnds(10, 10)), ),
+            (IonObject(RT.TestInstrument, name="ID001", boundary=bnds(10, 20)), ),
+
+            (IonObject(RT.TestPlatform, name="PD01"), ),
+            (IonObject(RT.TestInstrument, name="ID010", boundary=bnds(20, 10)), ),
+            (IonObject(RT.TestInstrument, name="ID011", boundary=bnds(10, 20)), ),
+
+            (IonObject(RT.TestSite, name="PS1"), ),
+
+            (IonObject(RT.TestPlatform, name="PD10"), ),
+            (IonObject(RT.TestInstrument, name="ID100", boundary=bnds(50, 50)), ),
+            (IonObject(RT.TestInstrument, name="ID101", boundary=bnds(50, 60)), ),
+
+        ]
+        assocs = [
+            ("PS0", PRED.hasTestDevice, "PD00"),
+            ("PD00", PRED.hasTestDevice, "ID000"),
+            ("PD00", PRED.hasTestDevice, "ID001"),
+            ("PS0", PRED.hasTestDevice, "PD01"),
+            ("PD01", PRED.hasTestDevice, "ID010"),
+            ("PD01", PRED.hasTestDevice, "ID011"),
+            ("PS1", PRED.hasTestDevice, "PD10"),
+            ("PD10", PRED.hasTestDevice, "ID100"),
+            ("PD10", PRED.hasTestDevice, "ID101"),
+        ]
+        res_by_name = {}
+        for res_entry in res_objs:
+            res_obj = res_entry[0]
+            res_name = res_obj.name
+            res_obj.alt_ids.append("TEST:%s" % res_name)
+            actor_id = res_by_name[res_entry[1]] if len(res_entry) > 1 else None
+            rid, _ = self.rr.create(res_obj, actor_id=actor_id)
+            res_by_name[res_name] = rid
+        for assoc in assocs:
+            sname, p, oname = assoc
+            s, o = res_by_name[sname], res_by_name[oname]
+            self.rr.create_association(s, p, o)
+
+        # --- Complex queries
+
+        # Get geometry columns
+        rq = ComplexRRQuery()
+        rq.set_returns(["geom_mpoly", "ST_AsText(geom_mpoly)"])
+        rq.set_filter(rq.filter_type([RT.TestInstrument, RT.TestPlatform]))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        self.assertEquals(len(res_obj), 9)
+        self.assertIn(res_obj[0][0], res_by_name.values())
+
+        # Get GeoJSON
+        rq = ComplexRRQuery()
+        rq.set_returns(["ST_AsGeoJSON(geom_mpoly)"])
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        self.assertEquals(len(res_obj), 6)
+        geojson = json.loads(res_obj[0][1])
+        self.assertIsInstance(geojson, dict)
+        self.assertIn("type", geojson)
+        self.assertIn("coordinates", geojson)
+
+        rq = ComplexRRQuery()
+        rq.set_returns(["ST_Extent(geom_mpoly)"], keep_basic=False)
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        self.assertEquals(len(res_obj), 1)
+        self.assertEquals(res_obj[0][0], "BOX(10 10,55 60)")
+
+        rq = ComplexRRQuery()
+        rq.set_returns(["ST_Extent(geom_mpoly)"], keep_basic=False)
+        rq.set_filter(rq.filter_type(RT.TestInstrument),
+                      rq.filter_associated_with_object(res_by_name["PD00"], predicate=PRED.hasTestDevice))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        self.assertEquals(len(res_obj), 1)
+        self.assertEquals(res_obj[0][0], "BOX(10 10,15 20)")
+
+        rq = ComplexRRQuery()
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        rq.set_returns(["ST_AsText(ST_Union(geom_mpoly))"], keep_basic=False)
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        #print res_obj
+        # TODO: Unexpected!!!
+
+        # Bounding Box per Farm
+        rq = ComplexRRQuery()
+        rq.set_returns(["t0.st", "t0.s", "ST_AsText(ST_Extent(geom_mpoly))"], keep_basic=False)
+        rq.set_join_tables(["ion_resources_assoc"], ["base.id=t0.o AND t0.p='hasTestDevice'"])
+        rq.set_group_by("t0.s,t0.st")
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        self.assertEquals(len(res_obj), 3)
+        self.assertEquals({o[0] for o in res_obj}, {RT.TestPlatform})
+        self.assertEquals({o[1] for o in res_obj}, {res_by_name["PD00"], res_by_name["PD01"], res_by_name["PD10"]})
+        self.assertEquals({o[0] for o in res_obj}, {RT.TestPlatform})
+
+        # Bounding Box per Grower
+        rq = ComplexRRQuery()
+        rq.set_returns(["t1.st", "t1.s", "ST_AsText(ST_Extent(geom_mpoly))"], keep_basic=False)
+        rq.set_join_tables(["ion_resources_assoc", "ion_resources_assoc"], ["base.id=t0.o AND t0.p='hasTestDevice' AND t0.st='TestPlatform'", "t0.s=t1.o AND t1.p='hasTestDevice' AND t1.st='TestSite'"])
+        rq.set_group_by("t1.s,t1.st")
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        self.assertEquals(len(res_obj), 2)
+        self.assertEquals({o[0] for o in res_obj}, {RT.TestSite})
+        self.assertEquals({o[1] for o in res_obj}, {res_by_name["PS0"], res_by_name["PS1"]})
+
+        rq = ComplexRRQuery()
+        rq.set_filter(rq.filter_type(RT.TestInstrument),
+                      rq.geom_distance(rq.RA_GEOM_MPOLY, 10, 10, 1))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
+        # Distance units in original coordinates not usable
+        #print res_obj

@@ -5,7 +5,8 @@
 This module provides constants and a factory class to compose structured queries against a datastore,
 including resources, events, objects datastores. It is inspired by the capabilities of a SQL query language
 such as Postgres+PostGIS, but is not targeted at a specific DMBS. Specific mapping classes can then provide
-a mapping to the datastore technology.
+a mapping to the datastore technology. The resulting query dict can be encoded using JSON, persisted
+and sent as service arguments.
 """
 
 __author__ = 'Michael Meisinger'
@@ -57,6 +58,8 @@ class DatastoreQueryConst(object):
     GOP_WITHIN_GEOM = GOP_PREFIX + "within_geom"      # Find objects with geometry within given WKT geometry
     GOP_CONTAINS_GEOM = GOP_PREFIX + "contains_geom"  # Find objects with geometry containing given WKT geometry
 
+    GOP_DISTANCE = GOP_PREFIX + "distance"            # Find objects with geometry distance relative to given point
+
     ROP_PREFIX = "rop:"                               # Range operators prefix
     ROP_OVERLAPS_RANGE = ROP_PREFIX + "overlaps"      # Find objects with range overlapping given range
     ROP_WITHIN_RANGE = ROP_PREFIX + "within"          # Find objects with range containing given range
@@ -77,6 +80,7 @@ class DatastoreQueryConst(object):
     RA_AVAILABILITY = "ra:availability"
     RA_GEOM = "ra:geom"
     RA_GEOM_LOC = "ra:geom_loc"
+    RA_GEOM_MPOLY = "ra:geom_mpoly"
     RA_VERT_RANGE = "ra:vertical_range"
     RA_TEMP_RANGE = "ra:temporal_range"
     EA_ORIGIN = "ea:origin"
@@ -124,6 +128,7 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
         qargs["profile"] = profile or DataStore.DS_PROFILE.RESOURCES
         qargs["datastore"] = datastore or DataStore.DS_RESOURCES
         qargs["ds_sub"] = ds_sub or ""
+        qargs["format"] = ""
         self.build_query(where=where, order_by=order_by, id_only=id_only, limit=limit, skip=skip)
 
     def build_query(self, where=None, order_by=None, id_only=None, limit=None, skip=None, **kwargs):
@@ -304,6 +309,10 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
         self._check_col(col)
         colname = col.split(":", 1)[1]
         return self.op_expr(self.GOP_WITHIN_BBOX, colname, x1, y1, x2, y2)
+
+    def geom_distance(self, attr_name, point_x, point_y, dist, cmpop=DQ.OP_LTE):
+        colname = self._get_attname(attr_name)
+        return self.op_expr(self.GOP_DISTANCE, colname, point_x, point_y, dist, cmpop)
 
     # --- Geospatial (WKT) operators
 
