@@ -890,3 +890,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
         # Distance units in original coordinates not usable
         #print res_obj
+
+        # TODO: Test with actor headers
+
+        # TODO: Test with returned object

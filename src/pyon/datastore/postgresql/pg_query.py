@@ -349,7 +349,7 @@ class PostgresQueryBuilder(object):
             frags.append(str(qargs["skip"]))
 
         query_str = "".join(frags)
-        #print query_str
+        #print "###SQL:", query_str
         return query_str
 
     def get_values(self):

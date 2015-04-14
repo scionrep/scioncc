@@ -42,8 +42,8 @@ __all__ += ['EventPublisher', 'EventSubscriber', 'EventQuery']
 from pyon.ion.resource import RT, OT, PRED, LCS, LCE, AS
 __all__ += ['RT', 'OT', 'PRED', 'LCS', 'LCE', 'AS']
 
-from pyon.ion.resregistry import ResourceQuery, AssociationQuery, DQ
-__all__ += ['ResourceQuery', 'AssociationQuery', 'DQ']
+from pyon.ion.resregistry import ResourceQuery, AssociationQuery, ComplexRRQuery, DQ
+__all__ += ['ResourceQuery', 'AssociationQuery', 'ComplexRRQuery', 'DQ']
 
 from pyon.ion.service import BaseService
 __all__ += ['BaseService']

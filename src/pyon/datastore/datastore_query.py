@@ -172,6 +172,10 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
     def not_(self, *args):
         return self.op_expr(self.EXP_NOT, *args)
 
+    def add_filter(self, where_expr, *args):
+        old_where = self.query["where"]
+        self.query["where"] = self.and_(old_where, [where_expr] + args)
+
     set_filter = where
     filter_and = and_
     filter_or = or_

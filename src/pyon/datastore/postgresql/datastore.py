@@ -364,12 +364,13 @@ class PostgresPyonDataStore(PostgresDataStore):
             res_docs = [self._persistence_dict_to_ion_object(row[-1]) for row in rows]
             return res_docs, res_assocs
 
-    def _add_access_filter(self, view_args, tablename, query_clause, query_args, add_where=True):
+    def _add_access_filter(self, view_args, tablename, query_clause, query_args, add_where=True, tablealias=None):
         """Returns a Postgres SQL filter clause and referenced values for resource queries filtered
         by resource visibility and current actor role/facility membership/superuser status"""
         view_args = view_args if view_args is not None else {}
         current_actor_id = view_args.get("current_actor_id", None)
         superuser_actor_ids = view_args.get("superuser_actor_ids", None) or []
+        tablealias = tablealias or tablename
 
         access_filter = ""
         access_args = {}
@@ -381,18 +382,18 @@ class PostgresPyonDataStore(PostgresDataStore):
         elif current_actor_id and current_actor_id != "anonymous":
             # Registered actor
             # - Return all PUBLIC, REGISTERED
-            access_filter += tablename + ".visibility NOT IN (3,4)"  # 1, 2, null and other values
+            access_filter += tablealias + ".visibility NOT IN (3,4)"  # 1, 2, null and other values
             # - Return all owned by user independent of visibility
-            access_filter += " OR (" + tablename + ".id IN (SELECT s FROM " + assoc_tablename + \
+            access_filter += " OR (" + tablealias + ".id IN (SELECT s FROM " + assoc_tablename + \
                              " WHERE p='hasOwner' AND o=%(current_actor_id)s))"
             # - Return all FACILITY if user is in same facility
-            access_filter += " OR (" + tablename + ".visibility=3 AND " + tablename + ".id IN (SELECT o FROM " + assoc_tablename + \
+            access_filter += " OR (" + tablealias + ".visibility=3 AND " + tablealias + ".id IN (SELECT o FROM " + assoc_tablename + \
                              " WHERE p='hasResource' AND st='Org' AND s IN (SELECT s FROM " + assoc_tablename + \
                              " WHERE p='hasMember' AND st='Org' AND o=%(current_actor_id)s)))"
         else:
             # Anonymous access
             # All public resources
-            access_filter += tablename + ".visibility NOT IN (2,3,4)"
+            access_filter += tablealias + ".visibility NOT IN (2,3,4)"
 
         if query_clause and access_filter:
             query_clause += " AND (" + access_filter + ")"
@@ -732,7 +733,8 @@ class PostgresPyonDataStore(PostgresDataStore):
         pqb = PostgresQueryBuilder(query, qual_ds_name)
         if self.profile == DataStore.DS_PROFILE.RESOURCES and not query_ds_sub:
             table_alias = qual_ds_name if query_format != "complex" else "base"
-            pqb.where = self._add_access_filter(access_args, table_alias, pqb.where, pqb.values, add_where=False)
+            pqb.where = self._add_access_filter(access_args, qual_ds_name, pqb.where, pqb.values,
+                                                add_where=False, tablealias=table_alias)
 
         if self.profile == DataStore.DS_PROFILE.RESOURCES:
             pqb.where = self._add_deleted_filter(pqb.table_aliases[0], query_ds_sub,
