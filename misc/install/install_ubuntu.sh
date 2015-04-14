@@ -28,6 +28,7 @@ sudo apt-get install -y postgis
 sudo apt-get install -y postgresql-9.4-postgis-2.1
 sudo apt-get install -y postgresql-server-dev-9.4
 sudo apt-get install -y postgresql-plpython-9.4
+sudo apt-get install -y postgresql-9.4-plv8
 
 sudo apt-get update
 #sudo apt-get upgrade -y
