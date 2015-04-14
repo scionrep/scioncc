@@ -2,6 +2,17 @@
 Response:
   code: 200
   body:
+---
+
+# Container object for a media object to be returned to called in its original form,
+# e.g. a XML document, PNG image, PDF file
+MediaResponse: !Extends_Response
+  # The mime type of the content, to be returned to the caller
+  media_mimetype: ""
+  # The encoding of content returning to the user
+  media_encoding: "raw"
+  # The encoding of content within this object (can be base64, utf8). Default utf8
+  internal_encoding: ""
 
 
 # A first class object creating a typed cross-reference between 2 resources. It references the subject resource by

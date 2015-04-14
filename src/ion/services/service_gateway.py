@@ -28,7 +28,7 @@ from interface.services.core.idirectory_service import DirectoryServiceProcessCl
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
 from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
-from interface.objects import Attachment, ProcessDefinition
+from interface.objects import Attachment, ProcessDefinition, MediaResponse
 
 
 CFG_PREFIX = "service.service_gateway"
@@ -711,7 +711,20 @@ class ServiceGateway(object):
         return resp
 
     def gateway_json_response(self, response_data):
-        """Returns the normal service gateway response as JSON"""
+        """Returns the normal service gateway response as JSON or as media in case the response
+        is a media response
+        """
+        if isinstance(response_data, MediaResponse):
+            log.info("Media response. Content mimetype:%s", response_data.media_mimetype)
+            content = response_data.body
+            if response_data.internal_encoding == "base64":
+                import base64
+                content = base64.decodestring(content)
+            elif response_data.internal_encoding == "utf8":
+                pass
+            resp = self.response_class(content, response_data.code, mimetype=response_data.media_mimetype)
+            return resp
+
         if RETURN_MIMETYPE_PARAM in request.args:
             return_mimetype = str(request.args[RETURN_MIMETYPE_PARAM])
             return self.response_class(response_data, mimetype=return_mimetype)
