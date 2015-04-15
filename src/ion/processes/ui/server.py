@@ -265,6 +265,9 @@ def enable_cors(resp):
     if ui_instance.develop_mode and ui_instance.set_cors_headers:
         if isinstance(resp, basestring):
             resp = Response(resp)
+        elif isinstance(resp, tuple):
+            resp, status_code = resp
+            resp.status_code = status_code
         resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
         resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
         resp.headers["Access-Control-Allow-Origin"] = "*"
