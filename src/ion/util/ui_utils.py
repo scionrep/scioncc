@@ -56,8 +56,10 @@ def build_json_error():
     status = getattr(value, "status_code", 500)
     result = dict(error=dict(message=value.message, exception=type.__name__, trace=traceback.format_exc()),
                   status=status)
+    json_resp = jsonify(result)
+    json_resp.status_code = status
 
-    return jsonify(result), status
+    return json_resp, status
 
 
 def get_arg(arg_name, default="", is_mult=False):
