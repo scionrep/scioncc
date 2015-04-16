@@ -174,7 +174,8 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
 
     def add_filter(self, where_expr, *args):
         old_where = self.query["where"]
-        self.query["where"] = self.and_(old_where, [where_expr] + args)
+        new_filters = [where_expr] + list(args)
+        self.query["where"] = self.and_(old_where, *new_filters)
 
     set_filter = where
     filter_and = and_
