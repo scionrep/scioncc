@@ -35,7 +35,7 @@ class BootstrapCore(BootstrapPlugin):
         if svc_ids:
             rq = ResourceQuery()
             rq.set_filter(rq.filter_type(RT.Process),
-                          rq.filter_associated_with_object(svc_ids, predicate=PRED.hasProcess))
+                          rq.filter_associated_from_subject(svc_ids, predicate=PRED.hasProcess))
             proc_ids = process.container.resource_registry.find_resources_ext(query=rq.get_query(), id_only=True)
 
             log.info("Deleting %s Service resources", len(svc_ids))

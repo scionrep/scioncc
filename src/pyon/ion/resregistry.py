@@ -906,7 +906,7 @@ class ResourceQuery(DatastoreQueryBuilder):
         return self.txt_cmp(attr_name, expr, cmpop)
 
     def filter_owner(self, owner_actor):
-        return self.filter_associated_with_subject(object=owner_actor, object_type=RT.ActorIdentity, predicate=PRED.hasOwner)
+        return self.filter_associated_from_object(object=owner_actor, object_type=RT.ActorIdentity, predicate=PRED.hasOwner)
 
     def filter_by_association(self, target=None, target_type=None, predicate=None, direction=None, target_filter=None):
         """Establishes a filter by association to target(s) based on various criteria (predicate, target id, target type,
@@ -922,17 +922,17 @@ class ResourceQuery(DatastoreQueryBuilder):
         return self.associated_with(target=target, target_type=target_type, predicate=predicate,
                                     direction=direction, target_filter=target_filter)
 
-    def filter_associated_with_subject(self, object=None, object_type=None, predicate=None, target_filter=None):
-        """Shorthand for a filter by association with a subject"""
+    def filter_associated_from_object(self, object=None, object_type=None, predicate=None, target_filter=None):
+        """Shorthand for a filter by association from an object (subjects returned)"""
         return self.filter_by_association(predicate=predicate, target=object, target_type=object_type,
                                           direction="S", target_filter=target_filter)
 
-    def filter_associated_with_object(self, subject=None, subject_type=None, predicate=None, target_filter=None):
-        """Shorthand for a filter by association with an object"""
+    def filter_associated_from_subject(self, subject=None, subject_type=None, predicate=None, target_filter=None):
+        """Shorthand for a filter by association from a subject (objects returned)"""
         return self.filter_by_association(predicate=predicate, target=subject, target_type=subject_type,
                                           direction="O", target_filter=target_filter)
 
-    def filter_associated_with(self, target=None, target_type=None, predicate=None, target_filter=None):
+    def filter_associated_from(self, target=None, target_type=None, predicate=None, target_filter=None):
         """Shorthand for a filter by association with another resource (any direction)"""
         return self.filter_by_association(predicate=predicate, target=target, target_type=target_type,
                                           direction="A", target_filter=target_filter)

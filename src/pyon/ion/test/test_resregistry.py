@@ -595,7 +595,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         # --- Association query
 
         rq = ResourceQuery()
-        rq.set_filter(rq.filter_associated_with_object(res_by_name["ID1"]))
+        rq.set_filter(rq.filter_associated_from_subject(res_by_name["ID1"]))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 2)
 
@@ -604,7 +604,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         rq = ResourceQuery()
         target_filter = rq.eq(rq.RA_NAME, "DP1")
         rq.set_filter(rq.filter_type([RT.TestInstrument, RT.TestPlatform]),
-                      rq.filter_associated_with_subject(predicate=PRED.hasTestDataset,
+                      rq.filter_associated_from_object(predicate=PRED.hasTestDataset,
                                                         target_filter=target_filter))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 1)
@@ -613,7 +613,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         rq = ResourceQuery()
         target_filter = rq.eq(rq.RA_NAME, "DP1")
         rq.set_filter(rq.filter_type(RT.TestInstrument),
-                      rq.filter_associated_with_subject(predicate=[PRED.hasTestDataset, PRED.hasTestSource],
+                      rq.filter_associated_from_object(predicate=[PRED.hasTestDataset, PRED.hasTestSource],
                                                         target_filter=target_filter))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 1)
@@ -622,7 +622,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         rq = ResourceQuery()
         target_filter = rq.eq(rq.RA_NAME, "DP1")
         rq.set_filter(rq.filter_type(RT.TestInstrument),
-                      rq.filter_associated_with_subject(predicate=PRED.hasTestDataset,
+                      rq.filter_associated_from_object(predicate=PRED.hasTestDataset,
                                                         object_type=RT.TestDataset,
                                                         target_filter=target_filter))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
@@ -633,7 +633,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         target_filter = rq.and_(rq.eq(rq.RA_NAME, "DP1"),
                                 rq.eq(rq.ATT_TYPE, RT.TestDataset))
         rq.set_filter(rq.filter_type(RT.TestInstrument),
-                      rq.filter_associated_with_subject(predicate=PRED.hasTestDataset,
+                      rq.filter_associated_from_object(predicate=PRED.hasTestDataset,
                                                         target_filter=target_filter))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 1)
@@ -849,7 +849,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
         rq = ComplexRRQuery()
         rq.set_returns(["ST_Extent(geom_mpoly)"], keep_basic=False)
         rq.set_filter(rq.filter_type(RT.TestInstrument),
-                      rq.filter_associated_with_object(res_by_name["PD00"], predicate=PRED.hasTestDevice))
+                      rq.filter_associated_from_subject(res_by_name["PD00"], predicate=PRED.hasTestDevice))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=True)
         self.assertEquals(len(res_obj), 1)
         self.assertEquals(res_obj[0][0], "BOX(10 10,15 20)")

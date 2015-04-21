@@ -413,7 +413,7 @@ class ResourceQueryTest(IonIntegrationTestCase):
 
         # TEST: Parameterized association query for resource owner
         rq = ResourceQuery()
-        rq.set_filter(rq.filter_associated_with_subject("$(owner)"))
+        rq.set_filter(rq.filter_associated_from_object("$(owner)"))
         view_obj = View(name="Resources owned by actor - parameterized", view_definition=rq.get_query())
         view_id = self.discovery.create_view(view_obj)
         view_params = {"owner": res_by_name["Act2"]}
@@ -526,7 +526,7 @@ class ResourceQueryTest(IonIntegrationTestCase):
 
         log.info("TEST: Query for all resources owned by actor Act1")
         rq = ResourceQuery()
-        rq.set_filter(rq.filter_associated_with_subject(res_by_name["Act1"], None, "hasOwner"))
+        rq.set_filter(rq.filter_associated_from_object(res_by_name["Act1"], None, "hasOwner"))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 14)
 
@@ -540,13 +540,13 @@ class ResourceQueryTest(IonIntegrationTestCase):
 
         log.info("TEST: Query for all resources belonging to Org Org1")
         rq = ResourceQuery()
-        rq.set_filter(rq.filter_associated_with_object(res_by_name["Org1"], None, "hasResource"))
+        rq.set_filter(rq.filter_associated_from_subject(res_by_name["Org1"], None, "hasResource"))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 13)
 
         log.info("TEST: Query for all resources belonging to Org Org1 AND of type TestInstrument")
         rq = ResourceQuery()
-        rq.set_filter(rq.filter_associated_with_object(res_by_name["Org1"], None, "hasResource"),
+        rq.set_filter(rq.filter_associated_from_subject(res_by_name["Org1"], None, "hasResource"),
                       rq.filter_type(RT.TestInstrument))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 2)
@@ -554,7 +554,7 @@ class ResourceQueryTest(IonIntegrationTestCase):
         log.info("TEST: Query for instruments whose platform parent has a name of PDC1")
         rq = ResourceQuery()
         rq.set_filter(rq.filter_type(RT.TestInstrument),
-                      rq.filter_associated_with_object(subject_type=RT.TestPlatform, predicate=PRED.hasTestDevice, target_filter=rq.filter_name("PDC1")))
+                      rq.filter_associated_from_subject(subject_type=RT.TestPlatform, predicate=PRED.hasTestDevice, target_filter=rq.filter_name("PDC1")))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 1)
         self.assertEquals(result[0].name, "ID1")
@@ -562,8 +562,8 @@ class ResourceQueryTest(IonIntegrationTestCase):
         log.info("TEST: Query for instruments in Org1 whose platform parent has a specific attribute set")
         rq = ResourceQuery()
         rq.set_filter(rq.filter_type(RT.TestInstrument),
-                      rq.filter_associated_with_object(res_by_name["Org1"], None, "hasResource"),
-                      rq.filter_associated_with_object(subject_type=RT.TestPlatform, predicate=PRED.hasTestDevice, target_filter=rq.filter_name("PDC1")))
+                      rq.filter_associated_from_subject(res_by_name["Org1"], None, "hasResource"),
+                      rq.filter_associated_from_subject(subject_type=RT.TestPlatform, predicate=PRED.hasTestDevice, target_filter=rq.filter_name("PDC1")))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 1)
         self.assertEquals(result[0].name, "ID1")
@@ -572,7 +572,7 @@ class ResourceQueryTest(IonIntegrationTestCase):
         rq = ResourceQuery()
         rq.set_filter(rq.filter_type(RT.TestInstrument),
                       rq.filter_lcstate(LCS.INTEGRATED),
-                      rq.filter_associated_with_object(res_by_name["Org1"], None, "hasResource"))
+                      rq.filter_associated_from_subject(res_by_name["Org1"], None, "hasResource"))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 1)
         self.assertEquals(result[0].name, "ID2")
@@ -583,7 +583,7 @@ class ResourceQueryTest(IonIntegrationTestCase):
                                                  rq.filter_lcstate(LCS.INTEGRATED)),
                                    rq.filter_and(rq.filter_type(RT.TestPlatform),
                                                  rq.filter_lcstate(LCS.DEPLOYED))),
-                      rq.filter_associated_with_object(res_by_name["Org1"], None, "hasResource"))
+                      rq.filter_associated_from_subject(res_by_name["Org1"], None, "hasResource"))
         result = self.discovery.query(rq.get_query(), id_only=False)
         self.assertEquals(len(result), 2)
         #self.assertEquals(result[0].name, "ID2")
