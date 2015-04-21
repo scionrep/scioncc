@@ -3,7 +3,7 @@
 __author__ = 'Michael Meisinger'
 
 from ion.core.bootstrap_process import BootstrapPlugin, AbortBootstrap
-from pyon.public import IonObject, RT
+from pyon.public import IonObject, RT, log, ResourceQuery, PRED
 from pyon.util.containers import get_safe
 
 from interface.objects import ActorIdentity, Org
@@ -28,4 +28,19 @@ class BootstrapCore(BootstrapPlugin):
         process.container.resource_registry.create(sys_actor)
 
     def on_restart(self, process, config, **kwargs):
-        pass
+        # Delete leftover Service and associated Process resources
+        svc_ids, _ = process.container.resource_registry.find_resources(
+            restype=RT.Service, id_only=True)
+
+        if svc_ids:
+            rq = ResourceQuery()
+            rq.set_filter(rq.filter_type(RT.Process),
+                          rq.filter_associated_with_object(svc_ids, predicate=PRED.hasProcess))
+            proc_ids = process.container.resource_registry.find_resources_ext(query=rq.get_query(), id_only=True)
+
+            log.info("Deleting %s Service resources", len(svc_ids))
+            process.container.resource_registry.rr_store.delete_mult(svc_ids)
+
+            if proc_ids:
+                log.info("Deleting %s Procvess resources", len(proc_ids))
+                process.container.resource_registry.rr_store.delete_mult(proc_ids)
