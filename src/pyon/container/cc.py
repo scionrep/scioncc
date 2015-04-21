@@ -35,7 +35,7 @@ from contextlib import contextmanager
 # if self.container.has_capability(CCAP.RESOURCE_REGISTRY):
 CCAP = DotDict()
 
-#Container status
+# Container status
 INIT = "INIT"
 RUNNING = "RUNNING"
 TERMINATING = "TERMINATING"
@@ -108,8 +108,6 @@ class Container(BaseContainerAgent):
                 log.error("Container Capability %s init error: %s" % (cap, ex))
                 raise
 
-
-
         log.debug("Container initialized, OK.")
 
     def _load_capabilities(self):
@@ -176,7 +174,7 @@ class Container(BaseContainerAgent):
         self._is_started    = True
         self._status        = RUNNING
 
-        log.info("Container (%s) started, OK." , self.id)
+        log.info("Container (%s) started, OK.", self.id)
 
     def has_capability(self, capability):
         """
@@ -184,40 +182,6 @@ class Container(BaseContainerAgent):
         i.e. available in this container.
         """
         return capability in self._capabilities
-
-    def _handle_sigusr2(self):#, signum, frame):
-        """
-        Handles SIGUSR2, prints debugging greenlet information.
-        """
-        gls = GreenletLeak.get_greenlets()
-
-        allgls = []
-
-        for gl in gls:
-            status = GreenletLeak.format_greenlet(gl)
-
-            # build formatted output:
-            # Greenlet at 0xdeadbeef
-            #     self: <EndpointUnit at 0x1ffcceef>
-            #     func: bound, EndpointUnit.some_func
-
-            status[0].insert(0, "%s at %s:" % (gl.__class__.__name__, hex(id(gl))))
-            # indent anything in status a second time
-            prefmt = [s.replace("\t", "\t\t") for s in status[0]]
-            prefmt.append("traceback:")
-
-            for line in status[1]:
-                for subline in line.split("\n")[0:2]:
-                    prefmt.append(subline)
-
-            glstr = "\n\t".join(prefmt)
-
-            allgls.append(glstr)
-
-        # print it out!
-        print >>sys.stderr, "\n\n".join(allgls)
-        with open("gls-%s" % os.getpid(), "w") as f:
-            f.write("\n\n".join(allgls))
 
     @property
     def node(self):
@@ -252,11 +216,13 @@ class Container(BaseContainerAgent):
         if not self.proc_manager.proc_sup.running:
             self.start()
 
-        # serve forever short-circuits if immediate is on and children len is ok
+        # Exit if immediate==True and children len is ok
         num_procs = len(self.proc_manager.proc_sup.children)
         immediate = CFG.system.get('immediate', False)
-        if not (immediate and num_procs == 1):  # only spawned greenlet is the CC-Agent
+        if immediate and num_procs == 1:  # only spawned greenlet is the CC-Agent
+            log.debug("Container.serve_forever exiting due to CFG.system.immediate")
 
+        else:
             # print a warning just in case
             if immediate and num_procs != 1:
                 log.warn("CFG.system.immediate=True but number of spawned processes is not 1 (%d)", num_procs)
@@ -266,17 +232,15 @@ class Container(BaseContainerAgent):
                 # which is triggered somewhere else.
                 self.proc_manager.proc_sup.join_children()
             except (KeyboardInterrupt, SystemExit) as ex:
-                log.info('Received a kill signal, shutting down the container.')
-
                 if hasattr(self, 'gl_parent_watch') and self.gl_parent_watch is not None:
+                    # Remove the greenlet that watches the parent process
                     self.gl_parent_watch.kill()
+
+                # Let the caller handle this
+                raise
 
             except:
                 log.exception('Unhandled error! Forcing container shutdown')
-        else:
-            log.debug("Container.serve_forever short-circuiting due to CFG.system.immediate")
-
-        self.proc_manager.proc_sup.shutdown(CFG.get_safe("container.timeout.shutdown"))
 
     def status(self):
         """
@@ -299,7 +263,6 @@ class Container(BaseContainerAgent):
         if self._status == TERMINATING or self._status == TERMINATED:
             return True
         return False
-
 
     def _cleanup_pid(self):
         if self.pidfile:
@@ -342,7 +305,7 @@ class Container(BaseContainerAgent):
 
         self._status = TERMINATED
 
-        log.debug("Container stopped, OK.")
+        log.info("Container stopped.")
 
     def start_app(self, appdef=None, config=None):
         with self._push_status("START_APP"):
@@ -378,6 +341,7 @@ class Container(BaseContainerAgent):
         # The exit code of the terminated process is set to non-zero
         os.kill(os.getpid(), signal.SIGTERM)
 
+
 class PidfileCapability(ContainerCapability):
     def start(self):
         # Check if this UNIX process already runs a Container.
@@ -396,20 +360,63 @@ class PidfileCapability(ContainerCapability):
     def stop(self):
         self.container._cleanup_pid()
 
+
 class SignalHandlerCapability(ContainerCapability):
     def start(self):
-        # set up abnormal termination handler for this container
-        def handl(signum, frame):
+        def handle_sigterm():
+            """Handles SIGTERM, initiating orderly Python exit handling,
+            allowing the container to shutdown.
+            Notes:
+            - Without this handler, the process is immediately terminated on SIGTERM
+            - Gevent has signal handling, so must use gevent version or chain
+            """
             try:
-                self.container._cleanup_pid()     # cleanup the pidfile first
-                self.container.quit()             # now try to quit - will not error on second cleanup pidfile call
+                log.info("In TERM signal handler, triggering exit")
+                self.container._cleanup_pid()      # cleanup the pidfile first
             finally:
-                signal.signal(signal.SIGTERM, self._normal_signal)
-                os.kill(os.getpid(), signal.SIGTERM)
-        self._normal_signal = signal.signal(signal.SIGTERM, handl)
+                # This will raise SystemExit in serve_forever and IPython cores
+                # Thereby pycc will be able to shutdown the container
+                sys.exit(signal.SIGTERM)
 
-        # set up greenlet debugging signal handler
-        gevent.signal(signal.SIGUSR2, self.container._handle_sigusr2)
+        # Set up SIGTERM handler
+        gevent.signal(signal.SIGTERM, handle_sigterm)
+
+        def handle_sigusr2():
+            """Handles SIGUSR2, prints debugging greenlet information.
+            """
+            gls = GreenletLeak.get_greenlets()
+
+            allgls = []
+
+            for gl in gls:
+                status = GreenletLeak.format_greenlet(gl)
+
+                # build formatted output:
+                # Greenlet at 0xdeadbeef
+                #     self: <EndpointUnit at 0x1ffcceef>
+                #     func: bound, EndpointUnit.some_func
+
+                status[0].insert(0, "%s at %s:" % (gl.__class__.__name__, hex(id(gl))))
+                # indent anything in status a second time
+                prefmt = [s.replace("\t", "\t\t") for s in status[0]]
+                prefmt.append("traceback:")
+
+                for line in status[1]:
+                    for subline in line.split("\n")[0:2]:
+                        prefmt.append(subline)
+
+                glstr = "\n\t".join(prefmt)
+
+                allgls.append(glstr)
+
+            # print it out!
+            print >>sys.stderr, "\n\n".join(allgls)
+            with open("gls-%s" % os.getpid(), "w") as f:
+                f.write("\n\n".join(allgls))
+
+        # Set up greenlet debugging signal handler
+        gevent.signal(signal.SIGUSR2, handle_sigusr2)
+
 
 class EventPublisherCapability(ContainerCapability):
     def __init__(self, container):
@@ -419,6 +426,7 @@ class EventPublisherCapability(ContainerCapability):
         self.container.event_pub = EventPublisher()
     def stop(self):
         self.container.event_pub.close()
+
 
 class ObjectStoreCapability(ContainerCapability):
     def __init__(self, container):
@@ -430,6 +438,7 @@ class ObjectStoreCapability(ContainerCapability):
     def stop(self):
         self.container.object_store.close()
         self.container.object_store = None
+
 
 class LocalRouterCapability(ContainerCapability):
     def __init__(self, container):
@@ -443,6 +452,7 @@ class LocalRouterCapability(ContainerCapability):
     def stop(self):
         self.container.local_router.stop()
 
+
 class ContainerAgentCapability(ContainerCapability):
     def start(self):
         # Start the CC-Agent API
@@ -455,6 +465,7 @@ class ContainerAgentCapability(ContainerCapability):
         proc.start_listeners()
     def stop(self):
         pass
+
 
 class FileSystemCapability(ContainerCapability):
     def __init__(self, container):

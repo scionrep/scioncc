@@ -243,6 +243,7 @@ def main(opts, *args, **kwargs):
             print "pycc: no_container=True. Stopping here."
             return None
 
+
         # Create the container instance
         from pyon.container.cc import Container
         container = Container(*args, **command_line_config)
@@ -295,25 +296,52 @@ def main(opts, *args, **kwargs):
 
             container.gl_parent_watch = ipg
 
+        # The following will block until TERM signal - may exit with SystemExit
         if not opts.noshell and not opts.daemon:
             # Keep container running while there is an interactive shell
             from pyon.container.shell_api import get_shell_api
             setup_ipython_shell(get_shell_api(container))
         elif not opts.nomanhole:
+            # Keep container running while there is an embedded manhole core
             from pyon.container.shell_api import get_shell_api
             setup_ipython_embed(get_shell_api(container))
         else:
+            # Keep container running until all TERM
             container.serve_forever()
+
+    def install_terminate_handler():
+        import signal
+        import gevent
+        from pyon.core.bootstrap import CFG
+        shutdown_timeout = int(CFG.get_safe("container.timeout.shutdown") or 0)
+        terminate_gl = None
+        def cancel_func():
+            if terminate_gl:
+                terminate_gl.kill()
+        if shutdown_timeout > 0:
+            pid = os.getpid()
+            def terminate_unresponsive():
+                print >>sys.stderr, "ERROR: Container shutdown seems unresponsive. Timeout elapsed (%s sec) -- TERMINATE process (%s)" % (
+                    shutdown_timeout, pid)
+                os.kill(pid, signal.SIGKILL)
+
+            terminate_gl = gevent.spawn_later(shutdown_timeout, terminate_unresponsive)
+            terminate_gl._glname = "Container terminate timeout"
+            log.info("Container termination timeout set to %s sec (process %s)", shutdown_timeout, pid)
+        return cancel_func
 
     def stop_container(container):
         try:
             if container:
-                container.stop()
+                cancel_func = install_terminate_handler()
+                try:
+                    container.stop()
+                finally:
+                    cancel_func()
             return True
         except Exception as ex:
             # We want to make sure to get out here alive
-            print "pycc: CONTAINER STOP ERROR"
-            traceback.print_exc()
+            log.error('CONTAINER STOP ERROR', exc_info=True)
             return False
 
     def _exists_ipython_dir():
@@ -448,7 +476,7 @@ def main(opts, *args, **kwargs):
         with patch("IPython.core.interactiveshell.InteractiveShell.init_virtualenv"):
             for tries in range(3):
                 try:
-                    embed_kernel(local_ns=shell_api, config=ipy_config)      # blocks until INT
+                    embed_kernel(local_ns=shell_api, config=ipy_config)      # blocks until INT signal
                     break
                 except Exception as ex:
                     log.debug("Failed IPython initialize attempt (try #%s): %s", tries, str(ex))
@@ -487,21 +515,21 @@ def main(opts, *args, **kwargs):
 
         start_container(container)
     except Exception as ex:
-#        print "pycc: ===== CONTAINER START ERROR -- FAIL ====="
-#        traceback.print_exc()
-        log.error('container start error', exc_info=True)
+        log.error('CONTAINER START ERROR', exc_info=True)
         stop_container(container)
         sys.exit(1)
 
     try:
         do_work(container)
+
     except Exception as ex:
         stop_container(container)
-#        print "pycc: ===== CONTAINER PROCESS START ERROR -- ABORTING ====="
-#        print ex
-        log.error('container process interruption', exc_info=True)
+        log.error('CONTAINER PROCESS INTERRUPTION', exc_info=True)
 
         sys.exit(1)
+
+    except (KeyboardInterrupt, SystemExit):
+        log.info("Received a kill signal, shutting down the container")
 
     # Assumption: stop is so robust, it does not fail even if it was only partially started
     stop_ok = stop_container(container)

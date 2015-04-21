@@ -2,7 +2,7 @@
 
 """Classes to build and manage concurrent pyon worker processes (greenlets/threads)."""
 
-__author__ = 'Adam R. Smith'
+__author__ = "Adam R. Smith"
 
 
 import time
@@ -280,7 +280,7 @@ class ThreadManager(object):
                 proc.join()
 
         time_elapsed = time.time() - time_start
-        #log.debug('Took %.2fs to shutdown %d child threads', time_elapsed, child_count)
+        #log.debug("Took %.2fs to shutdown %d child threads", time_elapsed, child_count)
 
         return time_elapsed
 
@@ -299,11 +299,11 @@ class ThreadManager(object):
                 self.send_heartbeats()
                 self._shutdown_event.wait(timeout=self.heartbeat_secs)
         except:
-            log.error('thread died', exc_info=True)
+            log.error("thread died", exc_info=True)
 
     def send_heartbeats(self):
         """ TODO: implement heartbeat and monitors """
-        #log.debug('lub-dub')
+        #log.debug("lub-dub")
         pass
 
     def shutdown(self, timeout=30.0):
@@ -312,11 +312,10 @@ class ThreadManager(object):
         """
         self._shutting_down = True
         self._shutdown_event.set(True)
-        unset = shutdown_or_die(timeout)        # Failsafe in case the following doesn't work
+        #unset = shutdown_or_die(timeout)        # Failsafe in case the following doesn't work
         elapsed = self.join_children(timeout)
-        #self.stop()
 
-        unset()
+        #unset()
         return elapsed
 
 
@@ -332,9 +331,9 @@ def shutdown_or_die(delay_sec=0):
     Wait the given number of seconds and forcibly kill this OS process if it's still running.
     """
 
-    def diediedie(sig=None, frame=None):
+    def diediedie(*args):
         pid = os.getpid()
-        log.warn('Container did not shutdown correctly. Forcibly terminating with SIGKILL (pid %d).', pid)
+        log.warn("Container shutdown timeout. Send KILL signal (pid %d).", pid)
         os.kill(pid, signal.SIGKILL)
 
     def dontdie():
@@ -342,13 +341,13 @@ def shutdown_or_die(delay_sec=0):
 
     if delay_sec > 0:
         try:
-            old = signal.signal(signal.SIGALRM, diediedie)
+            #old = signal.signal(signal.SIGALRM, diediedie)
             signal.alarm(int(delay_sec))
 
-            if old:
-                log.warn('shutdown_or_die found a previously registered ALARM and overrode it.')
-        except ValueError, ex:
-            log.error('Failed to set failsafe shutdown signal. This only works on UNIX platforms.')
+            #if old:
+            #    log.warn("shutdown_or_die found a previously registered ALARM and overrode it.")
+        except ValueError as ex:
+            log.error("Failed to set failsafe shutdown signal. This only works on UNIX platforms.")
     else:
         diediedie()
 
