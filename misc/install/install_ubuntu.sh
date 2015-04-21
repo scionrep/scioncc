@@ -10,6 +10,8 @@ sudo apt-get install -y --no-install-recommends python-pip python-virtualenv vir
 
 sudo apt-get install -y --no-install-recommends libev-dev libffi-dev libpq-dev libxml2-dev libxslt1-dev libzmq-dev ncurses-dev swig
 
+sudo apt-get install -y --no-install-recommends libgeos-dev libgdal-doc
+
 # Dependencies for ant / Java
 sudo apt-get install -y ant ant-optional
 

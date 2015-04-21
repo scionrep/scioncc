@@ -30,6 +30,7 @@ scripts/*~*
 unittest.out
 interface
 cc-pid*
+/manhole-*
 .coverage
 coverage_results/
 **/res/config/pyon.local.yml
