@@ -269,7 +269,7 @@ class Container(BaseContainerAgent):
             log.debug("Cleanup pidfile: %s", self.pidfile)
             try:
                 os.remove(self.pidfile)
-            except Exception, e:
+            except Exception as e:
                 log.warn("Pidfile could not be deleted: %s" % str(e))
             self.pidfile = None
 

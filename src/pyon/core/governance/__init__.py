@@ -32,7 +32,7 @@ def get_role_message_headers(org_roles):
                 role_header[org].append(role.governance_name)
         return role_header
 
-    except Exception, e:
+    except Exception as e:
         log.error(e)
         return role_header
 
@@ -60,7 +60,7 @@ def get_actor_header(actor_id):
         try:
             header_roles = find_roles_by_actor(actor_id)
             actor_header = build_actor_header(actor_id, header_roles)
-        except Exception, e:
+        except Exception as e:
             log.error(e)
 
     return actor_header
@@ -134,7 +134,7 @@ def get_system_actor():
 
         return system_actor[0]
 
-    except Exception, e:
+    except Exception as e:
         log.error(e)
         return None
 
@@ -169,7 +169,7 @@ def get_system_actor_header(system_actor=None):
 
         return actor_header
 
-    except Exception, e:
+    except Exception as e:
         log.error(e)
         return get_actor_header(None)
 
@@ -202,7 +202,7 @@ def get_valid_resource_commitments(resource_id=None, actor_id=None):
         if commitment_list:
             return commitment_list
 
-    except Exception, e:
+    except Exception as e:
         log.error(e)
 
     return None

@@ -208,7 +208,7 @@ def get_safe(dict_instance, keypath, default=None):
         for key in keylist:
             obj = obj[key]
         return obj
-    except Exception, ex:
+    except Exception as ex:
         return default
 
 def named_any(name):

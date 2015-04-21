@@ -395,7 +395,7 @@ class PolicyDecisionPointManager(object):
 
         try:
             response = pdp.evaluate(requestCtx)
-        except Exception, e:
+        except Exception as e:
             log.error("Error evaluating policies: %s" % e.message)
             return Decision.NOT_APPLICABLE
 

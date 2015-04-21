@@ -895,7 +895,7 @@ class ProcManager(object):
                 except NotFound: #, HTTPException):
                     # if it's already gone, it's already gone!
                     pass
-                except Exception, ex:
+                except Exception as ex:
                     log.exception(ex)
                     pass
 
@@ -914,7 +914,7 @@ class ProcManager(object):
                         # if it's already gone, it's already gone!
                         pass
 
-                    except Exception, ex:
+                    except Exception as ex:
                         log.exception(ex)
                         pass
 

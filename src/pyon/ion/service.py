@@ -318,7 +318,7 @@ class IonServiceRegistry(object):
                 mod_qual = "%s.%s" % (package, mod_name)
                 try:
                     named_any(mod_qual)
-                except Exception, ex:
+                except Exception as ex:
                     log.warning("Import module '%s' failed: %s" % (mod_qual, ex))
 
     def build_service_map(self):

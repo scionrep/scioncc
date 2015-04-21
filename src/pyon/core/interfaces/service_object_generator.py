@@ -1119,7 +1119,7 @@ class ServiceObjectGenerator:
                 mod_qual = "%s.%s" % (mod_prefix, mod_name)
                 try:
                     __import__(mod_qual)
-                except Exception, ex:
+                except Exception as ex:
                     encountered_load_error = True
                     print "Import module '%s' failed: %s" % (mod_qual, ex)
                     traceback.print_exc()

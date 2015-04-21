@@ -61,7 +61,7 @@ class EvaluateCode(AbstractFunction):
             if not ret_val:
                 parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = error_msg
 
-        except Exception, e:
+        except Exception as e:
             log.exception(e)
             ret_val = False
             parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = e.message
@@ -113,7 +113,7 @@ class EvaluateFunction(AbstractFunction):
             ret_val, error_msg = execute_method(execution_object=parameter_dict.value['process'], method_name=function_name.value, **parameter_dict.value)
             if not ret_val:
                 parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = error_msg
-        except Exception, e:
+        except Exception as e:
             log.exception(e)
             ret_val = False
             parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = e.message

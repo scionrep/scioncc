@@ -52,7 +52,7 @@ def hello_client(container, actor_id='anonymous', text='mytext 123'):
         ret = client.noop(text='third message text', headers=actor_headers)
         print "Returned"
 
-    except Exception, e:
+    except Exception as e:
         print "client.hello() failed: " + e.message
 
 def hello_noop(container, actor_id='anonymous', text='mytext 123'):

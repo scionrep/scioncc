@@ -449,7 +449,7 @@ class GovernanceController(object):
                 policy_rules = self.policy_client.get_active_resource_access_policy_rules(resource_id, headers=self.system_actor_user_header)
                 self.policy_decision_point_manager.load_resource_policy_rules(resource_id, policy_rules)
 
-            except Exception, e:
+            except Exception as e:
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("The resource %s is not found or there was an error applying access policy: %s" % ( resource_id, e.message))
 
@@ -466,7 +466,7 @@ class GovernanceController(object):
                     if self.container.proc_manager.is_local_service_process(service_name):
                         self.update_service_access_policy(service_name, delete_policy=delete_policy)
 
-            except Exception, e:
+            except Exception as e:
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("There was an error applying access policy: %s" % e.message)
 
@@ -480,7 +480,7 @@ class GovernanceController(object):
                 rules = self.policy_client.get_active_service_access_policy_rules(service_name=service_name, org_name=self._container_org_name, headers=self.system_actor_user_header)
                 self.policy_decision_point_manager.load_service_policy_rules(service_name, rules)
 
-            except Exception, e:
+            except Exception as e:
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("The service %s is not found or there was an error applying access policy: %s" % ( service_name, e.message))
 
@@ -499,7 +499,7 @@ class GovernanceController(object):
                         #Unregister all...just in case
                         self.unregister_all_process_operation_precondition(proc,service_op)
 
-            except Exception, e:
+            except Exception as e:
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("The process %s is not found for op %s or there was an error applying access policy: %s" % ( service_name, service_op, e.message))
 
@@ -652,7 +652,7 @@ class GovernanceController(object):
                     #Handle precondition which are built-in functions
                     try:
                         ret_val, ret_message = precond(msg, headers)
-                    except Exception, e:
+                    except Exception as e:
                         #TODD - Catching all exceptions and logging as errors, don't want to stop processing for this right now
                         log.error('Executing precondition function: %s for operation: %s - %s so it will be ignored.' % (precond.__name__, operation, e.message))
                         ret_val = True
@@ -674,7 +674,7 @@ class GovernanceController(object):
                             pref = locals()["precondition_func"]
                             ret_val, ret_message = pref(process, msg, headers)
 
-                    except Exception, e:
+                    except Exception as e:
                         #TODD - Catching all exceptions and logging as errors, don't want to stop processing for this right now
                         log.error('Executing precondition function: %s for operation: %s - %s so it will be ignored.' % (precond, operation, e.message))
                         ret_val = True

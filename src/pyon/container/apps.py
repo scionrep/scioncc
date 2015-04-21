@@ -170,5 +170,5 @@ class AppManager(object):
         try:
             if '_mod_loaded' in appdef:
                 appdef._mod_loaded.stop(self.container, appdef._state)
-        except Exception, ex:
+        except Exception as ex:
             log.exception("Application %s stop failed" % appdef.name)

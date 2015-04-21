@@ -964,7 +964,7 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
             self.assertIn('delivery_mode', res[0]['properties'])
             self.assertEquals(2, res[0]['properties']['delivery_mode'])
 
-        except Exception, e:
+        except Exception as e:
             # Rabbit 3.x does not support this command anymore apparently.
             self.assertIn('Method Not Allowed', e.message)
 

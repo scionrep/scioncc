@@ -74,7 +74,7 @@ class PolicyInterceptor(BaseInternalGovernanceInterceptor):
                         if getattr(invocation.message,field) is not None:
                             invocation.headers['resource-id'] = getattr(invocation.message,field)
 
-        except Exception, ex:
+        except Exception as ex:
             log.exception(ex)
 
 

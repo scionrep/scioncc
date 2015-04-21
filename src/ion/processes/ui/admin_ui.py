@@ -137,7 +137,7 @@ def process_index():
         content = "\n".join(fragments)
         return build_page(content)
 
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 # ----------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ def process_list_resource_types():
         content = "\n".join(fragments)
         return build_page(content)
 
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 # ----------------------------------------------------------------------------------------
@@ -245,7 +245,7 @@ def process_list_resources(resource_type):
 
     #except NotFound:
     #    return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 def build_res_extends(restype):
@@ -340,7 +340,7 @@ def process_view_resource(resource_id):
 
     except NotFound:
         return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 def build_nested_obj(obj, prefix, edit=False):
@@ -503,7 +503,7 @@ def process_command(cmd):
         content = "\n".join(fragments)
         return build_page(content)
 
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 def _process_cmd_update(resource_id, res_obj=None):
@@ -610,7 +610,7 @@ def process_edit_resource(resource_id):
 
     except NotFound:
         return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 @app.route('/new/<restype>', methods=['GET','POST'])
@@ -653,7 +653,7 @@ def process_new_resource(restype):
 
     except NotFound:
         return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 def build_editable_resource(res, is_new=False):
@@ -701,7 +701,7 @@ def process_assoc_list():
 
     except NotFound:
         return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 # ----------------------------------------------------------------------------------------
@@ -746,7 +746,7 @@ def process_dir_path(path):
 
     except NotFound:
         return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 def build_dir_path(path):
@@ -799,7 +799,7 @@ def process_events():
 
     except NotFound:
         return flask.redirect("/")
-    except Exception, e:
+    except Exception as e:
         return build_error_page(traceback.format_exc())
 
 def build_events_table(events_list):

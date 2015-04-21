@@ -182,7 +182,7 @@ class PolicyManagementService(BasePolicyManagementService):
             if hasattr(policy.policy_type, 'policy_rule'):
                 policy.policy_type.policy_rule = policy.policy_type.policy_rule % (policy.name, policy.description)
 
-        except Exception, e:
+        except Exception as e:
             raise Inconsistent("Missing the elements in the policy rule to set the description: " + e.message)
 
         policy_id, version = self.clients.resource_registry.create(policy)

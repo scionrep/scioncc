@@ -330,7 +330,7 @@ class BaseChannel(object):
             # run in try block because this can shutter the entire connection
             try:
                 self._closed_error_callback(self, code, text)
-            except Exception, e:
+            except Exception as e:
                 log.warn("Closed error callback caught an exception: %s", str(e))
 
         # fixup channel state fsm, but only if we're not executing a transition right now

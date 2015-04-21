@@ -808,7 +808,7 @@ class ExtendedResourceContainer(object):
             #No need to do anything if the user was unauthorized. This is NOT an error, just means the user does not have the proper rights.
             pass
 
-        except Exception, e:
+        except Exception as e:
             log.error('Error executing method %s for resource id %s: %s' % (method_name, resource_id, str(e)))
 
         return None

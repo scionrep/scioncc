@@ -143,7 +143,7 @@ class EventPublisher(Publisher):
         #any errors and keep going, since seeing invalid situations are better than skipping validation.
         try:
             event_object._validate()
-        except Exception, e:
+        except Exception as e:
             log.exception(e)
 
 

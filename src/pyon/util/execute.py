@@ -91,7 +91,7 @@ def get_method_arguments(module, method_name, **kwargs):
                 if kwargs.has_key(arg):
                     param_dict[arg] = kwargs[arg]
 
-        except Exception, e:
+        except Exception as e:
             #Log a warning and simply return an empty dict
             log.warn('Cannot determine the arguments for method: %s in module: %s: %s',module, method_name, e.message )
 
