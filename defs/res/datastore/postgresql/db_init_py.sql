@@ -212,6 +212,13 @@ for k,v in res.iteritems():
     if type(v) is unicode:
       v = v.encode("utf8")
     parts.append(str(v)[:500])
+if isinstance(res.get('details', None), dict) and res.get("type_", None) == "ActorIdentity" and isinstance(res.get("details", {}).get('contact', None), dict):
+  contact = res["details"]['contact']
+  for k,v in contact.iteritems():
+    if k not in no_attrs and type(v) in ok_types:
+      if type(v) is unicode:
+        v = v.encode("utf8")
+      parts.append(str(v)[:500])
 
 return " ".join(parts)
 $$

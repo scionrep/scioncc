@@ -905,6 +905,10 @@ class ResourceQuery(DatastoreQueryBuilder):
     def filter_attribute(self, attr_name, expr, cmpop=None):
         return self.txt_cmp(attr_name, expr, cmpop)
 
+    def filter_matchany(self, value):
+        """Full text search among the first level attributes"""
+        return self.op_expr(DQ.XOP_ALLMATCH, value)
+
     def filter_owner(self, owner_actor):
         return self.filter_associated_from_object(object=owner_actor, object_type=RT.ActorIdentity, predicate=PRED.hasOwner)
 

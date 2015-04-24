@@ -9,7 +9,7 @@ from nose.plugins.attrib import attr
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound, Inconsistent, BadRequest
-from pyon.ion.resource import PRED, RT, LCS, AS, LCE, lcstate, create_access_args
+from pyon.ion.resource import PRED, RT, LCS, AS, LCE, OT, lcstate, create_access_args
 from pyon.ion.resregistry import ResourceQuery, AssociationQuery, ComplexRRQuery
 
 from interface.objects import Attachment, AttachmentType, ResourceVisibilityEnum
@@ -535,6 +535,13 @@ class TestResourceRegistry(IonIntegrationTestCase):
 
             (IonObject(RT.TestDataset, name="DP1"), ),
             (IonObject(RT.TestDataset, name="DP2"), ),
+
+            (IonObject(RT.ActorIdentity, name="user1", details=IonObject(OT.UserIdentityDetails,
+                    contact=IonObject(OT.ContactInformation, individual_names_given="John",
+                                      individual_name_family="Doe", email="john@foo.com"))), ),
+            (IonObject(RT.ActorIdentity, name="user2", details=IonObject(OT.UserIdentityDetails,
+                    contact=IonObject(OT.ContactInformation, individual_names_given="Jane",
+                                      individual_name_family="Foo", email="jane@foo.com"))), ),
         ]
         assocs = [
             ("ID1", PRED.hasTestDataset, "DP1"),
@@ -591,6 +598,36 @@ class TestResourceRegistry(IonIntegrationTestCase):
                       rq.filter_name("ID", cmpop=ResourceQuery.TXT_CONTAINS))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 2)
+
+        # Full text search
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_matchany("DP"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.ActorIdentity),
+                      rq.filter_matchany("user1"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.ActorIdentity),
+                      rq.filter_matchany("John"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.ActorIdentity),
+                      rq.filter_matchany("foo.com"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.ActorIdentity),
+                      rq.filter_matchany("DEPLOYED"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 0)
 
         # --- Association query
 

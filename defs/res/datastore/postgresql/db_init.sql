@@ -20,12 +20,12 @@ CREATE OR REPLACE FUNCTION json_string(data json, key text) RETURNS TEXT AS
 $$
 var res = data;
 var keys = key.split(".");
-for(var i=0; i<keys.length; i++){
-    if(res){
+for (var i=0; i<keys.length; i++) {
+    if (res) {
         res = res[keys[i]];
     }
 }
-if(res === undefined){
+if (res === undefined) {
     res = null;
 }
 return res;
@@ -43,8 +43,8 @@ LANGUAGE plv8 IMMUTABLE STRICT;
 CREATE OR REPLACE FUNCTION json_nested(data json) RETURNS TEXT[] AS
 $$
 var res = [];
-for(var key in data){
-    if (data.hasOwnProperty(key) && (!(data[key] instanceof Array)) && (data[key]) && (data[key]["type_"])){
+for (var key in data) {
+    if (data.hasOwnProperty(key) && (!(data[key] instanceof Array)) && (data[key]) && (data[key]["type_"])) {
         res.push(data[key]["type_"]);
     }
 }
@@ -57,7 +57,7 @@ LANGUAGE plv8 IMMUTABLE STRICT;
 CREATE OR REPLACE FUNCTION json_keywords(data json) RETURNS TEXT[] AS
 $$
 var res = [];
-if(data["keywords"] && (data["keywords"] instanceof Array)){
+if (data["keywords"] && (data["keywords"] instanceof Array)) {
     res = data["keywords"];
 }
 return res;
@@ -67,21 +67,21 @@ LANGUAGE plv8 IMMUTABLE STRICT;
 -- Results in a special attribute extracted from object
 CREATE OR REPLACE FUNCTION json_specialattr(data json) RETURNS TEXT AS
 $$
-function is_object(obj){
+function is_object(obj) {
     return obj && (obj instanceof Object) && !(obj instanceof Array);
 }
 var special = null;
 doc_type = data["type_"];
-switch ( doc_type){
-    case "ActorIdentity": if (is_object(data["details"]) && is_object(data["details"]["contact"]) && data["details"]["contact"]["email"]){
+switch (doc_type) {
+    case "ActorIdentity": if (is_object(data["details"]) && is_object(data["details"]["contact"]) && data["details"]["contact"]["email"]) {
                             special = "contact.email=" + data["details"]["contact"]["email"];
                           }
                           break;
-    case "Org": if (data["org_governance_name"]){
+    case "Org": if (data["org_governance_name"]) {
                     special = "org_governance_name=" + data["org_governance_name"];
                 }
                 break;
-    case "UserRole": if (data["governance_name"]){
+    case "UserRole": if (data["governance_name"]) {
                         special = "governance_name=" + data["governance_name"];
                      }
                      break;
@@ -96,8 +96,8 @@ $$
 var alts = {};
 var kw_list = data["alt_ids"];
 var parts, alts_list;
-if(kw_list && (kw_list instanceof Array)){
-    for(var i=0; i<kw_list.length; i++){
+if (kw_list && (kw_list instanceof Array)) {
+    for (var i=0; i<kw_list.length; i++) {
         parts = kw_list[i].split(":");
         if (parts.length > 1){
             alts[parts[0]] = 1;
@@ -115,18 +115,18 @@ LANGUAGE plv8 IMMUTABLE STRICT;
 -- Results in a list of alternative ids
 CREATE OR REPLACE FUNCTION json_altids_id(data json) RETURNS TEXT[] AS
 $$
-var delimeter = ":";
-var alts_list, alt, i, delimeter_pos, kw;
+var delimiter = ":";
+var alts_list, alt, i, delimiter_pos, kw;
 var alts_set = {};
 var kw_list = data["alt_ids"];
-if(kw_list && (kw_list instanceof Array)){
-    for(i=0; i<kw_list.length; i++){
+if (kw_list && (kw_list instanceof Array)) {
+    for (i=0; i<kw_list.length; i++) {
         kw = kw_list[i];
-        delimeter_pos = kw.indexOf(delimeter);
-        if(delimeter_pos == -1){
+        delimiter_pos = kw.indexOf(delimiter);
+        if (delimiter_pos == -1) {
             alt = kw;
         } else {
-            alt = kw.substring(delimeter_pos+1);
+            alt = kw.substring(delimiter_pos+1);
         }
         alts_set[alt] = true;
     }
@@ -140,6 +140,9 @@ LANGUAGE plv8 IMMUTABLE STRICT;
 -- Results in all attributes in one big string for full text query
 CREATE OR REPLACE FUNCTION json_allattr(data json) RETURNS TEXT AS
 $$
+function is_object(obj) {
+    return obj && (obj instanceof Object) && !(obj instanceof Array);
+}
 var part, key;
 var parts = [];
 var max_length = 500;
@@ -157,9 +160,9 @@ var ok_types = {
     "string": true,
     "number": true
 };
-for(key in data){
-    if(data.hasOwnProperty(key)){
-        if(!no_attrs[key] && ok_types[typeof data[key]]){
+for (key in data) {
+    if (data.hasOwnProperty(key)) {
+        if (!no_attrs[key] && ok_types[typeof data[key]]) {
             part = data[key];
             if(part.length > max_length){
                 part = part.substring(0, max_length);
@@ -168,8 +171,22 @@ for(key in data){
         }
     }
 }
+if (data["type_"] == "ActorIdentity") {
+    if (is_object(data["details"]) && is_object(data["details"]["contact"])) {
+        contact = data["details"]["contact"];
+        for (key in contact){
+            if (contact.hasOwnProperty(key)) {
+                if (!no_attrs[key] && ok_types[typeof contact[key]]) {
+                    part = contact[key];
+                    if (part.length > max_length) {
+                        part = part.substring(0, max_length);
+                    }
+                    parts.push(part);
+                }
+            }
+        }
+    }
+}
 return parts.join(" ");
 $$
 LANGUAGE plv8 IMMUTABLE STRICT;
-
-
