@@ -138,7 +138,10 @@ class TestUIServer(IonIntegrationTestCase):
         # Form encoded create request
         other_actor_obj = ActorIdentity(name="Jane Foo")
         other_actor_obj.details = None
-        payload = dict(data=json.dumps(other_actor_obj.__dict__))
+        other_actor_obj_dict = other_actor_obj.__dict__.copy()
+        # Remove unseralizable attributes.
+        del other_actor_obj_dict['passwd_reset_token']
+        payload = dict(data=json.dumps(other_actor_obj_dict))
         resp = session.post(self.sg_base_url + "/rest/identity_management/actor_identity", data=payload)
         resp_json = self._assert_json_response(resp, None)
         other_actor_id = resp_json["result"]

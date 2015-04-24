@@ -70,6 +70,16 @@ methods:
       NotFound: failed to find ActorIdentity
       Inconsistent: Multiple ActorIdentity objects matched name
 
+  request_password_reset:
+    docstring: |
+      Set passwd_reset token for ActorIdentity object whose name attribute matches the passed value.
+    in:
+      username: ""
+    out:
+      user_info: !ActorIdentity
+    throws:
+      NotFound: failed to find ActorIdentity
+      Inconsistent: Multiple ActorIdentity objects matched name
 
   reset_password:
     docstring: |

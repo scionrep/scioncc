@@ -14,6 +14,7 @@ from interface.services.core.iorg_management_service import OrgManagementService
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
 
 from interface.objects import ActorIdentity, AuthStatusEnum, UserIdentityDetails, Credentials
+from interface.objects import TokenTypeEnum
 
 
 @attr('INT', group='coi')
@@ -51,6 +52,9 @@ class TestIdentityManagementServiceInt(IonIntegrationTestCase):
 
         # TEST: Identity details (user profile)
         self._do_test_profile(actor_id)
+
+        # TEST: Password reset
+        self._do_test_password_reset(actor_id)
 
         # TEST: Auth tokens
         self._do_test_auth_tokens(actor_id)

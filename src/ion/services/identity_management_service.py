@@ -287,9 +287,10 @@ class IdentityManagementService(BaseIdentityManagementService):
     # Manage authentication tokens
     # TODO: More compliant with OAuth2
 
-    def _generate_auth_token(self, actor_id=None, expires=""):
+    def _generate_auth_token(self, actor_id=None, expires="",
+                             token_type=TokenTypeEnum.ACTOR_AUTH):
         token_string = uuid4().hex
-        token = SecurityToken(token_type=TokenTypeEnum.ACTOR_AUTH, token_string=token_string,
+        token = SecurityToken(token_type=token_type, token_string=token_string,
                               actor_id=actor_id, expires=expires, status="OPEN")
         return token
 
@@ -298,31 +299,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         start_time defaults to current time if empty and uses a system timestamp.
         validity is in seconds and must be set.
         """
-        if not actor_id:
-            raise BadRequest("Must provide argument: actor_id")
-        actor_obj = self.rr.read(actor_id)
-        if actor_obj.type_ != RT.ActorIdentity:
-            raise BadRequest("Illegal type for argument actor_id")
-        if type(validity) not in (int, long):
-            raise BadRequest("Illegal type for argument validity")
-        if validity <= 0 or validity > MAX_TOKEN_VALIDITY:
-            raise BadRequest("Illegal value for argument validity")
-        cur_time = get_ion_ts_millis()
-        if not start_time:
-            start_time = cur_time
-        start_time = int(start_time)
-        if start_time > cur_time:
-            raise BadRequest("Illegal value for start_time: Future values not allowed")
-        if (start_time + 1000*validity) < cur_time:
-            raise BadRequest("Illegal value for start_time: Already expired")
-        expires = str(start_time + 1000*validity)
-
-        token = self._generate_auth_token(actor_id, expires=expires)
-        token_id = "token_%s" % token.token_string
-
-        self.container.object_store.create(token, token_id)
-
-        return token.token_string
+        return self.create_token(actor_id, start_time, validity).token_string
 
     def read_authentication_token(self, token_string=''):
         """Returns the token object for given actor authentication token string.

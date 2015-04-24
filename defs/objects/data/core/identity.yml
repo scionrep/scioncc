@@ -34,6 +34,8 @@ ActorIdentity: !Extends_SystemResource
   auth_ts_last: ""
   # Last successful login
   auth_ts_last_fail: ""
+  # Password reset token
+  passwd_reset_token: !SecurityToken
   # Session information (cleared on
   session: {}
   # Session expiry
@@ -58,24 +60,3 @@ OAuthClientIdentityDetails: !Extends_IdentityDetails
   redirect_uris: ""
   # Space separated list of scopes
   default_scopes: ""
-
-# Enumerates the possible types of security tokens
-TokenTypeEnum: !enum (values=(ACTOR_SECRET, ACTOR_AUTH, OAUTH_GRANT, OAUTH_ACCESS, OAUTH_REFRESH), default=ACTOR_SECRET)
----
-
-# Holds information for a user specific authorization token
-SecurityToken:
-  # The token secret
-  token_string: ""
-  # The type of token - one of enum
-  token_type: !TokenTypeEnum
-  # Timestamp (UNIX epoch) for when the token expires in UTC
-  expires : ""
-  # One of OPEN, VERIFIED, EXPIRED
-  status: ""
-  # ID of an actor identity.
-  actor_id:
-  # Email address of merge account
-  merge_email: ""
-  # Additional token attributes
-  attributes: {}
