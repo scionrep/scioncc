@@ -71,6 +71,19 @@ methods:
       Inconsistent: Multiple ActorIdentity objects matched name
 
 
+  reset_password:
+    docstring: |
+      Check reset token and set new password for user.
+    in:
+      username: ""
+      token_string: ""
+      new_password: ""
+    out:
+      user_info: !ActorIdentity
+    throws:
+      NotFound: failed to find ActorIdentity
+      Inconsistent: Multiple ActorIdentity objects matched name
+
   # -----------------
   # Working with external identities and identity providers
 

@@ -7,7 +7,7 @@ import gevent
 
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.core.exception import Unauthorized
-from pyon.public import BadRequest, NotFound, get_ion_ts_millis
+from pyon.public import BadRequest, NotFound, get_ion_ts_millis, Inconsistent, Unauthorized
 
 from interface.services.core.iidentity_management_service import IdentityManagementServiceClient
 from interface.services.core.iorg_management_service import OrgManagementServiceClient
@@ -125,6 +125,24 @@ class TestIdentityManagementServiceInt(IonIntegrationTestCase):
 
         actor_details1 = self.identity_management_service.read_identity_details(actor_id)
         self.assertEquals(actor_details1.contact.individual_names_given, actor_details.contact.individual_names_given)
+
+    def _do_test_password_reset(self, actor_id=''):
+        idm = self.identity_management_service
+        actor_obj = idm.read_actor_identity(actor_id)
+        actor_obj = idm.request_password_reset(username=actor_obj.credentials[0].username)
+        self.assertEqual(actor_obj.passwd_reset_token.token_type, TokenTypeEnum.ACTOR_RESET_PASSWD)
+        self.assertTrue(actor_obj.passwd_reset_token.token_string)
+
+        self.assertRaises(Inconsistent, idm.reset_password,
+                          username=actor_obj.credentials[0].username,
+                          token_string='xxx', new_password='passwd')
+        self.assertEqual(idm.reset_password(username=actor_obj.credentials[0].username,
+                         token_string=actor_obj.passwd_reset_token.token_string,
+                         new_password='xyddd')._id, actor_obj._id)
+
+        self.assertRaises(Unauthorized, idm.reset_password,
+                          username=actor_obj.credentials[0].username,
+                          token_string=actor_obj.passwd_reset_token.token_string, new_password='passwd')
 
     def _do_test_auth_tokens(self, actor_id):
         # Note: test of service gateway token functionality is in SGS test
