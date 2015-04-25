@@ -31,24 +31,4 @@ View: !Extends_InformationResource
   param_values: {}
 
 
-# Enumerates the possible types of security tokens
-TokenTypeEnum: !enum (values=(ACTOR_SECRET, ACTOR_AUTH, ACTOR_RESET_PASSWD, OAUTH_GRANT, OAUTH_ACCESS, OAUTH_REFRESH), default=ACTOR_SECRET)
----
-
-# Holds information for a user specific authorization token
-SecurityToken:
-  # The token secret
-  token_string: ""
-  # The type of token - one of enum
-  token_type: !TokenTypeEnum
-  # Timestamp (UNIX epoch) for when the token expires in UTC
-  expires : ""
-  # One of OPEN, VERIFIED, EXPIRED
-  status: ""
-  # ID of an actor identity.
-  actor_id:
-  # Email address of merge account
-  merge_email: ""
-  # Additional token attributes
-  attributes: {}
 

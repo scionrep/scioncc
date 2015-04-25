@@ -31,6 +31,7 @@ class IdentityManagementService(BaseIdentityManagementService):
             raise BadRequest("Cannot create actor with credentials")
         if actor_identity.details and actor_identity.details.type_ == OT.IdentityDetails:
             actor_identity.details = None
+        actor_identity.passwd_reset_token = None
 
         actor_id, _ = self.rr.create(actor_identity)
 
@@ -105,60 +106,6 @@ class IdentityManagementService(BaseIdentityManagementService):
         if not res_ids:
             raise NotFound("No actor found with username")
         return res_ids[0]
-
-    def request_password_reset(self, username=''):
-        actor_id = self.find_actor_identity_by_username(username)
-        actor = self.rr.read(actor_id)
-
-        actor.passwd_reset_token = self.create_token(actor_id=actor_id, validity=10,
-            token_type=TokenTypeEnum.ACTOR_RESET_PASSWD)
-        self.rr.update(actor)
-        return actor
-
-    def reset_password(self, username='', token_string='', new_password=''):
-        actor_id = self.find_actor_identity_by_username(username)
-        actor = self.rr.read(actor_id)
-        if actor.passwd_reset_token.token_string != token_string:
-            raise Inconsistent("Found token's token_string does not match")
-        if actor.passwd_reset_token.status != 'OPEN': 
-            raise Unauthorized("Token status invalid")
-        cur_time = get_ion_ts_millis()
-        if cur_time >= int(actor.passwd_reset_token.expires):
-            raise Unauthorized("Token expired")
-
-        # invalidate token
-        actor.passwd_reset_token.status = 'INVALID' 
-        self.rr.update(actor)
-        self.set_user_password(username, new_password)
-        return actor
-
-    def create_token(self, actor_id='', start_time='', validity='',
-                     token_type=TokenTypeEnum.ACTOR_AUTH):
-        if not actor_id:
-            raise BadRequest("Must provide argument: actor_id")
-        actor_obj = self.rr.read(actor_id)
-        if actor_obj.type_ != RT.ActorIdentity:
-            raise BadRequest("Illegal type for argument actor_id")
-        if type(validity) not in (int, long):
-            raise BadRequest("Illegal type for argument validity")
-        if validity <= 0 or validity > MAX_TOKEN_VALIDITY:
-            raise BadRequest("Illegal value for argument validity")
-        cur_time = get_ion_ts_millis()
-        if not start_time:
-            start_time = cur_time
-        start_time = int(start_time)
-        if start_time > cur_time:
-            raise BadRequest("Illegal value for start_time: Future values not allowed")
-        if (start_time + 1000*validity) < cur_time:
-            raise BadRequest("Illegal value for start_time: Already expired")
-        expires = str(start_time + 1000*validity)
-
-        token = self._generate_auth_token(actor_id, expires=expires, token_type=token_type)
-        token_id = "token_%s" % token.token_string
-
-        self.container.object_store.create(token, token_id)
-
-        return token
 
     def set_actor_credentials(self, actor_id='', username='', password=''):
         if not username:
@@ -263,6 +210,36 @@ class IdentityManagementService(BaseIdentityManagementService):
 
         return prev_status
 
+    def request_password_reset(self, username=''):
+        actor_id = self.find_actor_identity_by_username(username)
+        actor = self.rr.read(actor_id)
+
+        actor.passwd_reset_token = self._create_token(actor_id=actor_id, validity=10,
+                                                      token_type=TokenTypeEnum.ACTOR_RESET_PASSWD)
+        self.rr.update(actor)
+
+        return actor.passwd_reset_token.token_string
+
+    def reset_password(self, username='', token_string='', new_password=''):
+        actor_id = self.find_actor_identity_by_username(username)
+        actor = self.rr.read(actor_id)
+        if not actor.passwd_reset_token or actor.passwd_reset_token.status != 'OPEN':
+            raise Unauthorized("Token status invalid")
+        cur_time = get_ion_ts_millis()
+        if cur_time >= int(actor.passwd_reset_token.expires):
+            raise Unauthorized("Token expired")
+        if actor.passwd_reset_token.token_string != token_string:
+            raise Unauthorized("Password reset token_string does not match")
+
+        # Update password
+        self.set_user_password(username, new_password)
+
+        # Invalidate token after success
+        actor = self.rr.read(actor_id)   # Read again, resource was updated in between
+        actor.passwd_reset_token = None
+        self.rr.update(actor)
+
+
     # -------------------------------------------------------------------------
     # Identity details (user profile) handling
 
@@ -284,8 +261,36 @@ class IdentityManagementService(BaseIdentityManagementService):
 
 
     # -------------------------------------------------------------------------
-    # Manage authentication tokens
-    # TODO: More compliant with OAuth2
+    # Manage tokens - authentication and others
+    # TODO: Make more compliant with OAuth2, use HMAC, JWT etc
+
+    def _create_token(self, actor_id='', start_time='', validity=0,
+                     token_type=TokenTypeEnum.ACTOR_AUTH):
+        if not actor_id:
+            raise BadRequest("Must provide argument: actor_id")
+        actor_obj = self.rr.read(actor_id)
+        if actor_obj.type_ != RT.ActorIdentity:
+            raise BadRequest("Illegal type for argument actor_id")
+        if type(validity) not in (int, long):
+            raise BadRequest("Illegal type for argument validity")
+        if validity <= 0 or validity > MAX_TOKEN_VALIDITY:
+            raise BadRequest("Illegal value for argument validity")
+        cur_time = get_ion_ts_millis()
+        if not start_time:
+            start_time = cur_time
+        start_time = int(start_time)
+        if start_time > cur_time:
+            raise BadRequest("Illegal value for start_time: Future values not allowed")
+        if (start_time + 1000*validity) < cur_time:
+            raise BadRequest("Illegal value for start_time: Already expired")
+        expires = str(start_time + 1000*validity)
+
+        token = self._generate_auth_token(actor_id, expires=expires, token_type=token_type)
+        token_id = "token_%s" % token.token_string
+
+        self.container.object_store.create(token, token_id)
+
+        return token
 
     def _generate_auth_token(self, actor_id=None, expires="",
                              token_type=TokenTypeEnum.ACTOR_AUTH):
@@ -299,7 +304,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         start_time defaults to current time if empty and uses a system timestamp.
         validity is in seconds and must be set.
         """
-        return self.create_token(actor_id, start_time, validity).token_string
+        return self._create_token(actor_id, start_time, validity).token_string
 
     def read_authentication_token(self, token_string=''):
         """Returns the token object for given actor authentication token string.
@@ -366,7 +371,7 @@ class IdentityManagementService(BaseIdentityManagementService):
     def _get_actor_authentication_tokens(self, actor_id):
         actor_tokens = []
         raise NotImplementedError("TODO")
-        return actor_tokens
+        #return actor_tokens
 
 
 class IdentityUtils(object):

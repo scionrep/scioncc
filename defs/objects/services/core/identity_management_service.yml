@@ -72,12 +72,13 @@ methods:
 
   request_password_reset:
     docstring: |
-      Set passwd_reset token for ActorIdentity object whose name attribute matches the passed value.
+      Create a password reset token for actor with given username.
     in:
       username: ""
     out:
-      user_info: !ActorIdentity
+      reset_token: ""
     throws:
+      BadRequest: for invalid arguments
       NotFound: failed to find ActorIdentity
       Inconsistent: Multiple ActorIdentity objects matched name
 
@@ -89,8 +90,8 @@ methods:
       token_string: ""
       new_password: ""
     out:
-      user_info: !ActorIdentity
     throws:
+      BadRequest: for invalid arguments
       NotFound: failed to find ActorIdentity
       Inconsistent: Multiple ActorIdentity objects matched name
 
