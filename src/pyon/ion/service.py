@@ -113,9 +113,9 @@ class BaseService(LocalContextMixin):
 
     def _validate_resource_id(self, arg_name, resource_id, res_type=None, optional=False, allow_subtype=True):
         """
-        Check that the given argument is a resource id, by retrieving the resource from the
+        Check that the given argument is a resource id (string), by retrieving the resource from the
         resource registry. Additionally, checks type and returns the result object.
-        Supports optional argument and subtypes.
+        Supports optional argument and subtypes. res_type can be a list of (sub)types.
         """
         if optional and not resource_id:
             return
@@ -123,16 +123,19 @@ class BaseService(LocalContextMixin):
             raise BadRequest("Argument '%s': missing" % arg_name)
         resource_obj = self.clients.resource_registry.read(resource_id)
         if res_type:
+            type_list = res_type
+            if not hasattr(res_type, "__iter__"):
+                type_list = [res_type]
             from pyon.core.registry import issubtype
-            if allow_subtype and not issubtype(resource_obj.type_, res_type):
+            if allow_subtype and not any(map(lambda check_type: issubtype(resource_obj.type_, check_type), type_list)):
                 raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
-            elif not allow_subtype and resource_obj.type_ != res_type:
+            elif not allow_subtype and not any(map(lambda check_type: resource_obj.type_ == check_type, type_list)):
                 raise BadRequest("Argument '%s': existing resource is not a '%s' -- SPOOFING ALERT" % (arg_name, res_type))
         return resource_obj
 
     def _validate_resource_obj(self, arg_name, resource_obj, res_type=None, optional=False, checks=""):
         """
-        Check that the given argument exists and is a resource object of given type.
+        Check that the given argument (object) exists and is a resource object of given type.
         Can be None if optional==True.
         Optional checks in comma separated string:
         - id: resource referenced by ID is compatible and returns it.
