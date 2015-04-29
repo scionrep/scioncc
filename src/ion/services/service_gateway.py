@@ -5,10 +5,15 @@ __author__ = "Stephen P. Henrie, Michael Meisinger"
 import ast
 import inspect
 import string
-import sys 
+import sys
+import time
 import traceback
 from flask import Blueprint, request, abort
 import flask
+
+# Create special logging category for service gateway access
+import logging
+webapi_log = logging.getLogger('webapi')
 
 from pyon.core.bootstrap import get_service_registry
 from pyon.core.object import IonObjectBase
@@ -54,6 +59,8 @@ RETURN_MIMETYPE_PARAM = "return_mimetype"
 sg_blueprint = Blueprint("service_gateway", __name__, static_folder=None)
 # Singleton instance of service gateway
 sg_instance = None
+# Sequence number to identify requests
+req_seqnum = 0
 
 
 class ServiceGateway(object):
@@ -181,12 +188,20 @@ class ServiceGateway(object):
         Makes a secure call to a SciON service operation via messaging.
         """
         # TODO make this service smarter to respond to the mime type in the request data (ie. json vs text)
+        global req_seqnum
+        req_seqnum += 1
+        request_id, start_time = req_seqnum, time.time()
+        webapi_log.info("SVC REQUEST (%s) %s", request_id, request.url)
         try:
             result = self._make_service_request(service_name, operation, id_param)
             return self.gateway_json_response(result)
 
         except Exception as ex:
             return self.gateway_error_response(ex)
+
+        finally:
+            end_time = time.time()
+            webapi_log.info("SVC REQUEST END (%s) %.3f s", request_id, (end_time-start_time))
 
     def rest_gateway_request(self, service_name, res_type, id_param=None):
         """
@@ -774,7 +789,11 @@ class ServiceGateway(object):
             return_mimetype = str(request.args[RETURN_MIMETYPE_PARAM])
             return self.response_class(result, mimetype=return_mimetype)
 
-        return self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: getattr(exc, "status_code", 400)})
+        status_code = getattr(exc, "status_code", 400)
+        webapi_log.warn("CALL ERROR: %s - %s (id=%s, status=%s)", result[GATEWAY_ERROR_EXCEPTION],
+                        result[GATEWAY_ERROR_MESSAGE], result[GATEWAY_ERROR_EXCID], status_code)
+
+        return self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: status_code})
 
 
 # -------------------------------------------------------------------------
