@@ -159,13 +159,6 @@ class ServiceGateway(object):
     def sg_index(self):
         return self.gateway_json_response(SG_IDENTIFICATION)
 
-    def _add_cors_headers(self, resp):
-        # Set CORS headers so that a Swagger client on a different domain can read spec
-        resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
-        resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Request-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport,  *"
-
     def get_service_spec(self, service_name=None, spec_name=None):
         try:
             if not self._swagger_gen:
@@ -188,10 +181,7 @@ class ServiceGateway(object):
         Makes a secure call to a SciON service operation via messaging.
         """
         # TODO make this service smarter to respond to the mime type in the request data (ie. json vs text)
-        global req_seqnum
-        req_seqnum += 1
-        request_id, start_time = req_seqnum, time.time()
-        webapi_log.info("SVC REQUEST (%s) %s", request_id, request.url)
+        self._log_request_start("SVC RPC")
         try:
             result = self._make_service_request(service_name, operation, id_param)
             return self.gateway_json_response(result)
@@ -200,8 +190,7 @@ class ServiceGateway(object):
             return self.gateway_error_response(ex)
 
         finally:
-            end_time = time.time()
-            webapi_log.info("SVC REQUEST END (%s) %.3f s", request_id, (end_time-start_time))
+            self._log_request_end()
 
     def rest_gateway_request(self, service_name, res_type, id_param=None):
         """
@@ -209,6 +198,7 @@ class ServiceGateway(object):
         Get with ID returns the resource, POST without ID creates, PUT with ID updates
         and GET without ID returns the collection.
         """
+        self._log_request_start("SVC REST")
         try:
             if not service_name:
                 raise BadRequest("Service name missing")
@@ -242,8 +232,12 @@ class ServiceGateway(object):
                 return self.process_gateway_request(service_name, operation, obj)
             else:
                 raise BadRequest("Bad REST request")
+
         except Exception as ex:
             return self.gateway_error_response(ex)
+
+        finally:
+            self._log_request_end()
 
     def _extract_payload_data(self):
         request_obj = None
@@ -509,6 +503,61 @@ class ServiceGateway(object):
     # -------------------------------------------------------------------------
     # Service call (messaging) helpers
 
+    def _add_cors_headers(self, resp):
+        # Set CORS headers so that a Swagger client on a different domain can read spec
+        resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
+        resp.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS , PUT"
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Request-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport,  *"
+
+    def _log_request_start(self, req_type="SG"):
+        global req_seqnum
+        req_seqnum += 1
+        req_info = dict(request_id=req_seqnum, start_time=time.time(), req_type=req_type)
+        flask.g.req_info = req_info
+        webapi_log.info("%s REQUEST (%s) - %s", req_type, req_info["request_id"], request.url)
+
+    def _log_request_response(self, content_type, result="", content_length=-1, status_code=200):
+        req_info = flask.g.get("req_info", None)
+        if req_info:
+            req_info["resp_content_type"] = content_type
+            req_info["resp_content_length"] = content_length
+            req_info["resp_result"] = result
+            req_info["resp_status"] = req_info.get("resp_status", status_code)
+
+    def _log_request_error(self, result, status_code):
+        req_info = flask.g.get("req_info", None)
+        if req_info:
+            req_info["resp_error"] = True
+            req_info["resp_status"] = status_code
+            webapi_log.warn("%s REQUEST (%s) ERROR (%s%s) - %s: %s",
+                            req_info["req_type"], req_info["request_id"],
+                            status_code,
+                            "/id="+result[GATEWAY_ERROR_EXCID] if result[GATEWAY_ERROR_EXCID] else "",
+                            result[GATEWAY_ERROR_EXCEPTION],
+                            result[GATEWAY_ERROR_MESSAGE])
+        else:
+            webapi_log.warn("REQUEST ERROR (%s%s) - %s: %s",
+                            status_code,
+                            "/id="+result[GATEWAY_ERROR_EXCID] if result[GATEWAY_ERROR_EXCID] else "",
+                            result[GATEWAY_ERROR_EXCEPTION],
+                            result[GATEWAY_ERROR_MESSAGE])
+
+    def _log_request_end(self):
+        req_info = flask.g.get("req_info", None)
+        if req_info:
+            req_info["end_time"] = time.time()
+            webapi_log.info("%s REQUEST (%s) RESP (%s) - %.3f s, %s bytes, %s",
+                            req_info["req_type"], req_info["request_id"],
+                            req_info.get("resp_status", ""),
+                            req_info["end_time"] - req_info["start_time"],
+                            req_info.get("resp_content_length", ""),
+                            req_info.get("resp_content_type", "")
+            )
+        else:
+            webapi_log.warn("REQUEST END - missing start info")
+
+
     def _get_request_args(self):
         """Extracts service request arguments from HTTP request. Supports various
         methods and forms of encoding. Separates arguments for special parameters
@@ -723,6 +772,7 @@ class ServiceGateway(object):
         resp = self.response_class(resp_obj, mimetype=CONT_TYPE_JSON)
         if self.develop_mode and (self.set_cors_headers or ("api_key" in request.args and request.args["api_key"])):
             self._add_cors_headers(resp)
+        self._log_request_response(CONT_TYPE_JSON, resp_obj, len(resp_obj))
         return resp
 
     def gateway_json_response(self, response_data):
@@ -738,6 +788,7 @@ class ServiceGateway(object):
             elif response_data.internal_encoding == "utf8":
                 pass
             resp = self.response_class(content, response_data.code, mimetype=response_data.media_mimetype)
+            self._log_request_response(response_data.media_mimetype, "raw", len(content), response_data.code)
             return resp
 
         if RETURN_MIMETYPE_PARAM in request.args:
@@ -790,8 +841,7 @@ class ServiceGateway(object):
             return self.response_class(result, mimetype=return_mimetype)
 
         status_code = getattr(exc, "status_code", 400)
-        webapi_log.warn("CALL ERROR: %s - %s (id=%s, status=%s)", result[GATEWAY_ERROR_EXCEPTION],
-                        result[GATEWAY_ERROR_MESSAGE], result[GATEWAY_ERROR_EXCID], status_code)
+        self._log_request_error(result, status_code)
 
         return self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: status_code})
 
