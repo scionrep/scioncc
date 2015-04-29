@@ -890,6 +890,9 @@ class ResourceQuery(DatastoreQueryBuilder):
         super(ResourceQuery, self).__init__(datastore=DataStore.DS_RESOURCES, profile=DataStore.DS_PROFILE.RESOURCES,
                                             order_by=order_by, limit=limit, skip=skip)
 
+    def filter_id(self, id_expr):
+        return self.eq_in(DQ.ATT_ID, id_expr)
+
     def filter_type(self, type_expr):
         return self.eq_in(DQ.ATT_TYPE, type_expr)
 
@@ -961,6 +964,9 @@ class AssociationQuery(DatastoreQueryBuilder):
                                                profile=DataStore.DS_PROFILE.RESOURCES, ds_sub="assoc",
                                                order_by=order_by, limit=limit, skip=skip)
 
+    def filter_id(self, id_expr):
+        return self.eq_in(DQ.ATT_ID, id_expr)
+
     def filter_subject(self, expr):
         return self.eq_in(DQ.AA_SUBJECT, expr)
 
@@ -1011,6 +1017,34 @@ class ComplexRRQuery(ResourceQuery):
     #     self._set_from_sql(from_sql)
     #     self._set_where_sql(where_sql)
     #     self._set_group_by_sql(group_by_sql, having_sql)
+
+    def set_returns(self, return_list, keep_basic=True):
+        if not return_list or not isinstance(return_list, list):
+            raise BadRequest("Invalid return_list")
+        self.query["returns"] = [keep_basic is True] + return_list
+
+    def set_join_tables(self, tables, where_join):
+        if not tables or not isinstance(tables, list):
+            raise BadRequest("Invalid tables")
+        if not where_join or not isinstance(where_join, list):
+            raise BadRequest("Invalid where_join")
+
+        self.query["from"] = tables
+        self.query["where_join"] = where_join
+
+    def set_group_by(self, group_by, having=None):
+        self.query["group_by"] = group_by
+        self.query["having"] = having
+
+
+class ComplexAssocQuery(AssociationQuery):
+    """
+    Helper class to build datastore queries for the resource registry associations for complex queries, returning
+    aggregates, groupings, function results etc.
+    """
+    def __init__(self, order_by=None, limit=0, skip=0):
+        super(ComplexAssocQuery, self).__init__(order_by=order_by, limit=limit, skip=skip)
+        self.query["query_args"]["format"] = "complex"
 
     def set_returns(self, return_list, keep_basic=True):
         if not return_list or not isinstance(return_list, list):
