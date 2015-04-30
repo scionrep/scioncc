@@ -21,6 +21,8 @@ def get_typed_value(value, schema_entry=None, targettype=None):
         enum_clzz = getattr(objects, schema_entry['enum_type'])
         return enum_clzz._value_map[value]
     elif targettype == 'str':
+        if type(value) is unicode:
+            return value.encode("utf8")
         return str(value)
     elif targettype == 'bool':
         if value in ('TRUE', 'True', 'true', '1', 1, True):
@@ -44,6 +46,10 @@ def get_typed_value(value, schema_entry=None, targettype=None):
         return parse_list(value)
     elif targettype == 'parsedict':
         return parse_dict(str(value))
+    elif targettype == 'list' and type(value) is list:
+        return value
+    elif targettype == 'dict' and type(value) is dict:
+        return value
     else:
         log.trace('parsing value as %s: %s', targettype, value)
         return ast.literal_eval(value)
