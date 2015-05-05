@@ -1,0 +1,21 @@
+<Rule RuleId="{rule_id}:" Effect="Permit">
+    <Description>
+        {description}
+    </Description>
+
+    <Target>
+
+        <Subjects>
+            <Subject>
+                <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+                    <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">SUPERUSER</AttributeValue>
+                    <SubjectAttributeDesignator
+                         AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
+                         DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </SubjectMatch>
+            </Subject>
+        </Subjects>
+
+    </Target>
+
+</Rule>

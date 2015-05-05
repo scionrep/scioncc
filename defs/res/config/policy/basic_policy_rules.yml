@@ -1,0 +1,87 @@
+# Rule set for basic system policies based on Orgs, roles and authenticated actors
+# Referenced rule definition files are relative to this directory if not absolute paths
+
+type: scioncc_policy_rules
+
+rules:
+
+- name: Superuser_Permit_Everything
+  policy_type: common_service_access
+  rule_def: rule_01_superuser_permit_everything.xml
+  description: A global policy rule that permits access to everything with the SUPERUSER role
+  comment: This rule must be loaded before the Deny_Everything rule
+
+- name: Allowed_Anonymous_Service_Operations
+  policy_type: common_service_access
+  rule_def: rule_02_anonymous_permits.xml
+  description: A global policy rule which specifies operations that are allowed with anonymous access
+  comment: This rule must be loaded before the Deny_Everything rule
+
+- name: Deny_Everything
+  policy_type: common_service_access
+  rule_def: rule_03_deny_everything.xml
+  description: A global policy rule that denies access to everything by default
+  comment: This rule has been modified to Deny for only specific services. Everything else will be allowed.
+
+- name: Allowed_CUD_Service_Operations_for_Roles
+  enable: false
+  policy_type: common_service_access
+  rule_def: rule_04_role_permits.xml
+  description: A global policy rule which specifies operations that are allowed with for OPERATOR AND MANAGER roles
+  comment: THIS POLICY HAS BEEN COMMENTED OUT FOR THE CURRENT RELEASE
+
+
+- name: RR_Permitted_Operations
+  policy_type: service_access
+  service_name: resource_registry
+  rule_def: rule_11_rr_role_permits.xml
+  description: Permit these operations in the Resource Registry Service for the proper roles
+
+- name: RR_create_attachment_Operation
+  policy_type: service_access
+  service_name: resource_registry
+  rule_def: rule_12_rr_create_attachment.xml
+  description: Permit create attachment operation only in the context of the org to which the user belongs
+
+- name: RR_LCS_Operation
+  policy_type: service_access
+  service_name: resource_registry
+  rule_def: rule_13_rr_lcs.xml
+  description: Permit lifecycle change operation only in the context of the org to which the user belongs
+
+- name: RR_edit_Operation
+  policy_type: service_access
+  service_name: resource_registry
+  rule_def: rule_14_rr_edit.xml
+  description: Permit edit operation only in the context of the org to which the user belongs
+
+
+- name: IDMS_Permitted_Registered
+  policy_type: service_access
+  service_name: identity_management
+  rule_def: rule_21_id_permits.xml
+  description: Permit these operations in the Identity Management Service if the user is not anonymous
+
+- name: OrgMS_Moderator_Permitted
+  policy_type: service_access
+  service_name: org_management
+  rule_def: rule_22_org_moderator.xml
+  description: Permit these operations in the Org Management Service for the MODERATOR
+
+- name: PolicyMS_Moderator_Permitted
+  policy_type: service_access
+  service_name: policy_management
+  rule_def: rule_23_policy_moderator.xml
+  description: Permit these operations in the Policy Management Service for the MODERATOR
+
+- name: OrgMS_Operator_Permitted
+  policy_type: service_access
+  service_name: org_management
+  rule_def: rule_24_org_operator.xml
+  description: Permit these operations in the Org Management Service for the OPERATOR roles
+
+- name: OMS_Member_Permitted
+  policy_type: service_access
+  service_name: org_management
+  rule_def: rule_25_org_member.xml
+  description: Permit these operations in the Org Management Service for any Org MEMBER

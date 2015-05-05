@@ -1,0 +1,84 @@
+<Rule RuleId="{rule_id}:" Effect="Permit">
+    <Description>
+        {description}
+    </Description>
+
+    <Target>
+
+        <Resources>
+            <Resource>
+                <ResourceMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+                    <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">resource_registry</AttributeValue>
+                    <ResourceAttributeDesignator AttributeId="urn:oasis:names:tc:xacml:1.0:resource:resource-id" DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </ResourceMatch>
+            </Resource>
+        </Resources>
+
+
+        <Subjects>
+            <Subject>
+                <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+                    <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">OPERATOR</AttributeValue>
+                    <SubjectAttributeDesignator
+                         AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
+                         DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </SubjectMatch>
+            </Subject>
+            <Subject>
+                <SubjectMatch MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+                    <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">MODERATOR</AttributeValue>
+                    <SubjectAttributeDesignator
+                         AttributeId="urn:oasis:names:tc:xacml:1.0:subject:subject-role-id"
+                         DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </SubjectMatch>
+            </Subject>
+        </Subjects>
+
+    </Target>
+
+    <Condition>
+        <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:and">
+            <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:not">
+                <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-at-least-one-member-of">
+                    <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-bag">
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">DELETE</AttributeValue>
+                    </Apply>
+                    <ActionAttributeDesignator
+                        AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-verb"
+                        DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </Apply>
+            </Apply>
+            <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:not">
+                <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-at-least-one-member-of">
+                    <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-bag">
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">UPDATE</AttributeValue>
+                    </Apply>
+                    <ActionAttributeDesignator
+                        AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-verb"
+                        DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </Apply>
+            </Apply>
+            <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:not">
+                <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-at-least-one-member-of">
+                    <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-bag">
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">create_attachment</AttributeValue>
+                    </Apply>
+                    <ActionAttributeDesignator
+                        AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-id"
+                        DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </Apply>
+            </Apply>
+            <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:not">
+                <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-at-least-one-member-of">
+                    <Apply FunctionId="urn:oasis:names:tc:xacml:1.0:function:string-bag">
+                        <AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">LCS-CHANGE</AttributeValue>
+                    </Apply>
+                    <ActionAttributeDesignator
+                        AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-verb"
+                        DataType="http://www.w3.org/2001/XMLSchema#string"/>
+                </Apply>
+            </Apply>
+        </Apply>
+    </Condition>
+
+</Rule>
