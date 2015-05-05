@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 
-
 __author__ = 'Stephen P. Henrie'
-
 
 from pyon.public import Container
 from pyon.core.interceptor.interceptor import Interceptor
 from pyon.util.log import log
 
-#
-# This class is used as a base class for the internal interceptors managed by the governance framework
+
 class BaseInternalGovernanceInterceptor(Interceptor):
+    """Base class for the internal interceptors managed by the governance framework"""
 
     def __init__(self, *args, **kwargs):
         pass
@@ -33,16 +31,13 @@ class BaseInternalGovernanceInterceptor(Interceptor):
 
 class GovernanceInterceptor(BaseInternalGovernanceInterceptor):
 
-
     def configure(self, config):
         if "enabled" in config:
             self.enabled = config["enabled"]
 
         log.debug("GovernanceInterceptor enabled: %s" % str(self.enabled))
 
-
-    def outgoing(self,invocation):
-
+    def outgoing(self, invocation):
         if not self.enabled:
             return invocation
 
@@ -53,8 +48,7 @@ class GovernanceInterceptor(BaseInternalGovernanceInterceptor):
 
         return invocation
 
-    def incoming(self,invocation):
-
+    def incoming(self, invocation):
         if not self.enabled:
             return invocation
 
@@ -64,5 +58,4 @@ class GovernanceInterceptor(BaseInternalGovernanceInterceptor):
             self.governance_controller.process_incoming_message(invocation)
 
         return invocation
-
 

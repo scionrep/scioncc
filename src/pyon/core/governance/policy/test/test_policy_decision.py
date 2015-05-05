@@ -193,7 +193,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Deny")
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), True)
+        self.assertTrue('POLICY_STATUS_REASON' in invocation.message_annotations)
         self.assertEqual(invocation.message_annotations['POLICY_STATUS_REASON'],'The value of argument1 is less than or equal to 3')
 
         invocation.message = {'argument1': 5}
@@ -202,7 +202,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), False)
+        self.assertFalse('POLICY_STATUS_REASON' in invocation.message_annotations)
 
 
         pdpm.load_resource_policy_rules(resource_id, self.deny_message_parameter_function_rule)
@@ -213,14 +213,14 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), False)
+        self.assertFalse('POLICY_STATUS_REASON' in invocation.message_annotations)
 
         invocation.message = {'argument1': 5}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
                                    'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), True)
+        self.assertTrue('POLICY_STATUS_REASON' in invocation.message_annotations)
         self.assertEqual(invocation.message_annotations['POLICY_STATUS_REASON'],'The value of argument1 is larger than 3')
 
 

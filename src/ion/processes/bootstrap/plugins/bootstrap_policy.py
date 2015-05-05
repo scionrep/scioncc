@@ -2,8 +2,9 @@
 
 """Bootstrap process for system policy"""
 
-__author__ = 'Stephen Henrie'
+__author__ = 'Stephen Henrie, Michael Meisinger'
 
+from pyon.public import log
 from ion.core.bootstrap_process import BootstrapPlugin
 from ion.processes.bootstrap.load_system_policy import LoadSystemPolicy
 

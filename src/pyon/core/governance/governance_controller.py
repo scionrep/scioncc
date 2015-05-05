@@ -1,8 +1,6 @@
-    #!/usr/bin/env python
-
+#!/usr/bin/env python
 
 __author__ = 'Stephen P. Henrie'
-
 
 import types
 
@@ -20,9 +18,11 @@ from pyon.util.containers import get_ion_ts, DictDiffer
 from interface.services.core.ipolicy_management_service import PolicyManagementServiceProcessClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
+
 class GovernanceController(object):
     """
     This is a singleton object which handles governance functionality in the container.
+    Registers event callback for PolicyEvent to update local policies on change.
     """
 
     def __init__(self,container):
@@ -46,18 +46,14 @@ class GovernanceController(object):
         self._policy_snapshot = None
 
     def start(self):
-
         log.debug("GovernanceController starting ...")
-
         self._CFG = CFG
 
         self.enabled = CFG.get_safe('interceptor.interceptors.governance.config.enabled', False)
-
         log.info("GovernanceInterceptor enabled: %s" % str(self.enabled))
-
         self.policy_event_subscriber = None
 
-        #containers default to not Org Boundary and ION Root Org
+        # Containers default to not Org Boundary and ION Root Org
         self._is_container_org_boundary = CFG.get_safe('container.org_boundary',False)
         self._container_org_name = CFG.get_safe('container.org_name', CFG.get_safe('system.root_org', 'ION'))
         self._container_org_id = None
@@ -69,9 +65,7 @@ class GovernanceController(object):
         self.system_actor_user_header = None
 
         if self.enabled:
-
             config = CFG.get_safe('interceptor.interceptors.governance.config')
-
             self.initialize_from_config(config)
 
             self.policy_event_subscriber = EventSubscriber(event_type=OT.PolicyEvent, callback=self.policy_event_callback)
@@ -84,7 +78,6 @@ class GovernanceController(object):
             self._log_policy_update("start_governance_ctrl", message="Container start")
 
     def initialize_from_config(self, config):
-
         self.governance_dispatcher = GovernanceDispatcher()
 
         self.policy_decision_point_manager = PolicyDecisionPointManager(self)
@@ -175,7 +168,7 @@ class GovernanceController(object):
         @param invocation:
         @return:
         """
-        self.process_message(invocation, self.interceptor_order,'incoming' )
+        self.process_message(invocation, self.interceptor_order, 'incoming' )
         return self.governance_dispatcher.handle_incoming_message(invocation)
 
     def process_outgoing_message(self,invocation):
@@ -184,7 +177,7 @@ class GovernanceController(object):
         @param invocation:
         @return:
         """
-        self.process_message(invocation, reversed(self.interceptor_order),'outgoing')
+        self.process_message(invocation, reversed(self.interceptor_order), 'outgoing')
         return self.governance_dispatcher.handle_outgoing_message(invocation)
 
     def process_message(self,invocation,interceptor_list, method):
@@ -199,16 +192,16 @@ class GovernanceController(object):
         """
         for int_name in interceptor_list:
             class_inst = self.interceptor_by_name_dict[int_name]
-            getattr(class_inst, method)(invocation)
+            interceptor_obj = getattr(class_inst, method)
+            # Invoke interceptor
+            interceptor_obj(invocation)
 
-            #Stop processing message if an issue with the message was found by an interceptor.
-            if ( invocation.message_annotations.has_key(GovernanceDispatcher.CONVERSATION__STATUS_ANNOTATION) and invocation.message_annotations[GovernanceDispatcher.CONVERSATION__STATUS_ANNOTATION] == GovernanceDispatcher.STATUS_REJECT) or\
-               ( invocation.message_annotations.has_key(GovernanceDispatcher.POLICY__STATUS_ANNOTATION) and invocation.message_annotations[GovernanceDispatcher.POLICY__STATUS_ANNOTATION] == GovernanceDispatcher.STATUS_REJECT) :
+            # Stop processing message if an issue with the message was found by an interceptor
+            if invocation.message_annotations.get(GovernanceDispatcher.CONVERSATION__STATUS_ANNOTATION, None) == GovernanceDispatcher.STATUS_REJECT or \
+               invocation.message_annotations.get(GovernanceDispatcher.POLICY__STATUS_ANNOTATION, None) == GovernanceDispatcher.STATUS_REJECT:
                 break
 
         return invocation
-
-
 
     # Manage all of the policies in the container
 
@@ -251,10 +244,6 @@ class GovernanceController(object):
     def service_policy_event_callback(self, service_policy_event, *args, **kwargs):
         """
         The ServicePolicyEvent handler
-
-        @param args:
-        @param kwargs:
-        @return:
         """
         log.debug('Service policy event received: %s', str(service_policy_event.__dict__))
 
@@ -272,34 +261,33 @@ class GovernanceController(object):
         else:
             self.update_common_service_access_policy()
 
-
     def reset_policy_cache(self):
         """
         The function to empty and reload the container's policy caches
-
-        @return:
         """
         log.info('Resetting policy cache')
 
-        #First remove all cached polices and precondition functions that are not hard-wired
+        # First remove all cached polices and precondition functions that are not hard-wired
         self._reset_container_policy_caches()
 
-        #Then load the common service access policies since they are shared across services
+        # Then load the common service access policies since they are shared across services
         self.update_common_service_access_policy()
 
-        #Now iterate over the processes running in the container and reload their policies
+        # Now iterate over the processes running in the container and reload their policies
         proc_list = self.container.proc_manager.list_local_processes()
         for proc in proc_list:
             self.update_container_policies(proc)
 
         self._log_policy_update("reset_policy_cache")
 
-
     def _reset_container_policy_caches(self):
         self.policy_decision_point_manager.clear_policy_cache()
         self.unregister_all_process_policy_preconditions()
 
     def _get_policy_snapshot(self):
+        """
+        Debugging helper that snapshot copies the current container's policy state
+        """
         policy_snap = {}
         policy_snap["snap_ts"] = get_ion_ts()
 
@@ -440,7 +428,6 @@ class GovernanceController(object):
                                 message="Checked",
                                 process=process_instance)
 
-
     def update_resource_access_policy(self, resource_id, delete_policy=False):
 
         if self.policy_decision_point_manager is not None:
@@ -452,7 +439,6 @@ class GovernanceController(object):
             except Exception as e:
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("The resource %s is not found or there was an error applying access policy: %s" % ( resource_id, e.message))
-
 
     def update_common_service_access_policy(self, delete_policy=False):
 
@@ -469,7 +455,6 @@ class GovernanceController(object):
             except Exception as e:
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("There was an error applying access policy: %s" % e.message)
-
 
     def update_service_access_policy(self, service_name, service_op='', delete_policy=False):
 
@@ -503,7 +488,6 @@ class GovernanceController(object):
                 #If the resource does not exist, just ignore it - but log a warning.
                 log.warn("The process %s is not found for op %s or there was an error applying access policy: %s" % ( service_name, service_op, e.message))
 
-
     def get_active_policies(self):
 
         container_policies = dict()
@@ -532,7 +516,7 @@ class GovernanceController(object):
 
     # Methods for managing operation specific policy
     def get_process_operation_dict(self, process_name, auto_add=True):
-        if self._service_op_preconditions.has_key(process_name):
+        if process_name in self._service_op_preconditions:
             return self._service_op_preconditions[process_name]
 
         if auto_add:
@@ -549,12 +533,6 @@ class GovernanceController(object):
         the precondition functions return False, then the request is denied as Unauthorized.
 
         At some point, this should be refactored to by another interceptor, but at the operation level.
-
-        @param process:
-        @param operation:
-        @param precondition:
-        @param policy_object:
-        @return:
         """
 
         if not hasattr(process, operation):
@@ -564,7 +542,7 @@ class GovernanceController(object):
             raise NotFound("The method %s does not exist for the %s service." % (str(precondition), process.name))
 
         process_op_conditions = self.get_process_operation_dict(process.name)
-        if process_op_conditions.has_key(operation):
+        if operation in process_op_conditions:
             process_op_conditions[operation].append(precondition)
         else:
             preconditions = list()
@@ -576,27 +554,16 @@ class GovernanceController(object):
         This method removes all precondition functions registerd with an operation on a process. Care should be taken with this
         call, as it can remove "hard wired" preconditions that are coded directly and not as part of policy objects, such as
         with SA resource lifecycle preconditions.
-
-        @param process:
-        @param operation:
-        @return:
         """
         process_op_conditions = self.get_process_operation_dict(process.name, auto_add=False)
-        if process_op_conditions is not None and process_op_conditions.has_key(operation):
+        if process_op_conditions is not None and operation in process_op_conditions:
             del process_op_conditions[operation]
-
-
-
 
     def unregister_process_operation_precondition(self, process, operation, precondition):
         """
         This method removes a specific precondition function registerd with an operation on a process. Care should be taken with this
         call, as it can remove "hard wired" preconditions that are coded directly and not as part of policy objects, such as
         with SA resource lifecycle preconditions.
-        @param process:
-        @param operation:
-        @param precondition:
-        @return:
         """
         #Just skip this if there operation is not passed in.
         if operation is None:
@@ -606,22 +573,17 @@ class GovernanceController(object):
             raise NotFound("The operation %s does not exist for the %s service" % (operation, process.name))
 
         process_op_conditions = self.get_process_operation_dict(process.name, auto_add=False)
-        if process_op_conditions is not None and process_op_conditions.has_key(operation):
+        if process_op_conditions is not None and operation in process_op_conditions:
             preconditions = process_op_conditions[operation]
             preconditions[:] = [pre for pre in preconditions if not pre == precondition]
             if not preconditions:
                 del process_op_conditions[operation]
-
 
     def unregister_all_process_policy_preconditions(self):
         """
         This method removes all precondition functions registerd with an operation on a process. it will not remove
         "hard wired" preconditions that are coded directly and not as part of policy objects, such as
         with SA resource lifecycle preconditions.
-
-        @param process:
-        @param operation:
-        @return:
         """
         for proc in self._service_op_preconditions:
             process_op_conditions = self.get_process_operation_dict(proc, auto_add=False)
@@ -630,22 +592,17 @@ class GovernanceController(object):
                     preconditions = process_op_conditions[op]
                     preconditions[:] = [pre for pre in preconditions if type(pre) == types.FunctionType]
 
-
     def check_process_operation_preconditions(self, process, msg, headers):
         """
         This method is called by the ion endpoint to execute any process operation preconditions functions before
         allowing the operation to be called.
-        @param process:
-        @param msg:
-        @param headers:
-        @return:
         """
         operation = headers.get('op', None)
         if operation is None:
             return
 
         process_op_conditions = self.get_process_operation_dict(process.name, auto_add=False)
-        if process_op_conditions is not None and process_op_conditions.has_key(operation):
+        if process_op_conditions is not None and operation in process_op_conditions:
             preconditions = process_op_conditions[operation]
             for precond in reversed(preconditions):
                 if type(precond) == types.MethodType or type(precond) == types.FunctionType:
@@ -682,6 +639,3 @@ class GovernanceController(object):
 
                     if not ret_val:
                         raise Unauthorized(ret_message)
-
-
-

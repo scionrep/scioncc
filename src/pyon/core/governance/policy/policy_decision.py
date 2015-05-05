@@ -43,7 +43,7 @@ ACTION_PARAMETERS = XACML_1_0_PREFIX + 'action:param-dict'
 DICT_TYPE_URI = AttributeValue.IDENTIFIER_PREFIX + 'dict'
 OBJECT_TYPE_URI = AttributeValue.IDENTIFIER_PREFIX + 'object'
 
-#"""XACML DATATYPES"""
+# XACML DATATYPES
 attributeValueFactory = AttributeValueClassFactory()
 StringAttributeValue = attributeValueFactory(AttributeValue.STRING_TYPE_URI)
 IntAttributeValue = attributeValueFactory(AttributeValue.INTEGER_TYPE_URI)
@@ -63,7 +63,7 @@ class PolicyDecisionPointManager(object):
         self.governance_controller = governance_controller
 
 
-        #Create and register an Attribute Value derived class to handle a dict type used for the messages
+        # Create and register an Attribute Value derived class to handle a dict type used for the messages
         _className = 'Dict' + AttributeValue.CLASS_NAME_SUFFIX
         _classVars = {'TYPE': dict, 'IDENTIFIER': DICT_TYPE_URI}
         _attributeValueClass = type(_className, (AttributeValue, ), _classVars)
@@ -73,7 +73,7 @@ class PolicyDecisionPointManager(object):
         self.DictAttributeValue = attributeValueFactory(DICT_TYPE_URI)
 
 
-        #Create and register an Attribute Value derived class to handle any object
+        # Create and register an Attribute Value derived class to handle any object
         _className = 'Object' + AttributeValue.CLASS_NAME_SUFFIX
         _classVars = {'TYPE': object, 'IDENTIFIER': OBJECT_TYPE_URI}
         _attributeValueClass = type(_className, (AttributeValue, ), _classVars)
@@ -82,15 +82,14 @@ class PolicyDecisionPointManager(object):
 
         self.ObjectAttributeValue = attributeValueFactory(OBJECT_TYPE_URI)
 
-        #Create and add new function for evaluating functions that take the message as a dict
+        # Create and add new function for evaluating functions that take the message as a dict
         from pyon.core.governance.policy.evaluate import EvaluateCode, EvaluateFunction
         functionMap['urn:oasis:names:tc:xacml:1.0:function:evaluate-code'] = EvaluateCode
         functionMap['urn:oasis:names:tc:xacml:1.0:function:evaluate-function'] = EvaluateFunction
 
 
     def _get_default_policy_template(self):
-
-        #TODO - Put in resource registry as object and load in preload
+        # TODO - Put in resource registry as object and load in preload
 
         policy_template = '''<?xml version="1.0" encoding="UTF-8"?>
         <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
@@ -111,8 +110,7 @@ class PolicyDecisionPointManager(object):
         return policy_template
 
     def _get_resource_policy_template(self):
-
-        #TODO - Put in resource registry as object and load in preload
+        # TODO - Put in resource registry as object and load in preload
 
         policy_template = '''<?xml version="1.0" encoding="UTF-8"?>
         <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
@@ -133,9 +131,6 @@ class PolicyDecisionPointManager(object):
         return policy_template
 
 
-
-
-
     def create_policy_from_rules(self, policy_identifier, rules):
         policy = self._get_default_policy_template()
         policy_rules = policy % (policy_identifier, rules)
@@ -146,24 +141,24 @@ class PolicyDecisionPointManager(object):
         policy_rules = policy % (policy_identifier, rules)
         return policy_rules
 
-    #Return a compiled policy indexed by the specified resource_id
+    # Return a compiled policy indexed by the specified resource_id
     def get_resource_pdp(self, resource_key):
 
-        #First look for requested resource key
-        if self.resource_policy_decision_point.has_key(resource_key):
+        # First look for requested resource key
+        if resource_key in self.resource_policy_decision_point:
             return self.resource_policy_decision_point[resource_key]
 
-        #If a PDP does not exist for this resource key - then return default
+        # If a PDP does not exist for this resource key - then return default
         return self.empty_pdp
 
-    #Return a compiled policy indexed by the specified resource_id
+    # Return a compiled policy indexed by the specified resource_id
     def get_service_pdp(self, service_name):
 
-        #First look for requested resource key
-        if self.service_policy_decision_point.has_key(service_name):
+        # First look for requested resource key
+        if service_name in self.service_policy_decision_point:
             return self.service_policy_decision_point[service_name]
 
-        #If a PDP does not exist for this resource key - then return common set of service policies
+        # If a PDP does not exist for this resource key - then return common set of service policies
         return self.load_common_service_pdp
 
     def list_resource_policies(self):
@@ -180,7 +175,7 @@ class PolicyDecisionPointManager(object):
 
     def load_service_policy_rules(self, service_name, rules_text):
 
-        if not rules_text and not self.service_policy_decision_point.has_key(service_name):
+        if not rules_text and service_name not in self.service_policy_decision_point:
             return
 
         log.debug("Loading policies for service: %s" % service_name)
@@ -188,35 +183,32 @@ class PolicyDecisionPointManager(object):
         self.clear_service_policy(service_name)
         service_rule_set = self.common_service_rules + rules_text
 
-        #Simply create a new PDP object for the service
+        # Simply create a new PDP object for the service
         input_source = StringIO(self.create_policy_from_rules(service_name, service_rule_set))
         self.service_policy_decision_point[service_name] = PDP.fromPolicySource(input_source, ReaderFactory)
 
     def load_resource_policy_rules(self, resource_key, rules_text):
 
-        if not rules_text and not self.resource_policy_decision_point.has_key(resource_key):
+        if not rules_text and resource_key not in self.resource_policy_decision_point:
             return
 
         log.debug("Loading policies for resource: %s" % resource_key)
-        #print rules_text
 
         self.clear_resource_policy(resource_key)
 
-        #Simply create a new PDP object for the service
+        # Simply create a new PDP object for the service
         input_source = StringIO(self.create_resource_policy_from_rules(resource_key, rules_text))
         self.resource_policy_decision_point[resource_key] = PDP.fromPolicySource(input_source, ReaderFactory)
 
-    #Remove any policy indexed by the resource_key
+    # Remove any policy indexed by the resource_key
     def clear_resource_policy(self, resource_key):
-        if self.resource_policy_decision_point.has_key(resource_key):
-            del self.resource_policy_decision_point[resource_key]
+        self.resource_policy_decision_point.pop(resource_key, None)
 
-    #Remove any policy indexed by the service_name
+    # Remove any policy indexed by the service_name
     def clear_service_policy(self, service_name):
-        if self.service_policy_decision_point.has_key(service_name):
-            del self.service_policy_decision_point[service_name]
+        self.service_policy_decision_point.pop(service_name, None)
 
-    #Remove all policies
+    # Remove all policies
     def clear_policy_cache(self):
         self.resource_policy_decision_point.clear()
         self.service_policy_decision_point.clear()
@@ -264,7 +256,6 @@ class PolicyDecisionPointManager(object):
             subject.attributes.append(attribute)
 
     def _create_request_from_message(self, invocation, receiver, receiver_type='service'):
-
         sender, sender_type = invocation.get_message_sender()
         op = invocation.get_header_value('op', 'Unknown')
         ion_actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, 'anonymous')
@@ -285,20 +276,20 @@ class PolicyDecisionPointManager(object):
         else:
             org_governance_name = self.governance_controller.system_root_org_name
 
-        #If this process is not associated wiht the root Org, then iterate over the roles associated with the user only for
-        #the Org that this process is associated with otherwise include all roles and create attributes for each
+        # If this process is not associated wiht the root Org, then iterate over the roles associated with the user only for
+        # the Org that this process is associated with otherwise include all roles and create attributes for each
         if org_governance_name == self.governance_controller.system_root_org_name:
             #log.debug("Including roles for all Orgs")
-            #If the process Org name is the same for the System Root Org, then include all of them to be safe
+            # If the process Org name is the same for the System Root Org, then include all of them to be safe
             for org in actor_roles:
                 self.create_org_role_attribute(actor_roles[org],subject)
         else:
-            if actor_roles.has_key(org_governance_name):
-                log.debug("Org Roles (%s): %s" , org_governance_name, ' '.join(actor_roles[org_governance_name]))
+            if org_governance_name in actor_roles:
+                log.debug("Org Roles (%s): %s", org_governance_name, ' '.join(actor_roles[org_governance_name]))
                 self.create_org_role_attribute(actor_roles[org_governance_name],subject)
 
-            #Handle the special case for the ION system actor
-            if actor_roles.has_key(self.governance_controller.system_root_org_name):
+            # Handle the special case for the ION system actor
+            if self.governance_controller.system_root_org_name in actor_roles:
                 if SUPERUSER_ROLE in actor_roles[self.governance_controller.system_root_org_name]:
                     log.debug("Including SUPERUSER role")
                     self.create_org_role_attribute([SUPERUSER_ROLE],subject)
@@ -315,7 +306,7 @@ class PolicyDecisionPointManager(object):
         request.action = Action()
         request.action.attributes.append(self.create_string_attribute(Identifiers.Action.ACTION_ID, op))
 
-        #Check to see if there is a OperationVerb decorator specifying a Verb used with policy
+        # Check to see if there is a OperationVerb decorator specifying a Verb used with policy
         if is_ion_object(message_format):
             try:
                 msg_class = message_classes[message_format]
@@ -326,7 +317,7 @@ class PolicyDecisionPointManager(object):
             except NotFound:
                 pass
 
-        #Create generic attributes for each of the primitive message parameter types to be available in XACML rules
+        # Create generic attributes for each of the primitive message parameter types to be available in XACML rules
 
         parameter_dict = {'message': invocation.message, 'headers': invocation.headers, 'annotations': invocation.message_annotations }
         if endpoint_process is not None:
@@ -337,9 +328,7 @@ class PolicyDecisionPointManager(object):
         return request
 
     def check_agent_request_policies(self, invocation):
-
         process = invocation.get_arg_value('process')
-
         if not process:
             raise NotFound('Cannot find process in message')
 
@@ -347,7 +336,7 @@ class PolicyDecisionPointManager(object):
 
         log.debug("Resource policy Decision: %s", decision)
 
-        # todo: check if its OK to treat everything but Deny as Permit (Ex: NotApplicable)
+        # TODO: check if its OK to treat everything but Deny as Permit (Ex: NotApplicable)
         # Return if agent service policies deny the operation
         if decision == Decision.DENY:
             return decision
@@ -362,7 +351,6 @@ class PolicyDecisionPointManager(object):
         return decision
 
     def _check_service_request_policies(self, invocation, receiver_type):
-
         receiver = invocation.get_message_receiver()
 
         if not receiver:
@@ -378,7 +366,6 @@ class PolicyDecisionPointManager(object):
         return self._evaluate_pdp(invocation, pdp, requestCtx)
 
     def check_resource_request_policies(self, invocation, resource_id):
-
         if not resource_id:
             raise NotFound('The resource_id is not set')
 
@@ -392,7 +379,6 @@ class PolicyDecisionPointManager(object):
         return self._evaluate_pdp(invocation, pdp, requestCtx)
 
     def _evaluate_pdp(self, invocation, pdp, requestCtx):
-
         try:
             response = pdp.evaluate(requestCtx)
         except Exception as e:
@@ -403,7 +389,7 @@ class PolicyDecisionPointManager(object):
             log.debug('response from PDP contains nothing, so not authorized')
             return Decision.DENY
 
-        if invocation.message_annotations.has_key(GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION):
+        if GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION in invocation.message_annotations:
             return Decision.DENY
 
         for result in response.results:

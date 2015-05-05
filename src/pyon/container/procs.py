@@ -681,8 +681,8 @@ class ProcManager(object):
         for att, att_val in proc_attr.iteritems():
             setattr(process_instance, att, att_val)
 
-        #Unless the process has been started as part of another Org, default to the container Org or the ION Org
-        if config.has_key('org_governance_name'):
+        # Unless the process has been started as part of another Org, default to the container Org or the ION Org
+        if 'org_governance_name' in config:
             process_instance.org_governance_name = config['org_governance_name']
         else:
             process_instance.org_governance_name = CFG.get_safe('container.org_name', CFG.get_safe('system.root_org', 'ION'))

@@ -2,6 +2,7 @@
 
 __author__ = 'Michael Meisinger'
 
+from pyon.core.governance import get_system_actor
 from ion.core.bootstrap_process import BootstrapPlugin, AbortBootstrap
 from pyon.public import IonObject, RT, log, ResourceQuery, PRED
 from pyon.util.containers import get_safe
@@ -17,8 +18,7 @@ class BootstrapCore(BootstrapPlugin):
 
     def on_initial_bootstrap(self, process, config, **kwargs):
         # Detect if system has been started before by the presence of the ION system actor
-        system_actor, _ = process.container.resource_registry.find_resources(
-            restype=RT.ActorIdentity, id_only=True)
+        system_actor = get_system_actor()
         if system_actor:
             raise AbortBootstrap("System already initialized. Start with bootmode=restart or force_clean (-fc)!")
 
@@ -29,8 +29,7 @@ class BootstrapCore(BootstrapPlugin):
 
     def on_restart(self, process, config, **kwargs):
         # Delete leftover Service and associated Process resources
-        svc_ids, _ = process.container.resource_registry.find_resources(
-            restype=RT.Service, id_only=True)
+        svc_ids, _ = process.container.resource_registry.find_resources(restype=RT.Service, id_only=True)
 
         if svc_ids:
             rq = ResourceQuery()
