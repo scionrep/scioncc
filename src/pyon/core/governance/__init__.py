@@ -4,19 +4,28 @@
 
 __author__ = 'Stephen P. Henrie, Michael Meisinger'
 
-from pyon.core import bootstrap, MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_VALID
+from pyon.core import (bootstrap, MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_OP, MSG_HEADER_RESOURCE_ID,
+                       MSG_HEADER_VALID, MSG_HEADER_USER_CONTEXT_ID)
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import BadRequest, Inconsistent
-from pyon.ion.resource import RT, PRED, LCS, OT
+from pyon.ion.resource import RT, PRED, OT
 from pyon.util.containers import get_safe, get_ion_ts_millis
 from pyon.util.log import log
 
 # These constants are ubiquitous, so define in the container
 DEFAULT_ACTOR_ID = 'anonymous'
+ANONYMOUS_ACTOR = DEFAULT_ACTOR_ID
+
 MODERATOR_ROLE = 'MODERATOR'   # Can act upon resource within the specific Org, managerial permissions in Org
 OPERATOR_ROLE = 'OPERATOR'     # Can act upon resource within the specific Org, action permissions in Org
 MEMBER_ROLE = 'MEMBER'         # Can access resources within the specific Org
 SUPERUSER_ROLE = 'SUPERUSER'   # Can act upon resources across all Orgs with superuser access
+
+# Decorator names for service operations and their parameters
+DECORATOR_OP_VERB = "OperationVerb"
+DECORATOR_ALWAYS_VERIFY_POLICY = "AlwaysVerifyPolicy"
+DECORATOR_RESOURCE_ID = "ResourceId"
+DECORATOR_USER_CONTEXT_ID = "UserContextId"
 
 
 def get_role_message_headers(org_roles):
@@ -156,7 +165,7 @@ def get_system_actor_header(system_actor=None):
 
         return actor_header
 
-    except Exception as e:
+    except Exception:
         log.exception("Could not get system actor header")
         return get_actor_header(None)
 
@@ -186,10 +195,11 @@ def get_valid_resource_commitments(resource_id=None, actor_id=None):
         if commitment_list:
             return commitment_list
 
-    except Exception as e:
+    except Exception:
         log.exception("Could not determine actor resource commitments")
 
     return None
+
 
 def has_valid_resource_commitments(actor_id, resource_id):
     """
@@ -214,6 +224,7 @@ def has_valid_resource_commitments(actor_id, resource_id):
     # Only a shared commitment was found
     return ret_status
 
+
 def has_valid_shared_resource_commitment(actor_id=None, resource_id=None):
     """
     This method returns True if the specified actor_id has acquired shared access for the specified resource id, otherwise False.
@@ -224,6 +235,7 @@ def has_valid_shared_resource_commitment(actor_id=None, resource_id=None):
     commitment_status =  has_valid_resource_commitments(actor_id, resource_id)
 
     return commitment_status.shared
+
 
 def has_valid_exclusive_resource_commitment(actor_id=None, resource_id=None):
     """
@@ -239,6 +251,7 @@ def has_valid_exclusive_resource_commitment(actor_id=None, resource_id=None):
         return False
 
     return commitment_status.exclusive
+
 
 def is_resource_owner(actor_id=None, resource_id=None):
     """
@@ -266,13 +279,11 @@ class GovernanceHeaderValues(object):
         Helpers for retrieving governance related values: op, actor_id, actor_roles, resource_id from the message header
         @param headers:
         @param resource_id_required: True if the message header must have a resource-id field and value.
-        @return op, actor_id, actor_roles, resource_id:
         """
-
-        if not headers or not isinstance(headers, dict) or not len(headers):
+        if not headers or not isinstance(headers, dict):
             raise BadRequest("The headers parameter is not a valid message header dictionary")
 
-        self._op = headers.get("op", "Unknown-Operation")
+        self._op = headers.get(MSG_HEADER_OP, "Unknown-Operation")
 
         if process is not None and hasattr(process, 'name'):
             self._process_name = process.name
@@ -298,12 +309,14 @@ class GovernanceHeaderValues(object):
         else:
             raise Inconsistent('%s(%s) has been denied since the ion-actor-roles can not be found in the message headers' % (self._process_name, self._op))
 
-        if 'resource-id' in headers:
-            self._resource_id = headers['resource-id']
+        if MSG_HEADER_RESOURCE_ID in headers:
+            self._resource_id = headers[MSG_HEADER_RESOURCE_ID]
         else:
             if resource_id_required:
                 raise Inconsistent('%s(%s) has been denied since the resource-id can not be found in the message headers' % (self._process_name, self._op))
             self._resource_id = ''
+
+        self._user_context_id = headers.get(MSG_HEADER_USER_CONTEXT_ID, None)
 
     @property
     def op(self):
@@ -320,6 +333,10 @@ class GovernanceHeaderValues(object):
     @property
     def resource_id(self):
         return self._resource_id
+
+    @property
+    def user_context_id(self):
+        return self._user_context_id
 
     @property
     def process_name(self):

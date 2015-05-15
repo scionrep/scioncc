@@ -1,19 +1,18 @@
-"""
-Contains a class to evaluate python code and return True or False
-"""
+"""Contains a class to evaluate python code and return True or False"""
+
 __author__ = "Stephen Henrie"
 __date__ = "04/13/2013"
 
-
 from ndg.xacml.core.context.exceptions import XacmlContextTypeError
-from ndg.xacml.core.functions import (AbstractFunction, FunctionClassFactoryInterface)
-from ndg.xacml.core.attributevalue import (AttributeValue,
-                                           AttributeValueClassFactory)
+from ndg.xacml.core.functions import AbstractFunction, FunctionClassFactoryInterface
+from ndg.xacml.core.attributevalue import AttributeValue, AttributeValueClassFactory
 from ndg.xacml.utils import TypedList as Bag
 
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
 from pyon.util.execute import execute_method
 from pyon.util.log import log
+
+
 class EvaluateCode(AbstractFunction):
     """Generic equal function for all types
 
@@ -38,10 +37,8 @@ class EvaluateCode(AbstractFunction):
         error_msg = ''
         eval_code = inputs[0]
         if not isinstance(eval_code, AttributeValue) and not isinstance(eval_code.elementType, self.__class__.ATTRIB1_TYPE):
-            raise XacmlContextTypeError('Expecting %r derived type for '
-                                        '"attribute1"; got %r' %
-                                        (self.__class__.ATTRIB1_TYPE,
-                                         type(eval_code)))
+            raise XacmlContextTypeError('Expecting %r derived type for "attribute1"; got %r' %
+                                        (self.__class__.ATTRIB1_TYPE, type(eval_code)))
 
         if isinstance(inputs[1], Bag):
             parameter_dict = inputs[1][0]
@@ -49,15 +46,15 @@ class EvaluateCode(AbstractFunction):
             parameter_dict = inputs[1]
 
         if not isinstance(parameter_dict, AttributeValue) and not isinstance(parameter_dict.elementType, self.__class__.ATTRIB2_TYPE):
-            raise XacmlContextTypeError('Expecting %r derived type for '
-                                        '"attribute2"; got %r' %
-                                        (self.__class__.ATTRIB2_TYPE,
-                                         type(parameter_dict)))
+            raise XacmlContextTypeError('Expecting %r derived type for "attribute2"; got %r' %
+                                        (self.__class__.ATTRIB2_TYPE, type(parameter_dict)))
 
         try:
             exec eval_code.value
             pref = locals()["policy_func"]
-            ret_val, error_msg = pref(process=parameter_dict.value['process'], message=parameter_dict.value['message'], headers=parameter_dict.value['headers'])
+            ret_val, error_msg = pref(process=parameter_dict.value['process'],
+                                      message=parameter_dict.value['message'],
+                                      headers=parameter_dict.value['headers'])
             if not ret_val:
                 parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = error_msg
 
@@ -67,6 +64,7 @@ class EvaluateCode(AbstractFunction):
             parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = e.message
 
         return ret_val
+
 
 class EvaluateFunction(AbstractFunction):
     """Generic equal function for all types
@@ -94,23 +92,20 @@ class EvaluateFunction(AbstractFunction):
         error_msg = ''
         function_name = inputs[0]
         if not isinstance(function_name, AttributeValue) and not isinstance(function_name.elementType, self.__class__.ATTRIB1_TYPE):
-            raise XacmlContextTypeError('Expecting %r derived type for '
-                                        '"attribute1"; got %r' %
-                                        (self.__class__.ATTRIB1_TYPE,
-                                         type(function_name)))
+            raise XacmlContextTypeError('Expecting %r derived type for "attribute1"; got %r' %
+                                        (self.__class__.ATTRIB1_TYPE, type(function_name)))
 
         if isinstance(inputs[1], Bag):
             parameter_dict = inputs[1][0]
         else:
             parameter_dict = inputs[1]
         if not isinstance(parameter_dict, AttributeValue) and not isinstance(parameter_dict.elementType, self.__class__.ATTRIB2_TYPE):
-            raise XacmlContextTypeError('Expecting %r derived type for '
-                                        '"attribute2"; got %r' %
-                                        (self.__class__.ATTRIB2_TYPE,
-                                         type(parameter_dict)))
+            raise XacmlContextTypeError('Expecting %r derived type for "attribute2"; got %r' %
+                                        (self.__class__.ATTRIB2_TYPE, type(parameter_dict)))
 
         try:
-            ret_val, error_msg = execute_method(execution_object=parameter_dict.value['process'], method_name=function_name.value, **parameter_dict.value)
+            ret_val, error_msg = execute_method(execution_object=parameter_dict.value['process'],
+                                                method_name=function_name.value, **parameter_dict.value)
             if not ret_val:
                 parameter_dict.value['annotations'][GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION] = error_msg
         except Exception as e:
@@ -140,4 +135,3 @@ class FunctionClassFactory(FunctionClassFactoryInterface):
             return EvaluateCode
         else:
             return None
-

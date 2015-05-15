@@ -4,6 +4,7 @@ __author__ = 'Stephen P. Henrie'
 
 import types
 
+from pyon.core import PROCTYPE_AGENT, PROCTYPE_SERVICE
 from pyon.core.bootstrap import CFG, get_service_registry, is_testing
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
 from pyon.util.log import log
@@ -12,7 +13,6 @@ from pyon.core.governance import get_system_actor_header, get_system_actor
 from pyon.core.governance.policy.policy_decision import PolicyDecisionPointManager
 from pyon.ion.event import EventSubscriber
 from pyon.core.exception import NotFound, Unauthorized
-from pyon.container.procs import SERVICE_PROCESS_TYPE, AGENT_PROCESS_TYPE
 from pyon.util.containers import get_ion_ts, DictDiffer
 
 from interface.services.core.ipolicy_management_service import PolicyManagementServiceProcessClient
@@ -214,7 +214,7 @@ class GovernanceController(object):
             system_actor = get_system_actor()
             if system_actor is not None:
                 self.system_actor_id = system_actor._id
-                self.system_actor_user_header = get_system_actor_header()
+                self.system_actor_user_header = get_system_actor_header(system_actor)
 
         log.info("Policy event callback received: %s" % policy_event)
 
@@ -390,9 +390,8 @@ class GovernanceController(object):
         """
         # This method can be called before policy management service is available during system startup
         if safe_mode and not self._is_policy_management_service_available():
-            if not is_testing() and (process_instance.name not in (
-                "resource_registry", "system_management", "directory", "identity_management") and
-                process_instance._proc_name != "event_persister"):
+            if not is_testing() and (process_instance.name not in {"resource_registry", "system_management",
+                    "directory", "identity_management"} and process_instance._proc_name != "event_persister"):
                 # We are in the early phases of bootstrapping
                 log.warn("update_container_policies(%s) - No update. Policy MS not available" % process_instance._proc_name)
 
@@ -406,14 +405,14 @@ class GovernanceController(object):
             system_actor = get_system_actor()
             if system_actor is not None:
                 self.system_actor_id = system_actor._id
-                self.system_actor_user_header = get_system_actor_header()
+                self.system_actor_user_header = get_system_actor_header(system_actor)
 
-        if process_instance._proc_type == SERVICE_PROCESS_TYPE:
+        if process_instance._proc_type == PROCTYPE_SERVICE:
             # look to load any existing policies for this service
 
             self.update_service_access_policy(process_instance._proc_listen_name)
 
-        elif process_instance._proc_type == AGENT_PROCESS_TYPE:
+        elif process_instance._proc_type == PROCTYPE_AGENT:
             # look to load any existing policies for this agent service
             if process_instance.resource_type is None:
                 self.update_service_access_policy(process_instance.name)

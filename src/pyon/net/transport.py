@@ -9,22 +9,22 @@ TODOS:
 
 __author__ = 'Dave Foster <dfoster@asascience.com>'
 
-
-from pyon.util.log import log
-from pyon.util.containers import DotDict
+import os
+from contextlib import contextmanager
+from uuid import uuid4
+from collections import defaultdict
+from pika import BasicProperties
 from gevent.event import AsyncResult, Event
 from gevent.queue import Queue
 from gevent import sleep
 from gevent.lock import RLock
 from gevent.timeout import Timeout
 from gevent.pool import Pool
-from contextlib import contextmanager
-import os
-from pika import BasicProperties
+
+from pyon.util.log import log
+from pyon.util.containers import DotDict
 from pyon.util.async import spawn
 from pyon.util.pool import IDPool
-from uuid import uuid4
-from collections import defaultdict
 
 
 class TransportError(StandardError):
@@ -528,7 +528,7 @@ class NameTrio(object):
         return self._binding or self._queue
 
     def __str__(self):
-        return "NP (%s,%s,B: %s)" % (self.exchange, self.queue, self.binding)
+        return "XAdr(%s,%s,B: %s)" % (self.exchange, self.queue, self.binding)
 
 
 class TopicTrie(object):
@@ -617,7 +617,6 @@ class TopicTrie(object):
     def add_topic_tree(self, topic_tree, pattern):
         """
         Splits a string topic_tree into tokens (by .) and recursively adds them to the trie.
-
         Adds the pattern at the terminal node for later retrieval.
         """
         topics = topic_tree.split(".")
@@ -633,7 +632,6 @@ class TopicTrie(object):
     def remove_topic_tree(self, topic_tree, pattern):
         """
         Splits a string topic_tree into tokens (by .) and removes the pattern from the terminal node.
-
         @TODO should remove empty nodes
         """
         topics = topic_tree.split(".")
@@ -649,17 +647,16 @@ class TopicTrie(object):
     def get_all_matches(self, topic_tree):
         """
         Returns a list of all matches for a given topic tree string.
-
         Creates a set out of the matching patterns, so multiple binds matching on the same pattern only
         return once.
         """
         topics = topic_tree.split(".")
         return set(self.root.get_all_matches(topics))
 
+
 class LocalRouter(object):
     """
     A RabbitMQ-like routing device implemented with gevent mechanisms for an in-memory broker.
-
     Using LocalTransport, can handle topic-exchange-like communication in ION within the context
     of a single container.
     """
@@ -730,7 +727,6 @@ class LocalRouter(object):
     def _route(self, exchange, routing_key, body, props):
         """
         Delivers incoming messages into queues based on known routes.
-
         This entire method runs in a lock (likely pretty slow).
         """
         assert exchange in self._exchanges, "Unknown exchange %s" % exchange
@@ -747,7 +743,6 @@ class LocalRouter(object):
     def _child_failed(self, gproc):
         """
         Handler method for when any child worker thread dies with error.
-
         Aborts the "ioloop" greenlet.
         """
         log.error("Child (%s) failed with an exception: %s", gproc, gproc.exception)
@@ -758,7 +753,6 @@ class LocalRouter(object):
     def _run_ioloop(self):
         """
         An "IOLoop"-like greenlet - sits and waits until the pool is finished.
-
         Fits with the AMQP node.
         """
         self._gl_pool.join()
@@ -778,7 +772,6 @@ class LocalRouter(object):
                 del self._exchanges[exchange]
 
     def declare_queue(self, queue, **kwargs):
-
         with self._lock_declarables:
             # come up with new queue name if none specified
             if queue is None or queue == '':
@@ -960,6 +953,7 @@ class LocalRouter(object):
             while not self._queues[queue].empty():
                 self._queues[queue].get_nowait()
 
+
 class LocalTransport(BaseTransport):
     def __init__(self, broker, ch_number):
         self._broker = broker
@@ -1029,6 +1023,7 @@ class LocalTransport(BaseTransport):
     def purge_impl(self, queue):
         return self._broker.purge(queue)
 
+
 class XOTransport(ComposableTransport):
     """
     Base Transport object for Exchange Objects.
@@ -1042,5 +1037,3 @@ class XOTransport(ComposableTransport):
     def setup_listener(self, binding, default_cb):
         log.debug("XOTransport passing on setup_listener")
         pass
-
-

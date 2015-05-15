@@ -8,8 +8,7 @@ from StringIO import StringIO
 from ndg.xacml.parsers.etree.factory import ReaderFactory
 from ndg.xacml.core import Identifiers, XACML_1_0_PREFIX
 from ndg.xacml.core.attribute import Attribute
-from ndg.xacml.core.attributevalue import (AttributeValue,
-                                           AttributeValueClassFactory)
+from ndg.xacml.core.attributevalue import AttributeValue, AttributeValueClassFactory
 from ndg.xacml.core.functions import functionMap
 from ndg.xacml.core.context.request import Request
 from ndg.xacml.core.context.subject import Subject
@@ -19,10 +18,11 @@ from ndg.xacml.core.context.environment import Environment
 from ndg.xacml.core.context.pdp import PDP
 from ndg.xacml.core.context.result import Decision
 
-from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES
+from pyon.core import (MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_OP, MSG_HEADER_FORMAT, MSG_HEADER_USER_CONTEXT_ID,
+                       PROCTYPE_SERVICE)
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound
-from pyon.core.governance import SUPERUSER_ROLE
+from pyon.core.governance import SUPERUSER_ROLE, ANONYMOUS_ACTOR, DECORATOR_OP_VERB
 from pyon.core.registry import is_ion_object, message_classes, get_class_decorator_value
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
 
@@ -36,6 +36,9 @@ XACML_EMPTY_POLICY_FILENAME = 'res/config/policy/empty_policy_set.xml'
 
 ROLE_ATTRIBUTE_ID = XACML_1_0_PREFIX + 'subject:subject-role-id'
 SENDER_ID = XACML_1_0_PREFIX + 'subject:subject-sender-id'
+USER_CONTEXT_ID = XACML_1_0_PREFIX + 'subject:user-context-id'
+USER_CONTEXT_DIFFERS = XACML_1_0_PREFIX + 'subject:user-context-differs'
+
 RECEIVER_TYPE = XACML_1_0_PREFIX + 'resource:receiver-type'
 ACTION_VERB = XACML_1_0_PREFIX + 'action:action-verb'
 ACTION_PARAMETERS = XACML_1_0_PREFIX + 'action:param-dict'
@@ -89,8 +92,6 @@ class PolicyDecisionPointManager(object):
 
 
     def _get_default_policy_template(self):
-        # TODO - Put in resource registry as object and load in preload
-
         policy_template = '''<?xml version="1.0" encoding="UTF-8"?>
         <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
             xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
@@ -110,8 +111,6 @@ class PolicyDecisionPointManager(object):
         return policy_template
 
     def _get_resource_policy_template(self):
-        # TODO - Put in resource registry as object and load in preload
-
         policy_template = '''<?xml version="1.0" encoding="UTF-8"?>
         <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
             xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
@@ -143,7 +142,6 @@ class PolicyDecisionPointManager(object):
 
     # Return a compiled policy indexed by the specified resource_id
     def get_resource_pdp(self, resource_key):
-
         # First look for requested resource key
         if resource_key in self.resource_policy_decision_point:
             return self.resource_policy_decision_point[resource_key]
@@ -153,7 +151,6 @@ class PolicyDecisionPointManager(object):
 
     # Return a compiled policy indexed by the specified resource_id
     def get_service_pdp(self, service_name):
-
         # First look for requested resource key
         if service_name in self.service_policy_decision_point:
             return self.service_policy_decision_point[service_name]
@@ -168,13 +165,11 @@ class PolicyDecisionPointManager(object):
         return self.service_policy_decision_point.keys()
 
     def load_common_service_policy_rules(self, rules_text):
-
         self.common_service_rules = rules_text
         input_source = StringIO(self.create_policy_from_rules(COMMON_SERVICE_POLICY_RULES, rules_text))
         self.load_common_service_pdp = PDP.fromPolicySource(input_source, ReaderFactory)
 
     def load_service_policy_rules(self, service_name, rules_text):
-
         if not rules_text and service_name not in self.service_policy_decision_point:
             return
 
@@ -188,7 +183,6 @@ class PolicyDecisionPointManager(object):
         self.service_policy_decision_point[service_name] = PDP.fromPolicySource(input_source, ReaderFactory)
 
     def load_resource_policy_rules(self, resource_key, rules_text):
-
         if not rules_text and resource_key not in self.resource_policy_decision_point:
             return
 
@@ -255,44 +249,52 @@ class PolicyDecisionPointManager(object):
         if attribute is not None:
             subject.attributes.append(attribute)
 
-    def _create_request_from_message(self, invocation, receiver, receiver_type='service'):
+    def _create_request_from_message(self, invocation, receiver, receiver_type=PROCTYPE_SERVICE):
         sender, sender_type = invocation.get_message_sender()
-        op = invocation.get_header_value('op', 'Unknown')
-        ion_actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, 'anonymous')
+        op = invocation.get_header_value(MSG_HEADER_OP, 'Unknown')
+        actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, ANONYMOUS_ACTOR)
+        user_context_id = invocation.get_header_value(MSG_HEADER_USER_CONTEXT_ID, "")
+        user_context_differs = bool(actor_id and user_context_id and actor_id != user_context_id)
         actor_roles = invocation.get_header_value(MSG_HEADER_ROLES, {})
-        message_format = invocation.get_header_value('format', '')
+        message_format = invocation.get_header_value(MSG_HEADER_FORMAT, '')
+
+        # log.info("POLICY DECISION recv=%s actor=%s context=%s differ:%s", receiver, actor_id, user_context_id, user_context_differs)
+        # log.info(" headers: %s", invocation.headers)
 
         #log.debug("Checking XACML Request: receiver_type: %s, sender: %s, receiver:%s, op:%s,  ion_actor_id:%s, ion_actor_roles:%s", receiver_type, sender, receiver, op, ion_actor_id, actor_roles)
 
         request = Request()
         subject = Subject()
         subject.attributes.append(self.create_string_attribute(SENDER_ID, sender))
-        subject.attributes.append(self.create_string_attribute(Identifiers.Subject.SUBJECT_ID, ion_actor_id))
+        subject.attributes.append(self.create_string_attribute(Identifiers.Subject.SUBJECT_ID, actor_id))
+        subject.attributes.append(self.create_string_attribute(USER_CONTEXT_ID, user_context_id))
+        subject.attributes.append(self.create_string_attribute(USER_CONTEXT_DIFFERS, str(user_context_differs)))
 
-        #Get the Org name associated with the endpoint process
+        # Get the Org name associated with the endpoint process
         endpoint_process = invocation.get_arg_value('process', None)
-        if endpoint_process is not None and hasattr(endpoint_process,'org_governance_name'):
+        if endpoint_process is not None and hasattr(endpoint_process, 'org_governance_name'):
             org_governance_name = endpoint_process.org_governance_name
         else:
             org_governance_name = self.governance_controller.system_root_org_name
 
-        # If this process is not associated wiht the root Org, then iterate over the roles associated with the user only for
-        # the Org that this process is associated with otherwise include all roles and create attributes for each
+        # If this process is not associated with the root Org, then iterate over the roles associated
+        # with the user only for the Org that this process is associated with otherwise include all roles
+        # and create attributes for each
         if org_governance_name == self.governance_controller.system_root_org_name:
             #log.debug("Including roles for all Orgs")
             # If the process Org name is the same for the System Root Org, then include all of them to be safe
             for org in actor_roles:
-                self.create_org_role_attribute(actor_roles[org],subject)
+                self.create_org_role_attribute(actor_roles[org], subject)
         else:
             if org_governance_name in actor_roles:
                 log.debug("Org Roles (%s): %s", org_governance_name, ' '.join(actor_roles[org_governance_name]))
-                self.create_org_role_attribute(actor_roles[org_governance_name],subject)
+                self.create_org_role_attribute(actor_roles[org_governance_name], subject)
 
             # Handle the special case for the ION system actor
             if self.governance_controller.system_root_org_name in actor_roles:
                 if SUPERUSER_ROLE in actor_roles[self.governance_controller.system_root_org_name]:
                     log.debug("Including SUPERUSER role")
-                    self.create_org_role_attribute([SUPERUSER_ROLE],subject)
+                    self.create_org_role_attribute([SUPERUSER_ROLE], subject)
 
 
         request.subjects.append(subject)
@@ -310,7 +312,7 @@ class PolicyDecisionPointManager(object):
         if is_ion_object(message_format):
             try:
                 msg_class = message_classes[message_format]
-                operation_verb = get_class_decorator_value(msg_class,'OperationVerb')
+                operation_verb = get_class_decorator_value(msg_class, DECORATOR_OP_VERB)
                 if operation_verb is not None:
                     request.action.attributes.append(self.create_string_attribute(ACTION_VERB, operation_verb))
 
@@ -318,8 +320,10 @@ class PolicyDecisionPointManager(object):
                 pass
 
         # Create generic attributes for each of the primitive message parameter types to be available in XACML rules
-
-        parameter_dict = {'message': invocation.message, 'headers': invocation.headers, 'annotations': invocation.message_annotations }
+        # and evaluation functions
+        parameter_dict = {'message': invocation.message,
+                          'headers': invocation.headers,
+                          'annotations': invocation.message_annotations}
         if endpoint_process is not None:
             parameter_dict['process'] = endpoint_process
 
@@ -352,14 +356,12 @@ class PolicyDecisionPointManager(object):
 
     def _check_service_request_policies(self, invocation, receiver_type):
         receiver = invocation.get_message_receiver()
-
         if not receiver:
             raise NotFound('No receiver for this message')
 
         requestCtx = self._create_request_from_message(invocation, receiver, receiver_type)
 
         pdp = self.get_service_pdp(receiver)
-
         if pdp is None:
             return Decision.NOT_APPLICABLE
 
@@ -372,7 +374,6 @@ class PolicyDecisionPointManager(object):
         requestCtx = self._create_request_from_message(invocation, resource_id, 'resource')
 
         pdp = self.get_resource_pdp(resource_id)
-
         if pdp is None:
             return Decision.NOT_APPLICABLE
 
@@ -386,7 +387,7 @@ class PolicyDecisionPointManager(object):
             return Decision.NOT_APPLICABLE
 
         if response is None:
-            log.debug('response from PDP contains nothing, so not authorized')
+            log.debug("response from PDP contains nothing, so not authorized")
             return Decision.DENY
 
         if GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION in invocation.message_annotations:

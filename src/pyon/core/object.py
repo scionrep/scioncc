@@ -219,38 +219,38 @@ class IonObjectBase(object):
         for key in other.__dict__:
             setattr(self, key, other.__dict__[key])
 
-    #Decorator methods
+    # --- Decorator methods
 
     def get_class_decorator_value(self, decorator):
-
         if getattr(self, '_class_info'):
-            if self._class_info['decorators'].has_key(decorator):
+            if decorator in self._class_info['decorators']:
                 return self._class_info['decorators'][decorator]
 
         return None
 
     def is_decorator(self, field, decorator):
-        if self._schema[field]['decorators'].has_key(decorator):
+        """Returns true if schema for given field defines the specified decorator"""
+        if decorator in self._schema[field]['decorators']:
             return True
 
         return False
 
     def get_decorator_value(self, field, decorator):
-        if self._schema[field]['decorators'].has_key(decorator):
+        if decorator in self._schema[field]['decorators']:
             return self._schema[field]['decorators'][decorator]
 
         return None
 
     def find_field_for_decorator(self, decorator='', decorator_value=None):
-        '''
-        This method will iterate the set of fields in te object and look for the first field
+        """
+        This method will iterate the set of fields in the object and look for the first field
         that has the specified decorator and decorator value, if supplied.
         @param decorator: The decorator on the field to be searched for
         @param decorator_value: An optional value to search on
         @return fld: The name of the field that has the decorator
-        '''
+        """
         for fld in self._schema:
-            if self.is_decorator(fld, decorator ):
+            if self.is_decorator(fld, decorator):
                 if decorator_value is not None and self.get_decorator_value(fld, decorator) == decorator_value:
                     return fld
                 else:
@@ -258,14 +258,14 @@ class IonObjectBase(object):
 
         return None
 
-    # Decorator validation methods
+    # --- Decorator validation methods
 
     def check_string_pattern_match(self, key, value, pattern):
         m = re.match(pattern, value)
 
         if not m:
             raise AttributeError('Invalid value pattern %s for field "%s.%s", should match regular expression %s' %
-                (value, type(self).__name__, key, pattern))
+                    (value, type(self).__name__, key, pattern))
 
     def check_numeric_value_range(self, key, value, value_range):
         if ',' in value_range:
@@ -279,7 +279,6 @@ class IonObjectBase(object):
                 (str(value), type(self).__name__, key, min, max))
 
     def check_inheritance_chain(self, typ, expected_type):
-
         for baseclz in typ.__bases__:
             if baseclz.__name__ == expected_type.strip():
                 return True
@@ -302,7 +301,7 @@ class IonObjectBase(object):
             for content_type in split_content_types:
                 #First check for valid ION types
                 from pyon.core.registry import issubtype
-                if isinstance(value, dict) and value.has_key('type_'):
+                if isinstance(value, dict) and 'type_' in value:
                     if value['type_'] == content_type.strip() or issubtype(value['type_'], content_type.strip()):
                         match_found = True
                         break
