@@ -20,19 +20,14 @@ from ndg.xacml.core.context.result import Decision
 
 from pyon.core import (MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_OP, MSG_HEADER_FORMAT, MSG_HEADER_USER_CONTEXT_ID,
                        PROCTYPE_SERVICE)
-from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound
 from pyon.core.governance import SUPERUSER_ROLE, ANONYMOUS_ACTOR, DECORATOR_OP_VERB
-from pyon.core.registry import is_ion_object, message_classes, get_class_decorator_value
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
-
+from pyon.core.registry import is_ion_object, message_classes, get_class_decorator_value
 from pyon.util.log import log
 
+
 COMMON_SERVICE_POLICY_RULES = 'common_service_policy_rules'
-
-
-THIS_DIR = path.dirname(__file__)
-XACML_EMPTY_POLICY_FILENAME = 'res/config/policy/empty_policy_set.xml'
 
 ROLE_ATTRIBUTE_ID = XACML_1_0_PREFIX + 'subject:subject-role-id'
 SENDER_ID = XACML_1_0_PREFIX + 'subject:subject-sender-id'
@@ -53,6 +48,42 @@ IntAttributeValue = attributeValueFactory(AttributeValue.INTEGER_TYPE_URI)
 DoubleAttributeValue = attributeValueFactory(AttributeValue.DOUBLE_TYPE_URI)
 BooleanAttributeValue = attributeValueFactory(AttributeValue.BOOLEAN_TYPE_URI)
 
+# Policy templates
+
+DEFAULT_POLICY_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
+<Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
+    xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="urn:oasis:names:tc:xacml:2.0:policy:schema:os http://docs.oasis-open.org/xacml/access_control-xacml-2.0-policy-schema-os.xsd"
+    xmlns:xf="http://www.w3.org/TR/2002/WD-xquery-operators-20020816/#"
+    xmlns:md="http:www.med.example.com/schemas/record.xsd"
+    PolicyId="%s"
+    RuleCombiningAlgId="urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:permit-overrides">
+    <PolicyDefaults>
+        <XPathVersion>http://www.w3.org/TR/1999/Rec-xpath-19991116</XPathVersion>
+    </PolicyDefaults>
+
+    %s
+</Policy>'''
+
+RESOURCE_POLICY_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
+<Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
+    xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="urn:oasis:names:tc:xacml:2.0:policy:schema:os http://docs.oasis-open.org/xacml/access_control-xacml-2.0-policy-schema-os.xsd"
+    xmlns:xf="http://www.w3.org/TR/2002/WD-xquery-operators-20020816/#"
+    xmlns:md="http:www.med.example.com/schemas/record.xsd"
+    PolicyId="%s"
+    RuleCombiningAlgId="urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:first-applicable">
+    <PolicyDefaults>
+        <XPathVersion>http://www.w3.org/TR/1999/Rec-xpath-19991116</XPathVersion>
+    </PolicyDefaults>
+
+    %s
+</Policy>'''
+
+EMPTY_POLICY_ID = "urn:oasis:names:tc:xacml:2.0:example:policyid:empty_policy_set"
+
 
 class PolicyDecisionPointManager(object):
 
@@ -60,7 +91,7 @@ class PolicyDecisionPointManager(object):
         self.resource_policy_decision_point = dict()
         self.service_policy_decision_point = dict()
 
-        self.empty_pdp = PDP.fromPolicySource(path.join(".", XACML_EMPTY_POLICY_FILENAME), ReaderFactory)
+        self.empty_pdp = self.get_empty_pdp()
         self.load_common_service_policy_rules('')
 
         self.governance_controller = governance_controller
@@ -90,44 +121,11 @@ class PolicyDecisionPointManager(object):
         functionMap['urn:oasis:names:tc:xacml:1.0:function:evaluate-code'] = EvaluateCode
         functionMap['urn:oasis:names:tc:xacml:1.0:function:evaluate-function'] = EvaluateFunction
 
-
     def _get_default_policy_template(self):
-        policy_template = '''<?xml version="1.0" encoding="UTF-8"?>
-        <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
-            xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            xsi:schemaLocation="urn:oasis:names:tc:xacml:2.0:policy:schema:os http://docs.oasis-open.org/xacml/access_control-xacml-2.0-policy-schema-os.xsd"
-            xmlns:xf="http://www.w3.org/TR/2002/WD-xquery-operators-20020816/#"
-            xmlns:md="http:www.med.example.com/schemas/record.xsd"
-            PolicyId="%s"
-            RuleCombiningAlgId="urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:permit-overrides">
-            <PolicyDefaults>
-                <XPathVersion>http://www.w3.org/TR/1999/Rec-xpath-19991116</XPathVersion>
-            </PolicyDefaults>
-
-            %s
-        </Policy>'''
-
-        return policy_template
+        return DEFAULT_POLICY_TEMPLATE
 
     def _get_resource_policy_template(self):
-        policy_template = '''<?xml version="1.0" encoding="UTF-8"?>
-        <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
-            xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            xsi:schemaLocation="urn:oasis:names:tc:xacml:2.0:policy:schema:os http://docs.oasis-open.org/xacml/access_control-xacml-2.0-policy-schema-os.xsd"
-            xmlns:xf="http://www.w3.org/TR/2002/WD-xquery-operators-20020816/#"
-            xmlns:md="http:www.med.example.com/schemas/record.xsd"
-            PolicyId="%s"
-            RuleCombiningAlgId="urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:first-applicable">
-            <PolicyDefaults>
-                <XPathVersion>http://www.w3.org/TR/1999/Rec-xpath-19991116</XPathVersion>
-            </PolicyDefaults>
-
-            %s
-        </Policy>'''
-
-        return policy_template
+        return RESOURCE_POLICY_TEMPLATE
 
 
     def create_policy_from_rules(self, policy_identifier, rules):
@@ -140,22 +138,24 @@ class PolicyDecisionPointManager(object):
         policy_rules = policy % (policy_identifier, rules)
         return policy_rules
 
-    # Return a compiled policy indexed by the specified resource_id
+    def get_empty_pdp(self):
+        policy_set = self.create_policy_from_rules(EMPTY_POLICY_ID, "")
+        input_source = StringIO(policy_set)
+        pdp = PDP.fromPolicySource(input_source, ReaderFactory)
+        return pdp
+
     def get_resource_pdp(self, resource_key):
-        # First look for requested resource key
+        """Return a compiled policy indexed by the specified resource key, or default (empty)"""
         if resource_key in self.resource_policy_decision_point:
             return self.resource_policy_decision_point[resource_key]
 
-        # If a PDP does not exist for this resource key - then return default
         return self.empty_pdp
 
-    # Return a compiled policy indexed by the specified resource_id
     def get_service_pdp(self, service_name):
-        # First look for requested resource key
+        """Return a compiled policy indexed by the specified service name, or default (empty)"""
         if service_name in self.service_policy_decision_point:
             return self.service_policy_decision_point[service_name]
 
-        # If a PDP does not exist for this resource key - then return common set of service policies
         return self.load_common_service_pdp
 
     def list_resource_policies(self):
