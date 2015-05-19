@@ -117,7 +117,7 @@ class PostgresDataStore(DataStore):
                  self.database, self.datastore_name, self.profile, self.scope)
 
     def _create_database(self, database_name):
-        """Created a new Postgres database using the admin user"""
+        """Creates a new Postgres database using the admin user"""
         log.info("Create database '%s' with admin user '%s'", database_name, self.admin_username)
         with psycopg2_connect(c_host=self.host, c_port=self.port, c_dbname=self.default_database,
                               c_user=self.admin_username, c_password=self.admin_password,
@@ -126,6 +126,10 @@ class PostgresDataStore(DataStore):
             with conn.cursor() as cur:
                 cur.execute("CREATE DATABASE %s" % database_name)
 
+        self._init_database(database_name)
+
+    def _init_database(self, database_name):
+        """Initializes a Postgres database using the admin user"""
         log.info("OK. Initialize database '%s' with admin user '%s'", database_name, self.admin_username)
         with psycopg2_connect(c_host=self.host, c_port=self.port, c_dbname=database_name,
                               c_user=self.admin_username, c_password=self.admin_password,

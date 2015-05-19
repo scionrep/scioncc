@@ -149,7 +149,7 @@ class PostgresQueryBuilder(object):
                 return "%s%s%s%s" % (table_prefix, attname, self.OP_STR[op], self._value(self._sub_param(value)))
             else:
                 return "json_string(%sdoc,%s)%s%s" % (table_prefix, self._value(attname), self.OP_STR[op],
-                                                      self._value(self._sub_param(value)))
+                                                      self._value(str(self._sub_param(value))))
         elif op == DQ.XOP_IN:
             attname = args[0]
             values = args[1:]
