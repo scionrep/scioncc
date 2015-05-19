@@ -1,15 +1,15 @@
 -- Full text indexing and search extensions
-CREATE EXTENSION pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 
 -- PostGIS extensions
-CREATE EXTENSION postgis;
-CREATE EXTENSION postgis_topology;
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
 -- create extension fuzzystrmatch;
 
 
 -- JavaScript language extention
-CREATE EXTENSION plv8;
+CREATE EXTENSION IF NOT EXISTS plv8;
 
 -- Functions to query JSON columns
 -- See here for originals(before porting to node.js):
@@ -25,10 +25,9 @@ for (var i=0; i<keys.length; i++) {
         res = res[keys[i]];
     }
 }
-if (res === undefined) {
-    res = null;
-}
-return res;
+if (res === undefined || res === null) return null;
+if (typeof res === "boolean") return (res) ? "True" : "False";
+return ""+res;
 $$
 LANGUAGE plv8 IMMUTABLE STRICT;
 
@@ -73,18 +72,26 @@ function is_object(obj) {
 var special = null;
 doc_type = data["type_"];
 switch (doc_type) {
-    case "ActorIdentity": if (is_object(data["details"]) && is_object(data["details"]["contact"]) && data["details"]["contact"]["email"]) {
-                            special = "contact.email=" + data["details"]["contact"]["email"];
-                          }
-                          break;
-    case "Org": if (data["org_governance_name"]) {
-                    special = "org_governance_name=" + data["org_governance_name"];
-                }
-                break;
-    case "UserRole": if (data["governance_name"]) {
-                        special = "governance_name=" + data["governance_name"];
-                     }
-                     break;
+    case "ActorIdentity":
+        if (is_object(data["details"]) && is_object(data["details"]["contact"]) && data["details"]["contact"]["email"]) {
+            special = "contact.email=" + data["details"]["contact"]["email"];
+        }
+        break;
+    case "Org":
+        if (data["org_governance_name"]) {
+            special = "org_governance_name=" + data["org_governance_name"];
+        }
+        break;
+    case "UserRole":
+        if (data["governance_name"]) {
+            special = "governance_name=" + data["governance_name"];
+        }
+        break;
+    case "Policy":
+        if (data["policy_type"]) {
+            special = "policy_type=" + data["policy_type"];
+        }
+        break;
 }
 return special;
 $$

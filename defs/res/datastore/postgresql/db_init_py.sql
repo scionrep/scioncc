@@ -1,14 +1,14 @@
 -- Full text indexing and search extensions
-CREATE EXTENSION pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 
 -- PostGIS extensions
-CREATE EXTENSION postgis;
-CREATE EXTENSION postgis_topology;
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
 
 
 -- Python language extension
-CREATE EXTENSION plpythonu;
+CREATE EXTENSION IF NOT EXISTS plpythonu;
 
 -- Functions to query JSON columns
 -- See here for originals:
@@ -159,6 +159,8 @@ elif doc_type == "Org" and res.get('org_governance_name', None):
   special = "org_governance_name=%s" % res['org_governance_name']
 elif doc_type == "UserRole" and res.get('governance_name', None):
   special = "governance_name=%s" % res['governance_name']
+elif doc_type == "Policy" and res.get('policy_type', None):
+  special = "policy_type=%s" % res['policy_type']
 
 return special
 $$
