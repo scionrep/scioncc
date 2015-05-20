@@ -1,4 +1,4 @@
-<Rule RuleId="{rule_id}:" Effect="Deny">
+<Rule RuleId="{rule_id}" Effect="Deny">
     <Description>
         {description}
     </Description>

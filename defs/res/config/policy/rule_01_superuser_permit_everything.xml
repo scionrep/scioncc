@@ -1,4 +1,4 @@
-<Rule RuleId="{rule_id}:" Effect="Permit">
+<Rule RuleId="{rule_id}" Effect="Permit">
     <Description>
         {description}
     </Description>
