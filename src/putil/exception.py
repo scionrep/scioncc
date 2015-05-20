@@ -17,6 +17,7 @@ class ApplicationException(Exception):
 
         # Save current stack
         self._stack_init = traceback.extract_stack()
+        del self._stack_init[-2:]  # Remove the __init__ and extract_strack frames
         self.add_stack(self.__class__.__name__ + ': ' + str(self), self._stack_init)
 
         # Add stacks and labels for cause
