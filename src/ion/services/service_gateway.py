@@ -823,11 +823,18 @@ class ServiceGateway(object):
             exec_name = exc_type.__name__
             full_error = traceback.format_exception(*sys.exc_info())
 
+        status_code = getattr(exc, "status_code", 400)
         if self.log_errors:
             if self.develop_mode:
-                log.error(full_error)
+                if status_code == 401:
+                    log.warn("%s: %s", exec_name, exc)
+                else:
+                    log.error(full_error)
             else:
-                log.info(full_error)
+                if status_code == 401:
+                    log.info("%s: %s", exec_name, exc)
+                else:
+                    log.info(full_error)
 
         result = {
             GATEWAY_ERROR_EXCEPTION: exec_name,
@@ -841,7 +848,6 @@ class ServiceGateway(object):
             return_mimetype = str(request.args[RETURN_MIMETYPE_PARAM])
             return self.response_class(result, mimetype=return_mimetype)
 
-        status_code = getattr(exc, "status_code", 400)
         self._log_request_error(result, status_code)
 
         resp = self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: status_code})
