@@ -2,7 +2,6 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger, Tom Lennan'
 
-
 import os
 import re
 import inspect
@@ -13,7 +12,15 @@ from pyon.core.exception import BadRequest
 
 BUILT_IN_ATTRS = {'_id', '_rev', 'type_', 'blame_'}
 
+
 class IonObjectBase(object):
+    """
+    Base class for all ION objects. This base class provides a common ancestor of all types
+    that can be evaluated using isinstance. It also provides some helpers and schema validation.
+    An instance keeps all first level schema attributes inside the object's __dict__.
+    The interface generator will create subclasses of this base class with additional fields,
+    such as _schema, and _class_info and __init__ functions with subtype attributes.
+    """
 
     def __str__(self):
         ds = str(self.__dict__)
@@ -204,7 +211,8 @@ class IonObjectBase(object):
         return self.__class__.__name__
 
     def _get_extends(self):
-        parents = [parent.__name__ for parent in self.__class__.__mro__ if parent.__name__ not in ['IonObjectBase', 'object', self._get_type()]]
+        excludes = {'IonObjectBase', 'object', self._get_type()}
+        parents = [parent.__name__ for parent in self.__class__.__mro__ if parent.__name__ not in excludes]
         return parents
 
     def update(self, other):
@@ -350,41 +358,40 @@ class IonObjectBase(object):
 
 
 class IonMessageObjectBase(IonObjectBase):
+    """
+    Common base class for message object types.
+    """
     pass
 
-def walk(o, cb, modify_key_value = 'value'):
+
+def walk(o, cb, modify_key_value='value'):
     """
-    Utility method to do recursive walking of a possible iterable (inc dicts) and do inline transformations.
-    You supply a callback which receives an object. That object may be an iterable (which will then be walked
-    after you return it, as long as it remains an iterable), or it may be another object inside of that.
+    Utility method to do recursive walking of a possible iterable (incl dicts) and return a
+    transformed similar structure.
+    Requires a callback, to be called for nested values, returning a transformed value, including
+    iterables and dicts. Callback is recursively called for iterable elements and dict elements.
 
-    If a dict is discovered and
-        if modify_key_value = 'key', callback will modify only keys
-        if modify_key_value = 'key_value', callback will modify both keys and values
-        else callback will modify only values
-
-    @TODO move to a general utils area?
+    Dict items will be walked depending on modify_key_value, "key", "value" or "key_value".
     """
     newo = cb(o)
 
     if isinstance(newo, dict):
         if modify_key_value == 'key':
-            return dict(((cb(k), v) for k, v in newo.iteritems()))
+            return {cb(k): v for k, v in newo.iteritems()}
         elif modify_key_value == 'key_value':
-            return dict(((cb(k), walk(v, cb, 'key_value')) for k, v in newo.iteritems()))
+            return {cb(k): walk(v, cb, 'key_value') for k, v in newo.iteritems()}
         else:
-            return dict(((k, walk(v, cb)) for k, v in newo.iteritems()))
+            return {k: walk(v, cb) for k, v in newo.iteritems()}
     elif isinstance(newo, (list, tuple, set)):
         return [walk(x, cb, modify_key_value) for x in newo]
     elif isinstance(newo, IonObjectBase):
-        # IOs are not iterable and are a huge pain to make them look iterable, special casing is fine then
-        # @TODO consolidate with _validate method in IonObjectBase
+        # Special case for IonObjects
         fields, set_fields = newo.__dict__, newo._schema
 
         for fieldname in set_fields:
             fieldval = getattr(newo, fieldname)
             newfo = walk(fieldval, cb, modify_key_value)
-            if newfo != fieldval:
+            if newfo != fieldval:   # TODO: Comparison here may be expensive
                 setattr(newo, fieldname, newfo)
         return newo
     else:
@@ -413,12 +420,10 @@ class IonObjectSerializationBase(object):
 
 class IonObjectSerializer(IonObjectSerializationBase):
     """
-    Serializer for IonObjects.
+    Serializer for IonObjects; used to encode objects for the datastore.
 
     Defines a _transform method to turn IonObjects into dictionaries to be deserialized by
     an IonObjectDeserializer.
-
-    Used when being written to Datastore.
     """
 
     def _transform(self, update_version=False):
@@ -437,10 +442,10 @@ class IonObjectSerializer(IonObjectSerializationBase):
 
 
     def serialize(self, obj, update_version=False):
-
         self._transform_method = self._transform(update_version)
 
         return IonObjectSerializationBase.operate(self, obj)
+
 
 class IonObjectBlameSerializer(IonObjectSerializer):
 
@@ -489,18 +494,11 @@ class IonObjectDeserializer(IonObjectSerializationBase):
                 log.info('discard %s not in current schema' % extra)
 
             for k, v in objc.iteritems():
-
                 # unicode translate to utf8
                 if isinstance(v, unicode):
                     v = str(v.encode('utf8'))
-
-                # CouchDB adds _attachments and puts metadata in it
-                # in pyon metadata is in the document
-                # so we discard _attachments while transforming between the two
-                if k not in ("type_", "_attachments", "_conflicts"):
+                if k != "type_":
                     setattr(ion_obj, k, v)
-                if k == "_conflicts":
-                    log.warn("CouchDB conflict detected for ID=%S (ignored): %s", obj.get('_id', None), v)
 
             return ion_obj
 
