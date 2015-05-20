@@ -153,10 +153,11 @@ class PostgresQueryBuilder(object):
         elif op == DQ.XOP_IN:
             attname = args[0]
             values = args[1:]
-            in_exp = ",".join(["%s" % self._value(self._sub_param(val)) for val in values])
             if self._is_standard_col(attname):
+                in_exp = ",".join(["%s" % self._value(self._sub_param(val)) for val in values])
                 return table_prefix + attname + " IN (" + in_exp + ")"
             else:
+                in_exp = ",".join(["%s" % self._value(str(self._sub_param(val))) for val in values])
                 return "json_string(%sdoc,%s) IN (%s)" % (table_prefix, self._value(attname), in_exp)
         elif op == DQ.XOP_BETWEEN:
             attname, value1, value2 = args
