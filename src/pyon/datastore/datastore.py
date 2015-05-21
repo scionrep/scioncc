@@ -58,7 +58,7 @@ class DatastoreManager(object):
             return self._datastores[(ds_name, profile)]
 
         # Create a datastore instance
-        log.info("get_datastore(): Create instance of store '%s' as database=%s (profile=%s)" % (ds_name, ds_name, profile))
+        log.debug("get_datastore(): Create instance of store '%s' as database=%s (profile=%s)" % (ds_name, ds_name, profile))
         new_ds = DatastoreManager.get_datastore_instance(ds_name, profile)
 
         # Create store if not existing

@@ -2,11 +2,11 @@
 
 """Bootstrap process that can execute bootstrap plugins"""
 
-from ion.core.bootstrap_process import BootstrapProcess, AbortBootstrap
+from pyon.core.governance import get_system_actor, get_system_actor_header, build_actor_header
 from pyon.util.containers import get_safe, for_name, dict_merge
-
 from pyon.public import log, RT
-from pyon.core.governance import get_system_actor_header
+from ion.core.bootstrap_process import BootstrapProcess, AbortBootstrap
+
 
 class Bootstrapper(BootstrapProcess):
     """
@@ -26,10 +26,12 @@ class Bootstrapper(BootstrapProcess):
 
         # Finding the system actor ID. If found, construct call context headers.
         # This may be called very early in bootstrap with no system actor yet existing
-        system_actor, _ = process.container.resource_registry.find_resources(
-            RT.ActorIdentity, name=self.CFG.system.system_actor, id_only=False)
-
-        actor_headers = get_system_actor_header(system_actor[0] if system_actor else None)
+        system_actor = get_system_actor()
+        if system_actor:
+            actor_headers = get_system_actor_header(system_actor)
+        else:
+            # Use default actor headers, not roles.
+            actor_headers = build_actor_header()
 
         # Set the call context of the current process
         with process.push_context(actor_headers):

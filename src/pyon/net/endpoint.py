@@ -17,7 +17,7 @@ import threading
 
 from pyon.core import bootstrap, exception
 from pyon.core.bootstrap import CFG, IonObject
-from pyon.core.exception import ExceptionFactory, IonException, BadRequest
+from pyon.core.exception import ExceptionFactory, IonException, BadRequest, Unauthorized
 from pyon.net.channel import ChannelClosedError, PublisherChannel, ListenChannel, SubscriberChannel, ServerChannel, BidirClientChannel
 from pyon.core.interceptor.interceptor import Invocation, process_interceptors
 from pyon.util.containers import get_ion_ts, get_ion_ts_millis
@@ -440,7 +440,11 @@ class ListeningBaseEndpoint(BaseEndpoint):
             try:
                 self.body, self.headers = self.endpoint.intercept_in(self.raw_body, self.raw_headers)
             except Exception as ex:
-                log.info("MessageObject.make_body raised an error: \n%s", traceback.format_exc(ex))
+                # This could be the policy interceptor raising Unauthorized
+                if isinstance(ex, Unauthorized):
+                    log.info("Inbound message Unauthorized")
+                else:
+                    log.info("Error in inbound message interceptors", exc_info=True)
                 self.error = ex
 
         def ack(self):
@@ -469,7 +473,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
             You are likely not to use this if using get_one_msg/get_n_msgs.
             """
             if self.error is not None:
-                log.info("Refusing to route a MessageObject with an error")
+                log.info("Refusing to deliver a MessageObject with an error")
                 return
 
             self.endpoint._message_received(self.body, self.headers)
@@ -876,7 +880,8 @@ class RequestEndpointUnit(BidirectionalEndpointUnit):
         headers = BidirectionalEndpointUnit._build_header(self, raw_msg, raw_headers)
         headers['performative'] = 'request'
         if self.channel and self.channel._send_name and isinstance(self.channel._send_name, NameTrio):
-            headers['receiver'] = "%s,%s" % (self.channel._send_name.exchange, self.channel._send_name.queue)   # @TODO correct?
+            # Receiver is exchange,queue combination
+            headers['receiver'] = "%s,%s" % (self.channel._send_name.exchange, self.channel._send_name.queue)
 
         return headers
 
@@ -909,10 +914,11 @@ class ResponseEndpointUnit(BidirectionalListeningEndpointUnit):
         headers['performative'] = 'inform-result'                       # overriden by response pattern, feels wrong
         #TODO - figure out why _send_name would not be there
         if self.channel and hasattr(self.channel, '_send_name') and self.channel._send_name and isinstance(self.channel._send_name, NameTrio):
-            headers['receiver'] = "%s,%s" % (self.channel._send_name.exchange, self.channel._send_name.queue)       # @TODO: correct?
-        headers['language']     = 'ion-r2'
-        headers['encoding']     = 'msgpack'
-        headers['format']       = raw_msg.__class__.__name__
+            # Receiver is exchange,queue combination
+            headers['receiver'] = "%s,%s" % (self.channel._send_name.exchange, self.channel._send_name.queue)
+        headers['language'] = 'scioncc'
+        headers['encoding'] = 'msgpack'
+        headers['format'] = raw_msg.__class__.__name__      # Type of message (from generated interface class)
 
         return headers
 
@@ -938,10 +944,9 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
 
         if timer:
             # record elapsed time in RPC stats
-            receiver = headers.get('receiver', '?')  # header field is generally: systemname,service_name
-            parts = receiver.split(',')
-            if len(parts) == 2:
-                receiver = parts[1]                  # want to log just the service_name for consistency
+            receiver = headers.get('receiver', '?')  # header field is generally: exchange,queue
+            receiver = receiver.split(',')[-1]       # want to log just the service_name for consistency
+            receiver = receiver.split('.')[-1]       # want to log just the service_name for consistency
             stepid = 'rpc-client.%s.%s=%s' % (receiver, headers.get('op', '?'), res_headers["status_code"])
             timer.complete_step(stepid)
             stats.add(timer)
@@ -956,7 +961,7 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
                 # default label for new IonException is '__init__',
                 # but change the label of the first remote exception to show RPC invocation.
                 # other stacks would have already had labels updated.
-                new_label = 'remote call to %s' % (res_headers['receiver'])
+                new_label = 'in remote call to %s' % (headers.get('receiver', '?'))  # res_headers['receiver']
                 top_stack = stacks[0][1]
                 stacks[0] = (new_label, top_stack)
             log.info("RPCRequestEndpointUnit received an error (%d): %s", res_headers['status_code'], res_headers['error_message'])
@@ -999,7 +1004,7 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
         """
         headers = RequestEndpointUnit._build_header(self, raw_msg, raw_headers)
         headers['protocol'] = 'rpc'
-        headers['language'] = 'ion-r2'
+        headers['language'] = 'scioncc'
         headers['encoding'] = 'msgpack'
         headers['format'] = raw_msg.__class__.__name__
         headers['reply-by'] = 'todo'                        # set by _send override @TODO should be set here
@@ -1170,10 +1175,9 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
             # record elapsed time in RPC stats
             op = headers.get('op', '')
             if op:
-                receiver = headers.get('receiver', '?')  # header field is generally: systemname,service_name
-                parts = receiver.split(',')
-                if len(parts) == 2:
-                    receiver = parts[1]                  # want to log just the service_name for consistancy
+                receiver = headers.get('receiver', '?')  # header field is generally: exchange,queue
+                receiver = receiver.split(',')[-1]       # want to log just the service_name for consistency
+                receiver = receiver.split('.')[-1]       # want to log just the service_name for consistency
                 stepid = 'rpc-server.%s.%s=%s' % (receiver, headers.get('op', '?'), response_headers["status_code"])
             else:
                 parts = headers.get('routing_key', 'unknown').split('.')

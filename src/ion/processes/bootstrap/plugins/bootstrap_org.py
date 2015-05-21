@@ -4,9 +4,9 @@
 
 __author__ = 'Michael Meisinger, Stephen Henrie'
 
-from ion.core.bootstrap_process import BootstrapPlugin, AbortBootstrap
-from pyon.core.governance import MODERATOR_ROLE, SUPERUSER_ROLE
+from pyon.core.governance import MODERATOR_ROLE, SUPERUSER_ROLE, get_system_actor
 from pyon.public import IonObject, RT
+from ion.core.bootstrap_process import BootstrapPlugin, AbortBootstrap
 
 from interface.objects import Org, UserRole, ExchangeSpace
 from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
@@ -22,11 +22,10 @@ class BootstrapOrg(BootstrapPlugin):
         org_ms_client = OrgManagementServiceProcessClient(process=process)
         ex_ms_client = ExchangeManagementServiceProcessClient(process=process)
 
-        system_actor, _ = process.container.resource_registry.find_resources(
-            restype=RT.ActorIdentity, name=config.system.system_actor, id_only=True)
+        system_actor = get_system_actor()
         if not system_actor:
             raise AbortBootstrap("Cannot find system actor")
-        system_actor_id = system_actor[0]
+        system_actor_id = system_actor._id
 
         # Create root Org: ION
         root_orgname = config.system.root_org
@@ -46,4 +45,3 @@ class BootstrapOrg(BootstrapPlugin):
         system_xs_name = process.container.ex_manager.system_xs_name
         xs = ExchangeSpace(name=system_xs_name, description="ION service XS")
         self.xs_id = ex_ms_client.create_exchange_space(xs, self.org_id)
-

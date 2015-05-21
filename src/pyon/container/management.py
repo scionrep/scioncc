@@ -204,7 +204,7 @@ class ContainerManager(object):
         with self.lock:
             self.running = True
             self.receiver.start()
-        log.info('ready for container management requests')
+        log.debug('Container ready for container management requests')
 
     def stop(self):
         log.debug('container management stopping')

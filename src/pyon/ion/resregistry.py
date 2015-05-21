@@ -6,6 +6,7 @@ __author__ = 'Michael Meisinger'
 
 from pyon.core import bootstrap
 from pyon.core.bootstrap import IonObject, CFG
+from pyon.core.governance import get_system_actor
 from pyon.core.exception import BadRequest, NotFound, Inconsistent
 from pyon.core.object import IonObjectBase
 from pyon.core.registry import getextends
@@ -749,17 +750,18 @@ class ResourceRegistry(object):
         SUPERUSER role assignment"""
         if reset or self.superuser_actors is None:
             found_actors = []
-            system_actor_name = CFG.get_safe("system.system_actor", "ionsystem")
-            sysactors,_ = self.find_resources(restype=RT.ActorIdentity, name=system_actor_name, id_only=True)
-            found_actors.extend(sysactors)
-            ion_mgrs,_ = self.find_resources_ext(restype=RT.UserRole, attr_name="governance_name", attr_value="SUPERUSER", id_only=False)
+            system_actor = get_system_actor()
+            if system_actor:
+                found_actors.append(system_actor._id)
+            ion_mgrs, _ = self.find_resources_ext(restype=RT.UserRole, attr_name="governance_name",
+                                                  attr_value="SUPERUSER", id_only=False)
             # roles,_ = self.find_resources(restype=RT.UserRole, id_only=False)
             # ion_mgrs = [role for role in roles if role.governance_name == "SUPERUSER"]
             actors, assocs = self.find_subjects_mult(ion_mgrs, id_only=False)
             super_actors = list({actor._id for actor, assoc in zip(actors, assocs) if assoc.p == PRED.hasRole and assoc.st == RT.ActorIdentity})
             found_actors.extend(super_actors)
             self.superuser_actors = found_actors
-            log.info("get_superuser_actors(): system actor=%s, superuser actors=%s" % (sysactors, super_actors))
+            log.info("get_superuser_actors(): system actor=%s, superuser actors=%s" % (system_actor._id if system_actor else "", super_actors))
         return self.superuser_actors
 
 

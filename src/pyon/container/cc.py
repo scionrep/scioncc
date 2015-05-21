@@ -120,7 +120,7 @@ class Container(BaseContainerAgent):
         profile_filename = CFG.get_safe("container.profile", "development")
         if not profile_filename.endswith(".yml"):
             profile_filename = "res/profile/%s.yml" % profile_filename
-        log.info("Loading CC capability profile from file: %s", profile_filename)
+        log.debug("Loading CC capability profile from file: %s", profile_filename)
         profile_cfg = Config([profile_filename]).data
         if not isinstance(profile_cfg, dict) or profile_cfg['type'] != "profile" or not "profile" in profile_cfg:
             raise ContainerError("Container capability profile invalid: %s" % profile_filename)

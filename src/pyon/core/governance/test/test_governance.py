@@ -2,21 +2,23 @@
 
 __author__ = 'Stephen P. Henrie'
 
-
-
-from pyon.util.unit_test import PyonTestCase
 from mock import Mock
 from nose.plugins.attrib import attr
-from pyon.core.governance.governance_controller import GovernanceController
+
+from pyon.util.unit_test import PyonTestCase
+
+from pyon.core.bootstrap import IonObject
 from pyon.core.exception import Unauthorized, BadRequest, Inconsistent
+from pyon.core.governance.governance_controller import GovernanceController
+from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, SUPERUSER_ROLE, GovernanceHeaderValues
+from pyon.core.governance import find_roles_by_actor, get_actor_header, get_system_actor_header, get_role_message_headers, get_valid_resource_commitments, get_valid_principal_commitments
+from pyon.ion.resource import PRED, RT
 from pyon.ion.service import BaseService
 from pyon.util.int_test import IonIntegrationTestCase
-from pyon.core.bootstrap import IonObject
-from pyon.ion.resource import PRED, RT
-from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, SUPERUSER_ROLE, GovernanceHeaderValues
-from pyon.core.governance import find_roles_by_actor, get_actor_header, get_system_actor_header, get_role_message_headers, get_valid_resource_commitments
-from interface.services.examples.ihello_service  import HelloServiceProcessClient
 from pyon.util.context import LocalContextMixin
+
+from interface.services.examples.ihello_service  import HelloServiceProcessClient
+
 
 class UnitTestService(BaseService):
     name = 'UnitTestService'
@@ -220,98 +222,7 @@ class GovernanceUnitTest(PyonTestCase):
         self.governance_controller.check_process_operation_preconditions(bs, {}, {'op': 'test_op'})
         self.governance_controller.unregister_process_operation_precondition(bs, 'test_op', self.bad_pre_func2)
 
-    def test_resource_policy_event_callback(self):
-
-        event_data = Mock()
-        event_data.resource_id = 'resource._id'
-        event_data.resource_type = 'resource.type_'
-        event_data.resource_name = 'resource.name'
-        event_data.origin = 'policy._id'
-
-        policy_rules = 'policy_rules'
-        pc = Mock()
-        pc.get_active_resource_access_policy_rules.return_value = policy_rules
-        self.governance_controller.policy_client = pc
-        self.governance_controller.system_actor_user_header = {}
-        # call resource_policy_event_callback without a PDP
-        self.governance_controller.resource_policy_event_callback(event_data)
-        # expect that nothing happened since there was no PDP to update
-        self.assertEqual(pc.get_active_resource_access_policy_rules.called, False)
-
-        #add a pdp
-        pdp = Mock()
-        self.governance_controller.policy_decision_point_manager = pdp
-
-        self.governance_controller.resource_policy_event_callback(event_data)
-
-        # expect that policy rules are retrieved for resource
-        pc.get_active_resource_access_policy_rules.assert_called_with(event_data.resource_id, headers={})
-
-        # expect that pdp is called with new rules
-        pdp.load_resource_policy_rules.assert_called_with(event_data.resource_id, policy_rules)
-
-    def test_service_policy_event_callback(self):
-
-        # mock service policy event
-        service_policy_event = Mock()
-        service_policy_event.origin = 'policy_id'
-        service_policy_event.service_name = 'UnitTestService'
-        service_policy_event.op = 'test_op'
-
-        # mock a container
-        container = Mock()
-        self.governance_controller.container = container
-        # set it up so that service_name resolves neither to a service nor an agent
-        container.proc_manager.is_local_service_process.return_value = False
-        container.proc_manager.is_local_agent_process.return_value = False
-
-        # add a pdp
-        pdp = Mock()
-        self.governance_controller.policy_decision_point_manager = pdp
-
-        # check that the pdp is not called because service_name is neither a service nor an agent
-        self.governance_controller.service_policy_event_callback(service_policy_event)
-        self.assertEqual(pdp.called, False)
-
-        #########
-        #########
-        # make the service_name a local service process
-        container.proc_manager.is_local_service_process.return_value = True
-
-        # set up mock policy client with rules
-        policy_rules = 'policy_rules'
-        pc = Mock()
-        self.governance_controller.policy_client = pc
-        self.governance_controller.system_actor_user_header = {}
-        pc.get_active_service_access_policy_rules.return_value = policy_rules
-
-        # set local process
-        local_process = Mock()
-        local_process.name = 'local_process'
-        container.proc_manager.get_a_local_process.return_value = local_process
-        # register process operation precondition
-        self.governance_controller.register_process_operation_precondition(local_process, 'test_op', 'func1')
-
-        # set up the active precondition
-        op = Mock()
-        op.op = 'test_op_2'
-        op.preconditions = ['func2']
-        pc.get_active_process_operation_preconditions.return_value = [op]
-
-        self.governance_controller.service_policy_event_callback(service_policy_event)
-
-        # check that the service_policy_event_callback did not delete all registered preconditions (func1) on operation test_op
-        self.assertEquals('test_op' in self.governance_controller.get_process_operation_dict(local_process.name), True)
-        # and updated with the active one (func2) on test_op2
-        self.assertEquals('test_op_2' in self.governance_controller.get_process_operation_dict(local_process.name), True)
-
-        # expect that policy rules are retrieved for resource
-        pc.get_active_service_access_policy_rules.assert_called_with(service_name=service_policy_event.service_name, org_name=self.governance_controller.container_org_name, headers={})
-        pdp.load_service_policy_rules.assert_called_with(service_policy_event.service_name, policy_rules)
-
-
     def test_governance_header_values(self):
-
         process = Mock()
         process.name = 'test_process'
 
@@ -507,7 +418,7 @@ class GovernanceIntTest(IonIntegrationTestCase):
         system_actor_header = get_system_actor_header()
         self.assertDictEqual(system_actor_header['ion-actor-roles'],{'ION': [MEMBER_ROLE]})
 
-    def test_get_valid_resource_commitment(self):
+    def test_get_valid_org_commitment(self):
         from pyon.util.containers import get_ion_ts_millis
 
         # create ION org and an actor
@@ -516,25 +427,37 @@ class GovernanceIntTest(IonIntegrationTestCase):
         ion_org._id = ion_org_id
         actor = IonObject(RT.ActorIdentity, name='actor1')
         actor_id, _ = self.rr.create(actor)
+        device = IonObject(RT.TestDevice, name="device1")
+        device_id, _ = self.rr.create(device)
 
         # create an expired commitment in the org
         ts = get_ion_ts_millis() - 50000
         com_obj = IonObject(RT.Commitment, provider=ion_org_id, consumer=actor_id, commitment=True, expiration=ts)
         com_id, _ = self.rr.create(com_obj)
-        id = self.rr.create_association(ion_org_id, PRED.hasCommitment, com_id)
-        c = get_valid_resource_commitments(ion_org_id, actor_id)
-        #verify that the commitment is not returned
+        self.rr.create_association(ion_org_id, PRED.hasCommitment, com_id)
+        c = get_valid_principal_commitments(ion_org_id, actor_id)
+        # verify that the commitment is not returned
+        self.assertIsNone(c)
+
+        self.rr.create_association(com_id, PRED.hasTarget, device_id)
+        c = get_valid_resource_commitments(device_id, actor_id)
+        # verify that the commitment is not returned
         self.assertIsNone(c)
 
         # create a commitment that has not expired yet
         ts = get_ion_ts_millis() + 50000
         com_obj = IonObject(RT.Commitment, provider=ion_org_id, consumer=actor_id, commitment=True, expiration=ts)
         com_id, _ = self.rr.create(com_obj)
-        id = self.rr.create_association(ion_org_id, PRED.hasCommitment, com_id)
-        c = get_valid_resource_commitments(ion_org_id, actor_id)
-
-        #verify that the commitment is returned
+        self.rr.create_association(ion_org_id, PRED.hasCommitment, com_id)
+        c = get_valid_principal_commitments(ion_org_id, actor_id)
+        # verify that the commitment is returned
         self.assertIsNotNone(c)
+
+        self.rr.create_association(com_id, PRED.hasTarget, device_id)
+        c = get_valid_resource_commitments(device_id, actor_id)
+        # verify that the commitment is not returned
+        self.assertIsNotNone(c)
+
 
 
     ### THIS TEST USES THE HELLO SERVICE EXAMPLE

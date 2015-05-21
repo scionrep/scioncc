@@ -15,6 +15,7 @@ import flask
 import logging
 webapi_log = logging.getLogger('webapi')
 
+from putil.exception import ApplicationException
 from pyon.core.bootstrap import get_service_registry
 from pyon.core.object import IonObjectBase
 from pyon.core.exception import Unauthorized
@@ -807,14 +808,14 @@ class ServiceGateway(object):
         """
         if hasattr(exc, "get_stacks"):
             # Process potentially multiple stacks.
-            full_error = ""
-            for i in range(len(exc.get_stacks())):
-                full_error += exc.get_stacks()[i][0] + "\n"
+            full_error, exc_stacks = "", exc.get_stacks()
+            for i in range(len(exc_stacks)):
+                full_error += exc_stacks[i][0] + "\n"
                 if i == 0:
-                    full_error += string.join(traceback.format_exception(*sys.exc_info()), "")
+                    full_error += "".join(traceback.format_exception(*sys.exc_info()))
                 else:
-                    for ln in exc.get_stacks()[i][1]:
-                        full_error += str(ln) + "\n"
+                    entry = ApplicationException.format_stack(exc_stacks[i][1])
+                    full_error += entry + "\n"
 
             exec_name = exc.__class__.__name__
         else:
@@ -822,11 +823,18 @@ class ServiceGateway(object):
             exec_name = exc_type.__name__
             full_error = traceback.format_exception(*sys.exc_info())
 
+        status_code = getattr(exc, "status_code", 400)
         if self.log_errors:
             if self.develop_mode:
-                log.error(full_error)
+                if status_code == 401:
+                    log.warn("%s: %s", exec_name, exc)
+                else:
+                    log.error(full_error)
             else:
-                log.info(full_error)
+                if status_code == 401:
+                    log.info("%s: %s", exec_name, exc)
+                else:
+                    log.info(full_error)
 
         result = {
             GATEWAY_ERROR_EXCEPTION: exec_name,
@@ -840,10 +848,12 @@ class ServiceGateway(object):
             return_mimetype = str(request.args[RETURN_MIMETYPE_PARAM])
             return self.response_class(result, mimetype=return_mimetype)
 
-        status_code = getattr(exc, "status_code", 400)
         self._log_request_error(result, status_code)
 
-        return self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: status_code})
+        resp = self.json_response({GATEWAY_ERROR: result, GATEWAY_STATUS: status_code})
+        # Q: Should HTTP status be the error code of the exception?
+        resp.status_code = status_code
+        return resp
 
 
 # -------------------------------------------------------------------------

@@ -7,33 +7,25 @@ __author__ = 'Michael Meisinger'
 from copy import deepcopy
 import time
 import re
-
 from gevent.lock import RLock
 
 from pyon.agent.agent import ResourceAgent
-from pyon.core import exception
+from pyon.core import (PROCTYPE_SERVICE, PROCTYPE_AGENT, PROCTYPE_IMMEDIATE, PROCTYPE_SIMPLE, PROCTYPE_STANDALONE,
+                       PROCTYPE_STREAMPROC)
 from pyon.core.bootstrap import CFG, IonObject, get_sys_name
 from pyon.core.exception import ContainerConfigError, BadRequest, NotFound
 from pyon.ion.endpoint import ProcessRPCServer
-from pyon.ion.stream import StreamPublisher, StreamSubscriber
 from pyon.ion.process import IonProcessThreadManager, IonProcessError
-from pyon.net.messaging import IDPool
+from pyon.ion.resource import RT, PRED
 from pyon.ion.service import BaseService
+from pyon.ion.stream import StreamPublisher, StreamSubscriber
+from pyon.net.channel import RecvChannel
+from pyon.net.messaging import IDPool
+from pyon.net.transport import NameTrio, TransportError
 from pyon.util.containers import DotDict, for_name, named_any, dict_merge, get_safe, is_valid_identifier
 from pyon.util.log import log
-from pyon.ion.resource import RT, PRED
-from pyon.net.channel import RecvChannel
-from pyon.net.transport import NameTrio, TransportError
 
 from interface.objects import ProcessStateEnum, CapabilityContainer, Service, Process, ServiceStateEnum
-
-#Various process types
-SERVICE_PROCESS_TYPE = 'service'
-STREAM_PROCESS_TYPE = 'stream_process'
-AGENT_PROCESS_TYPE = 'agent'
-STANDALONE_PROCESS_TYPE = 'standalone'
-IMMEDIATE_PROCESS_TYPE = 'immediate'
-SIMPLE_PROCESS_TYPE = 'simple'
 
 
 class ProcManager(object):
@@ -209,22 +201,22 @@ class ProcManager(object):
                          }
 
             # spawn process by type
-            if process_type == SERVICE_PROCESS_TYPE:
+            if process_type == PROCTYPE_SERVICE:
                 process_instance = self._spawn_service_process(process_id, name, module, cls, process_cfg, proc_attr)
 
-            elif process_type == STREAM_PROCESS_TYPE:
+            elif process_type == PROCTYPE_STREAMPROC:
                 process_instance = self._spawn_stream_process(process_id, name, module, cls, process_cfg, proc_attr)
 
-            elif process_type == AGENT_PROCESS_TYPE:
+            elif process_type == PROCTYPE_AGENT:
                 process_instance = self._spawn_agent_process(process_id, name, module, cls, process_cfg, proc_attr)
 
-            elif process_type == STANDALONE_PROCESS_TYPE:
+            elif process_type == PROCTYPE_STANDALONE:
                 process_instance = self._spawn_standalone_process(process_id, name, module, cls, process_cfg, proc_attr)
 
-            elif process_type == IMMEDIATE_PROCESS_TYPE:
+            elif process_type == PROCTYPE_IMMEDIATE:
                 process_instance = self._spawn_immediate_process(process_id, name, module, cls, process_cfg, proc_attr)
 
-            elif process_type == SIMPLE_PROCESS_TYPE:
+            elif process_type == PROCTYPE_SIMPLE:
                 process_instance = self._spawn_simple_process(process_id, name, module, cls, process_cfg, proc_attr)
 
             else:
@@ -235,8 +227,8 @@ class ProcManager(object):
             process_instance.errcause = "OK"
             log.info("ProcManager.spawn_process: %s.%s -> pid=%s OK", module, cls, process_id)
 
-            if process_type == IMMEDIATE_PROCESS_TYPE:
-                log.info('Terminating immediate process: %s', process_instance.id)
+            if process_type == PROCTYPE_IMMEDIATE:
+                log.debug('Terminating immediate process: %s', process_instance.id)
                 self.terminate_process(process_instance.id)
 
                 # Terminate process also triggers TERMINATING/TERMINATED
@@ -245,7 +237,8 @@ class ProcManager(object):
             else:
                 # Update local policies for the new process
                 if self.container.has_capability(self.container.CCAP.GOVERNANCE_CONTROLLER):
-                    self.container.governance_controller.update_container_policies(process_instance, safe_mode=True)
+                    self.container.governance_controller.update_process_policies(
+                                process_instance, safe_mode=True, force_update=False)
 
             return process_instance.id
 
@@ -274,20 +267,26 @@ class ProcManager(object):
 
     def get_a_local_process(self, proc_name=''):
         """
-        Returns a running ION processes in the container for the specified name
+        Returns a running ION process in the container for the specified process name
         """
         for p in self.procs.itervalues():
-
             if p.name == proc_name:
                 return p
 
-            if p.process_type == AGENT_PROCESS_TYPE and p.resource_type == proc_name:
+            if p.process_type == PROCTYPE_AGENT and p.resource_type == proc_name:
                 return p
 
         return None
 
+    def get_local_service_processes(self, service_name=''):
+        """
+        Returns a list of running ION processes in the container for the specified service name
+        """
+        proc_list = [p for p in self.procs.itervalues() if p.process_type == PROCTYPE_SERVICE and p.name == service_name]
+        return proc_list
+
     def is_local_service_process(self, service_name):
-        local_services = self.list_local_processes(SERVICE_PROCESS_TYPE)
+        local_services = self.list_local_processes(PROCTYPE_SERVICE)
         for p in local_services:
             if p.name == service_name:
                 return True
@@ -295,7 +294,7 @@ class ProcManager(object):
         return False
 
     def is_local_agent_process(self, resource_type):
-        local_agents = self.list_local_processes(AGENT_PROCESS_TYPE)
+        local_agents = self.list_local_processes(PROCTYPE_AGENT)
         for p in local_agents:
             if p.resource_type == resource_type:
                 return True
@@ -681,8 +680,8 @@ class ProcManager(object):
         for att, att_val in proc_attr.iteritems():
             setattr(process_instance, att, att_val)
 
-        #Unless the process has been started as part of another Org, default to the container Org or the ION Org
-        if config.has_key('org_governance_name'):
+        # Unless the process has been started as part of another Org, default to the container Org or the ION Org
+        if 'org_governance_name' in config:
             process_instance.org_governance_name = config['org_governance_name']
         else:
             process_instance.org_governance_name = CFG.get_safe('container.org_name', CFG.get_safe('system.root_org', 'ION'))
@@ -806,7 +805,7 @@ class ProcManager(object):
         # processes. How to deal with this?
         process_instance.errcause = "registering"
 
-        if process_instance._proc_type != IMMEDIATE_PROCESS_TYPE:
+        if process_instance._proc_type != PROCTYPE_IMMEDIATE:
             if self.container.has_capability(self.container.CCAP.RESOURCE_REGISTRY):
                 proc_obj = Process(name=process_instance.id, label=name, proctype=process_instance._proc_type)
                 proc_id, _ = self.container.resource_registry.create(proc_obj)
@@ -819,7 +818,7 @@ class ProcManager(object):
 
         # Process type specific registration
         # TODO: Factor out into type specific handler functions
-        if process_instance._proc_type == SERVICE_PROCESS_TYPE:
+        if process_instance._proc_type == PROCTYPE_SERVICE:
             if self.container.has_capability(self.container.CCAP.RESOURCE_REGISTRY):
                 # Registration of SERVICE process: in resource registry
                 service_list, _ = self.container.resource_registry.find_resources(restype="Service", name=process_instance.name, id_only=True)
@@ -846,7 +845,7 @@ class ProcManager(object):
 
                 self.container.resource_registry.create_association(process_instance._proc_svc_id, "hasProcess", proc_id)
 
-        elif process_instance._proc_type == AGENT_PROCESS_TYPE:
+        elif process_instance._proc_type == PROCTYPE_AGENT:
             if self.container.has_capability(self.container.CCAP.DIRECTORY):
                 # Registration of AGENT process: in Directory
                 caps = process_instance.get_capabilities()
@@ -900,7 +899,7 @@ class ProcManager(object):
                     pass
 
         # Cleanup for specific process types
-        if process_instance._proc_type == SERVICE_PROCESS_TYPE:
+        if process_instance._proc_type == PROCTYPE_SERVICE:
             if self.container.has_capability(self.container.CCAP.RESOURCE_REGISTRY):
                 # Check if this is the last process for this service and do auto delete service resources here
                 svcproc_list = []
@@ -918,7 +917,7 @@ class ProcManager(object):
                         log.exception(ex)
                         pass
 
-        elif process_instance._proc_type == AGENT_PROCESS_TYPE:
+        elif process_instance._proc_type == PROCTYPE_AGENT:
             if self.container.has_capability(self.container.CCAP.DIRECTORY):
                 self.container.directory.unregister_safe("/Agents", process_instance.id)
 

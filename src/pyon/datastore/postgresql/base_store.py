@@ -89,10 +89,10 @@ class PostgresDataStore(DataStore):
         self.cursor_args = dict(cursor_factory=TracingCursor, tracer=self._call_tracer)
 
         # Make sure database exists and set connection
-        dsn = "host=%s port=%s dbname=%s user=%s password=%s sslmode=disable connect_timeout=5 application_name=%s" % (
+        dsn = "host=%s port=%s dbname=%s user=%s password=%s connect_timeout=5 application_name=%s" % (
             self.host, self.port, self.database, self.username, self.password, "%s:%s" % ("ion", self.datastore_name))
         clean_dsn = dsn.replace(self.password, "***") if self.password else dsn.replace("password=", "password=***")
-        log.info("Using Postgres connection DSN: %s", clean_dsn)
+        log.debug("Using Postgres connection DSN: %s", clean_dsn)
         global pg_connection_pool
         if not pg_connection_pool:
             pg_connection_pool = PostgresConnectionPool(dsn, maxsize=self.pool_maxsize)
@@ -113,11 +113,11 @@ class PostgresDataStore(DataStore):
             if not self.datastore_exists():
                 self.create_datastore()
 
-        log.info("PostgresDataStore: created instance database=%s, datastore_name=%s, profile=%s, scope=%s",
+        log.debug("PostgresDataStore: created instance database=%s, datastore_name=%s, profile=%s, scope=%s",
                  self.database, self.datastore_name, self.profile, self.scope)
 
     def _create_database(self, database_name):
-        """Created a new Postgres database using the admin user"""
+        """Creates a new Postgres database using the admin user"""
         log.info("Create database '%s' with admin user '%s'", database_name, self.admin_username)
         with psycopg2_connect(c_host=self.host, c_port=self.port, c_dbname=self.default_database,
                               c_user=self.admin_username, c_password=self.admin_password,
@@ -126,7 +126,11 @@ class PostgresDataStore(DataStore):
             with conn.cursor() as cur:
                 cur.execute("CREATE DATABASE %s" % database_name)
 
-        log.info("OK. Initialize database '%s' with admin user '%s'", database_name, self.admin_username)
+        self._init_database(database_name)
+
+    def _init_database(self, database_name):
+        """Initializes a Postgres database using the admin user"""
+        log.info("Initialize database '%s' with admin user '%s'", database_name, self.admin_username)
         with psycopg2_connect(c_host=self.host, c_port=self.port, c_dbname=database_name,
                               c_user=self.admin_username, c_password=self.admin_password,
                               tracer=self._call_tracer, trace_stmt="EXECUTE db_init.sql") as conn2:
@@ -216,7 +220,7 @@ class PostgresDataStore(DataStore):
         """
         qual_ds_name = self._get_datastore_name(datastore_name)
         profile = profile or self.profile or DEFAULT_PROFILE
-        log.info('Creating datastore %s (create_indexes=%s, profile=%s)' % (qual_ds_name, create_indexes, profile))
+        log.info("Creating datastore '%s' using profile %s", qual_ds_name, profile)
         if profile == DataStore.DS_PROFILE.DIRECTORY:
             profile = DataStore.DS_PROFILE.RESOURCES
 

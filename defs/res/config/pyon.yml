@@ -45,6 +45,8 @@ system:
 # The "bootstrap" root entry defines settings for the system bootstrapping and
 # restart process.
 bootstrap:
+  # Path to policy initialization rule set (YML file)
+  initial_policy_rules: res/config/policy/basic_policy_rules.yml
 
 
 # ----------------------------------------------------------------------------------

@@ -32,7 +32,7 @@ def initialize_ion_int_tests():
     # Bootstrap pyon CFG, logging and object/resource interfaces
     bootstrap_pyon()
     if bootstrap.is_testing():
-        IonIntegrationTestCase._force_clean(False)
+        IonIntegrationTestCase._force_clean(False, initial=True)
         pre_initialize_ion()
 
 
@@ -153,11 +153,12 @@ class IonIntegrationTestCase(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     @classmethod
-    def _force_clean(cls, recreate=False):
+    def _force_clean(cls, recreate=False, initial=False):
         from pyon.core.bootstrap import get_sys_name, CFG
         from pyon.datastore.datastore_common import DatastoreFactory
         datastore = DatastoreFactory.get_datastore(config=CFG, variant=DatastoreFactory.DS_BASE, scope=get_sys_name())
-        #datastore = DatastoreFactory.get_datastore(config=CFG, variant=DatastoreFactory.DS_BASE)
+        if initial:
+            datastore._init_database(datastore.database)
 
         dbs = datastore.list_datastores()
         things_to_clean = filter(lambda x: x.startswith('%s_' % get_sys_name().lower()), dbs)

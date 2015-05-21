@@ -304,7 +304,7 @@ class TestGovernanceHeaders(IonIntegrationTestCase):
             #Only duplicate the message send from the initial client call
             msg_headers = kwargs['headers']
 
-            if (self.resource_id_header_value == '') and msg_headers.has_key('resource-id'):
+            if (self.resource_id_header_value == '') and 'resource-id' in msg_headers:
                 self.resource_id_header_value = msg_headers['resource-id']
 
             return old_send(*args, **kwargs)
@@ -716,7 +716,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
 
 
         #First clear all of the policies to test that failures will be caught due to missing policies
-        self.container.governance_controller._reset_container_policy_caches()
+        self.container.governance_controller._clear_container_policy_caches()
 
         empty_policy_set = self.container.governance_controller.get_active_policies()
         self.assertEqual(len(empty_policy_set['service_access'].keys()), 0)

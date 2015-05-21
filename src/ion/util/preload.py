@@ -10,6 +10,7 @@ import os
 
 from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_VALID
 from pyon.core.bootstrap import get_service_registry
+from pyon.core.governance import get_system_actor
 from pyon.ion.resource import get_restype_lcsm
 from pyon.public import CFG, log, BadRequest, Inconsistent, NotFound, IonObject, RT, OT, AS, LCS, named_any, get_safe
 from ion.util.parse_utils import get_typed_value
@@ -108,10 +109,9 @@ class Preloader(object):
         ion_org_id = org_objs[0]._id
         self._register_id(ID_ORG_ION, ion_org_id, org_objs[0])
 
-        system_actor, _ = self.rr.find_resources(
-            RT.ActorIdentity, name=CFG.system.system_actor, id_only=False)
-        system_actor_id = system_actor[0]._id if system_actor else 'anonymous'
-        self._register_id(ID_SYSTEM_ACTOR, system_actor_id, system_actor[0] if system_actor else None)
+        system_actor = get_system_actor()
+        system_actor_id = system_actor._id if system_actor else 'anonymous'
+        self._register_id(ID_SYSTEM_ACTOR, system_actor_id, system_actor if system_actor else None)
 
     def _prepare_incremental(self):
         """

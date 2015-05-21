@@ -4,7 +4,7 @@
 
 __author__ = 'Michael Meisinger, David Stuebe, Dave Foster <dfoster@asascience.com>'
 
-from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES
+from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES, MSG_HEADER_TOKENS
 from pyon.net.transport import BaseTransport
 from pyon.net.endpoint import Publisher, Subscriber, EndpointUnit, process_interceptors, RPCRequestEndpointUnit, BaseEndpoint, RPCClient, RPCResponseEndpointUnit, RPCServer, PublisherEndpointUnit, SubscriberEndpointUnit
 from pyon.ion.event import BaseEventSubscriberMixin
@@ -69,10 +69,9 @@ class ProcessEndpointUnitMixin(EndpointUnit):
         """
         Builds the header for this Process-level RPC conversation.
         """
-
         header = EndpointUnit._build_header(self, raw_msg, raw_headers)
 
-        # add our process identity to the headers
+        # Add our process identity to the headers (as sender)
         header.update({'sender-name': self._process.name or 'unnamed-process',     # @TODO
                        'sender': self._process.id})
 
@@ -81,20 +80,17 @@ class ProcessEndpointUnitMixin(EndpointUnit):
             if self._process.process_type == 'service' and hasattr(self.channel, '_send_name'):
                 header.update({'sender-service': "%s,%s" % (self.channel._send_name.exchange, self._process.name)})
 
+        # Use received message headers context to set security attributes forward
         context = self.get_context()
-        #log.debug('ProcessEndpointUnitMixin._build_header has context of: %s', context)
-
-
-        # use context to set security attributes forward
         if isinstance(context, dict):
             new_header = self.build_security_headers(context)
             header.update(new_header)
         else:
             # no context? we're the originator of the message then
-            container_id                    = BaseEndpoint._get_container_instance().id
-            header['origin-container-id']   = container_id
+            container_id = BaseEndpoint._get_container_instance().id
+            header['origin-container-id'] = container_id
 
-            #This is the originating conversation
+            # This is the originating conversation
             if 'conv-id' in raw_headers:
                 header['original-conv-id'] = raw_headers['conv-id']
 
@@ -104,15 +100,14 @@ class ProcessEndpointUnitMixin(EndpointUnit):
     def build_security_headers(cls, context):
         """
         Examining context, builds a set of headers containing necessary forwarded items.
-
-        @return     A new dictionary containing headers from the context that are important.
+        Returns a new dictionary containing headers from the context that are important.
         """
         header = {}
 
         # fwd on actor specific information, according to common message format spec
         actor_id            = context.get(MSG_HEADER_ACTOR, None)
         actor_roles         = context.get(MSG_HEADER_ROLES, None)
-        actor_tokens        = context.get('ion-actor-tokens', None)
+        actor_tokens        = context.get(MSG_HEADER_TOKENS, None)
         expiry              = context.get(MSG_HEADER_VALID, None)
         container_id        = context.get('origin-container-id', None)
         original_conv_id    = context.get('original-conv-id', None)
@@ -121,17 +116,20 @@ class ProcessEndpointUnitMixin(EndpointUnit):
         # If an actor-id is specified then there may be other associated data that needs to be passed on
         if actor_id:
             header[MSG_HEADER_ACTOR] = actor_id
-            if actor_roles:     header[MSG_HEADER_ROLES]   = actor_roles
+            if actor_roles:
+                header[MSG_HEADER_ROLES] = actor_roles
 
         # This set of tokens is set independently of the actor
-        if actor_tokens:    header['ion-actor-tokens']   = actor_tokens
+        if actor_tokens:
+            header['ion-actor-tokens'] = actor_tokens
+        if expiry:
+            header[MSG_HEADER_VALID] = expiry
+        if container_id:
+            header['origin-container-id'] = container_id
 
-        if expiry:          header[MSG_HEADER_VALID]                = expiry
-        if container_id:    header['origin-container-id']   = container_id
-
-        # Since this is not the originating message, this must be a requests within an existing conversation,
-        # so track original conversation
         if original_conv_id:
+            # Since this is not the originating message, this must be a requests within an existing conversation,
+            # so track original conversation
             header['original-conv-id'] = original_conv_id
         else:
             if conv_id:
@@ -391,7 +389,6 @@ class ProcessSubscriberEndpointUnit(ProcessEndpointUnitMixin, SubscriberEndpoint
         """
         Override to direct the calls in _build_header - first the Subscriber, then the Process mixin.
         """
-
         header1 = SubscriberEndpointUnit._build_header(self, raw_msg, raw_headers)
         header2 = ProcessEndpointUnitMixin._build_header(self, raw_msg, raw_headers)
 

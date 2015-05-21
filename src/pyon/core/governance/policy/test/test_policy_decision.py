@@ -127,7 +127,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         # see that the PDP for resource is empty
         self.assertEqual(pdpm.get_resource_pdp(resource_id), pdpm.empty_pdp)
 
-        pdpm.load_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule )
+        pdpm.set_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule )
 
         # see that the PDP for resource is not empty anymore
         self.assertNotEqual(pdpm.get_resource_pdp(resource_id), pdpm.empty_pdp)
@@ -185,7 +185,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         self.assertEqual(response.value, "Permit")
 
 
-        pdpm.load_resource_policy_rules(resource_id, self.deny_message_parameter_rule)
+        pdpm.set_resource_policy_rules(resource_id, self.deny_message_parameter_rule)
 
         invocation.message = {'argument1': 0}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
@@ -193,7 +193,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Deny")
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), True)
+        self.assertTrue('POLICY_STATUS_REASON' in invocation.message_annotations)
         self.assertEqual(invocation.message_annotations['POLICY_STATUS_REASON'],'The value of argument1 is less than or equal to 3')
 
         invocation.message = {'argument1': 5}
@@ -202,10 +202,10 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), False)
+        self.assertFalse('POLICY_STATUS_REASON' in invocation.message_annotations)
 
 
-        pdpm.load_resource_policy_rules(resource_id, self.deny_message_parameter_function_rule)
+        pdpm.set_resource_policy_rules(resource_id, self.deny_message_parameter_function_rule)
 
         invocation.message = {'argument1': 0}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
@@ -213,14 +213,14 @@ class PolicyDecisionUnitTest(PyonTestCase):
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
         self.assertEqual(response.value, "Permit")
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), False)
+        self.assertFalse('POLICY_STATUS_REASON' in invocation.message_annotations)
 
         invocation.message = {'argument1': 5}
         invocation.headers = {'op': 'op', 'process': mock_process, 'request': 'request', 'ion-actor-id': 'ion-actor-id', 'receiver': 'resource-registry',
                                    'sender-type': 'sender-type', 'sender-service': 'sender-service', 'ion-actor-roles': {'sys_org_name': ['SUPERUSER']}}
         invocation.message_annotations = {}
         response = pdpm.check_resource_request_policies(invocation, resource_id)
-        self.assertEqual(invocation.message_annotations.has_key('POLICY_STATUS_REASON'), True)
+        self.assertTrue('POLICY_STATUS_REASON' in invocation.message_annotations)
         self.assertEqual(invocation.message_annotations['POLICY_STATUS_REASON'],'The value of argument1 is larger than 3')
 
 
@@ -232,7 +232,7 @@ class PolicyDecisionUnitTest(PyonTestCase):
         # see that the PDP for service is the default
         self.assertEqual(pdpm.get_service_pdp(service_key), pdpm.load_common_service_pdp)
 
-        pdpm.load_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
+        pdpm.set_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
 
         # see that the PDP for service is not the default anymore
         self.assertNotEqual(pdpm.get_service_pdp(service_key), pdpm.load_common_service_pdp)
@@ -318,19 +318,19 @@ class PolicyDecisionUnitTest(PyonTestCase):
         gc.system_root_org_name = 'sys_org_name'
 
         # check that service policies result in denying the request
-        pdpm.load_service_policy_rules(service_key, self.deny_SUPERUSER_rule)
-        pdpm.load_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule)
+        pdpm.set_service_policy_rules(service_key, self.deny_SUPERUSER_rule)
+        pdpm.set_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule)
         response = pdpm.check_agent_request_policies(invocation)
         self.assertEqual(response.value, "Deny")
 
         # check that resource policies result in denying the request
-        pdpm.load_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
-        pdpm.load_resource_policy_rules(resource_id, self.deny_SUPERUSER_rule)
+        pdpm.set_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
+        pdpm.set_resource_policy_rules(resource_id, self.deny_SUPERUSER_rule)
         response = pdpm.check_agent_request_policies(invocation)
         self.assertEqual(response.value, "Deny")
 
         # check that both service and resource policies need to allow a request
-        pdpm.load_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
-        pdpm.load_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule)
+        pdpm.set_service_policy_rules(service_key, self.permit_SUPERUSER_rule)
+        pdpm.set_resource_policy_rules(resource_id, self.permit_SUPERUSER_rule)
         response = pdpm.check_agent_request_policies(invocation)
         self.assertEqual(response.value, "Permit")

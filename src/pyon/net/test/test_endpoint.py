@@ -651,15 +651,15 @@ class TestRPCResponseEndpoint(PyonTestCase, RecvMockMixin):
 
         self._do_listen(e)
 
-        assert_called_once_with_header(self, ch.send, {'status_code':400,
-                                                       'error_message':'Unknown op name: no_exist',
+        assert_called_once_with_header(self, ch.send, {'status_code': 400,
+                                                       'error_message': 'Unknown op name: no_exist',
                                                        'conv-id': sentinel.conv_id,
                                                        'conv-seq': 2,
-                                                       'protocol':'',
+                                                       'protocol': '',
                                                        'performative': 'failure',
-                                                       'language':'ion-r2',
-                                                       'encoding':'msgpack',
-                                                       'format':'list',
+                                                       'language': 'scioncc',
+                                                       'encoding': 'msgpack',
+                                                       'format': 'list',
                                                        'receiver': ',',
                                                        'ts': sentinel.ts})
 
@@ -678,17 +678,17 @@ class TestRPCResponseEndpoint(PyonTestCase, RecvMockMixin):
         self._do_listen(e)
 
         # test to make sure send got called with our error
-        assert_called_once_with_header(self, ch.send, {'status_code':400,
-                                                       'error_message':'Argument not_named not present in op signature',
+        assert_called_once_with_header(self, ch.send, {'status_code': 400,
+                                                       'error_message': 'Argument not_named not present in op signature',
                                                        'conv-id': sentinel.conv_id,
                                                        'conv-seq': 2,
-                                                       'protocol':'',
+                                                       'protocol': '',
                                                        'performative': 'failure',
-                                                       'language':'ion-r2',
-                                                       'encoding':'msgpack',
-                                                       'format':'NoneType',
+                                                       'language': 'scioncc',
+                                                       'encoding': 'msgpack',
+                                                       'format': 'NoneType',
                                                        'receiver': ',',
-                                                       'msg-rcvd':ANY,
+                                                       'msg-rcvd': ANY,
                                                        'ts': sentinel.ts})
 
     def test__message_received_interceptor_exception(self):

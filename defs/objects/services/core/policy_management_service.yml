@@ -12,13 +12,13 @@ methods:
 
   create_resource_access_policy:
     docstring: |
-      Helper operation for creating an access policy for a specific resource. The id string returned
-      is the internal id by which Policy will be identified in the data store.
+      Helper operation for creating an access policy for a specific resource.
     in:
       resource_id: ""
       policy_name: ""
       description: ""
       policy_rule: ""
+      ordinal: 0
     out:
       policy_id: ""
     throws:
@@ -26,13 +26,13 @@ methods:
 
   create_service_access_policy:
     docstring: |
-      Helper operation for creating an access policy for a specific service. The id string returned
-      is the internal id by which Policy will be identified in the data store.
+      Helper operation for creating an access policy for a specific service.
     in:
       service_name: ""
       policy_name: ""
       description: ""
       policy_rule: ""
+      ordinal: 0
     out:
       policy_id: ""
     throws:
@@ -40,12 +40,12 @@ methods:
 
   create_common_service_access_policy:
     docstring: |
-      Helper operation for creating a service access policy common to all services. The id string returned
-      is the internal id by which Policy will be identified in the data store.
+      Helper operation for creating a service access policy common to all services.
     in:
       policy_name: ""
       description: ""
       policy_rule: ""
+      ordinal: 0
     out:
       policy_id: ""
     throws:
@@ -53,13 +53,25 @@ methods:
 
   add_process_operation_precondition_policy:
     docstring: |
-      Helper operation for adding a precondition policy for a specific process operation; could be a service or agent.
-      The id string returned is the internal id by which Policy will be identified in the data store. The precondition
-      method must return a tuple (boolean, string).
+      Helper operation for adding a precondition policy for a specific process operation.
+      The precondition method must return a tuple (boolean, string).
     in:
-      process_name: ""
+      process_id: ""
       op: ""
-      policy_content: ""  #Can be a local method name or snippet of code
+      policy_content: ""  # Can be a local method name or snippet of code
+    out:
+      policy_id: ""
+    throws:
+      BadRequest: If any of the parameters are not set.
+
+  add_service_operation_precondition_policy:
+    docstring: |
+      Helper operation for adding a precondition policy for a specific service operation.
+      The precondition method must return a tuple (boolean, string).
+    in:
+      service_name: ""
+      op: ""
+      policy_content: ""  # Can be a local method name or snippet of code
     out:
       policy_id: ""
     throws:
@@ -154,6 +166,8 @@ methods:
     throws:
       NotFound: object with specified id does not exist
 
+  # --- Finding applicable policies
+
   find_resource_policies:
     docstring: |
       Finds all policies associated with a specific resource
@@ -164,42 +178,56 @@ methods:
     throws:
       NotFound: object with specified id does not exist
 
-
   get_active_resource_access_policy_rules:
     docstring: |
-      Generates the set of all enabled access policies for the specified resource within the specified Org. If the org_name
-      is not provided, then the root ION Org will be assumed.
+      Generates the set of all enabled access policies for the specified resource within the specified Org.
+      If the org_name is not provided, then the root ION Org will be assumed.
+      Returns a list of Policy objects ordered by ordinal then ts_created.
     in:
       resource_id: ""
       org_name: ""
     out:
-      policy_rules: ""
+      policy_list: []
     throws:
       NotFound: object with specified id does not exist
 
-
   get_active_service_access_policy_rules:
     docstring: |
-      Generates the set of all enabled access policies for the specified service within the specified Org. If the org_name
-      is not provided, then the root ION Org will be assumed.
+      Generates the set of all enabled access policies for the specified service within the specified Org.
+      This includes common access, service access and service precondition policies.
+      If service_name is empty, only the common service polices are returned.
+      If the org_name is not provided, then the root ION Org will be assumed.
+      Returns a list of Policy objects ordered by ordinal then ts_created.
     in:
       service_name: ""
       org_name: ""
     out:
-      policy_rules: ""
+      policy_list: []
     throws:
       NotFound: object with specified id does not exist
 
-
-  get_active_process_operation_preconditions:
+  get_active_service_operation_preconditions:
     docstring: |
-      Generates the set of all enabled precondition policies for the specified process operation within the specified
-      Org; could be a service or resource agent. If the org_name is not provided, then the root ION Org will be assumed.
+      Generates the set of all enabled precondition policies for the specified service operation
+      within the specified Org. If the org_name is not provided, then the root ION Org will be assumed.
     in:
-      process_name: ""
+      service_name: ""
       op: ""
       org_name: ""
     out:
-      preconditions: []
+      policy_list: []
+    throws:
+      NotFound: object with specified id does not exist
+
+  get_active_process_operation_preconditions:
+    docstring: |
+      Generates the set of all enabled precondition policies for the specified process operation
+      within the specified Org. If the org_name is not provided, then the root ION Org will be assumed.
+    in:
+      process_key: ""
+      op: ""
+      org_name: ""
+    out:
+      policy_list: []
     throws:
       NotFound: object with specified id does not exist
