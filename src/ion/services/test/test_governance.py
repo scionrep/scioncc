@@ -716,7 +716,7 @@ class TestGovernanceInt(IonIntegrationTestCase):
 
 
         #First clear all of the policies to test that failures will be caught due to missing policies
-        self.container.governance_controller._reset_container_policy_caches()
+        self.container.governance_controller._clear_container_policy_caches()
 
         empty_policy_set = self.container.governance_controller.get_active_policies()
         self.assertEqual(len(empty_policy_set['service_access'].keys()), 0)

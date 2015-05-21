@@ -9,12 +9,15 @@ from nose.plugins.attrib import attr
 
 from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound
 from pyon.public import PRED, RT, IonObject, OT
+
+from interface.objects import PolicyTypeEnum
 from ion.services.policy_management_service import PolicyManagementService
 
 from interface.services.core.ipolicy_management_service import PolicyManagementServiceClient
 
 
 @attr('INT', group='coi')
+@patch.dict('pyon.core.governance.governance_controller.CFG', IonIntegrationTestCase._get_alt_cfg({'interceptor': {'interceptors': {'governance': {'config': {'enabled': False}}}}}))
 class TestPolicyManagementServiceInt(IonIntegrationTestCase):
 
     def setUp(self):
@@ -22,16 +25,19 @@ class TestPolicyManagementServiceInt(IonIntegrationTestCase):
         # Start container
         self._start_container()
         self.container.start_rel_from_url('res/deploy/basic.yml')
+        self.container.governance_controller.policy_event_callback = Mock()
 
         self.policy_management_service = PolicyManagementServiceClient()
 
-    def test_policy_crud(self):
+    def test_policy(self):
+        self._do_test_policy_crud()
 
-        res_policy_obj = IonObject(OT.ResourceAccessPolicy, policy_rule='<Rule id="%s"> <description>%s</description></Rule>')
+    def _do_test_policy_crud(self):
+        policy_rule = '<Rule id="{rule_id}"> <description>{description}</description></Rule>'
 
-        policy_obj = IonObject(RT.Policy, name='Test_Policy',
-            description='This is a test policy',
-            policy_type=res_policy_obj)
+        policy_obj = IonObject(RT.Policy, name='Test_Policy', description='This is a test policy',
+                               policy_type=PolicyTypeEnum.RESOURCE_ACCESS,
+                               definition=policy_rule)
 
         policy_obj.name = ' '
         with self.assertRaises(BadRequest):
@@ -92,9 +98,9 @@ class TestPolicyManagementServiceInt(IonIntegrationTestCase):
         with self.assertRaises(BadRequest):
             self.policy_management_service.add_process_operation_precondition_policy()
         with self.assertRaises(BadRequest):
-            self.policy_management_service.add_process_operation_precondition_policy(process_name="process_name")
+            self.policy_management_service.add_process_operation_precondition_policy(process_id="process_id")
         with self.assertRaises(BadRequest):
-            self.policy_management_service.add_process_operation_precondition_policy(process_name="process_name", op="op")
+            self.policy_management_service.add_process_operation_precondition_policy(process_id="process_id", op="op")
 
         self.policy_management_service.enable_policy(policy_id)
         self.policy_management_service.enable_policy(policy_id)
@@ -104,8 +110,9 @@ class TestPolicyManagementServiceInt(IonIntegrationTestCase):
 
         with self.assertRaises(NotFound) as cm:
             self.policy_management_service.read_policy(policy_id)
-        self.assertIn("does not exist", cm.exception.message)
 
         with self.assertRaises(NotFound) as cm:
             self.policy_management_service.delete_policy(policy_id)
-        self.assertIn("does not exist", cm.exception.message)
+
+    def _do_test_policy_finds(self):
+        pass

@@ -48,7 +48,7 @@ class LoadSystemPolicy(ImmediateProcess):
 
         ion_org = orgms_client.find_org()
         system_actor = get_system_actor()
-        log.info('System actor:' + system_actor._id)
+        log.info('System actor: %s', system_actor._id)
 
         sa_user_header = get_system_actor_header(system_actor)
 
@@ -76,19 +76,23 @@ class LoadSystemPolicy(ImmediateProcess):
                 rule_filename = os.path.join(os.path.dirname(policy_rules_filename), rule_filename)
             with open(rule_filename, "r") as f:
                 rule_def = f.read()
+            ordinal = rule_cfg.get("ordinal", 0)
+
+            # Create the policy
             if policy_type == "common_service_access":
-                policyms_client.create_common_service_access_policy(rule_name, rule_desc, rule_def,
+                policyms_client.create_common_service_access_policy(rule_name, rule_desc, rule_def, ordinal=ordinal,
                                                                     headers=sa_user_header)
             elif policy_type == "service_access":
                 service_name = rule_cfg["service_name"]
                 policyms_client.create_service_access_policy(service_name, rule_name, rule_desc, rule_def,
-                                                             headers=sa_user_header)
+                                                             ordinal=ordinal, headers=sa_user_header)
             elif policy_type == "resource_access":
                 resource_type, resource_name = rule_cfg["resource_type"], rule_cfg["resource_name"]
-                res_ids, _ = calling_process.container.resource_registry.find_resources(restype=resource_type, name=resource_name, id_only=True)
+                res_ids, _ = calling_process.container.resource_registry.find_resources(
+                        restype=resource_type, name=resource_name, id_only=True)
                 if res_ids:
                     resource_id = res_ids[0]
                     policyms_client.create_resource_access_policy(resource_id, rule_name, rule_desc, rule_def,
-                                                                  headers=sa_user_header)
+                                                                   ordinal=ordinal, headers=sa_user_header)
             else:
                 raise ContainerConfigError("Rule %s has invalid policy type: %s" % (rule_name, policy_type))

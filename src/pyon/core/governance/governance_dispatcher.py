@@ -3,8 +3,8 @@
 __author__ = 'Stephen P. Henrie'
 
 from pyon.core import MSG_HEADER_ACTOR
-from pyon.util.log import log
 from pyon.core.exception import Unauthorized, Inconsistent
+from pyon.util.log import log
 
 
 class GovernanceDispatcher(object):
@@ -33,9 +33,6 @@ class GovernanceDispatcher(object):
     # An error has occurred and event processing should stop
     STATUS_ERROR = 'error'
 
-    def __init__(self, *args, **kwargs):
-        log.debug('GovernanceDispatcher.__init__()')
-
     def handle_incoming_message(self, invocation):
         receiver = invocation.get_message_receiver()
         op = invocation.get_header_value('op', 'Unknown')
@@ -58,7 +55,7 @@ class GovernanceDispatcher(object):
             if GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION in invocation.message_annotations:
                 raise Unauthorized(invocation.message_annotations[GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION])
 
-            raise Unauthorized("The request from user %s for operation %s(%s) has been denied" % (actor_id,receiver, op) )
+            raise Unauthorized("The request from user %s for operation %s(%s) has been denied" % (actor_id, receiver, op))
 
         return invocation
 

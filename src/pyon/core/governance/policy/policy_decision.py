@@ -19,7 +19,7 @@ from ndg.xacml.core.context.pdp import PDP
 from ndg.xacml.core.context.result import Decision
 
 from pyon.core import (MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_OP, MSG_HEADER_FORMAT, MSG_HEADER_USER_CONTEXT_ID,
-                       PROCTYPE_SERVICE)
+                       PROCTYPE_AGENT, PROCTYPE_SERVICE)
 from pyon.core.exception import NotFound
 from pyon.core.governance import SUPERUSER_ROLE, ANONYMOUS_ACTOR, DECORATOR_OP_VERB
 from pyon.core.governance.governance_dispatcher import GovernanceDispatcher
@@ -50,6 +50,8 @@ BooleanAttributeValue = attributeValueFactory(AttributeValue.BOOLEAN_TYPE_URI)
 
 # Policy templates
 
+
+
 DEFAULT_POLICY_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
     xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
@@ -58,7 +60,7 @@ DEFAULT_POLICY_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
     xmlns:xf="http://www.w3.org/TR/2002/WD-xquery-operators-20020816/#"
     xmlns:md="http:www.med.example.com/schemas/record.xsd"
     PolicyId="%s"
-    RuleCombiningAlgId="urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:permit-overrides">
+    RuleCombiningAlgId="%s">
     <PolicyDefaults>
         <XPathVersion>http://www.w3.org/TR/1999/Rec-xpath-19991116</XPathVersion>
     </PolicyDefaults>
@@ -66,33 +68,20 @@ DEFAULT_POLICY_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
     %s
 </Policy>'''
 
-RESOURCE_POLICY_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
-<Policy xmlns="urn:oasis:names:tc:xacml:2.0:policy:schema:os"
-    xmlns:xacml-context="urn:oasis:names:tc:xacml:2.0:context:schema:os"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="urn:oasis:names:tc:xacml:2.0:policy:schema:os http://docs.oasis-open.org/xacml/access_control-xacml-2.0-policy-schema-os.xsd"
-    xmlns:xf="http://www.w3.org/TR/2002/WD-xquery-operators-20020816/#"
-    xmlns:md="http:www.med.example.com/schemas/record.xsd"
-    PolicyId="%s"
-    RuleCombiningAlgId="urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:first-applicable">
-    <PolicyDefaults>
-        <XPathVersion>http://www.w3.org/TR/1999/Rec-xpath-19991116</XPathVersion>
-    </PolicyDefaults>
-
-    %s
-</Policy>'''
-
+POLICY_RULE_CA_PERMIT_OVERRIDES = "urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:permit-overrides"
+POLICY_RULE_CA_DENY_OVERRIDES = "urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:deny-overrides"
+POLICY_RULE_CA_FIRST_APPLICABLE = "urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:first-applicable"
 EMPTY_POLICY_ID = "urn:oasis:names:tc:xacml:2.0:example:policyid:empty_policy_set"
 
 
 class PolicyDecisionPointManager(object):
 
     def __init__(self, governance_controller):
-        self.resource_policy_decision_point = dict()
-        self.service_policy_decision_point = dict()
+        self.resource_policy_decision_point = {}
+        self.service_policy_decision_point = {}
 
         self.empty_pdp = self.get_empty_pdp()
-        self.load_common_service_policy_rules('')
+        self.set_common_service_policy_rules([])
 
         self.governance_controller = governance_controller
 
@@ -124,18 +113,14 @@ class PolicyDecisionPointManager(object):
     def _get_default_policy_template(self):
         return DEFAULT_POLICY_TEMPLATE
 
-    def _get_resource_policy_template(self):
-        return RESOURCE_POLICY_TEMPLATE
-
-
     def create_policy_from_rules(self, policy_identifier, rules):
         policy = self._get_default_policy_template()
-        policy_rules = policy % (policy_identifier, rules)
+        policy_rules = policy % (policy_identifier, POLICY_RULE_CA_FIRST_APPLICABLE, rules)
         return policy_rules
 
     def create_resource_policy_from_rules(self, policy_identifier, rules):
-        policy = self._get_resource_policy_template()
-        policy_rules = policy % (policy_identifier, rules)
+        policy = self._get_default_policy_template()
+        policy_rules = policy % (policy_identifier, POLICY_RULE_CA_FIRST_APPLICABLE, rules)
         return policy_rules
 
     def get_empty_pdp(self):
@@ -144,13 +129,6 @@ class PolicyDecisionPointManager(object):
         pdp = PDP.fromPolicySource(input_source, ReaderFactory)
         return pdp
 
-    def get_resource_pdp(self, resource_key):
-        """Return a compiled policy indexed by the specified resource key, or default (empty)"""
-        if resource_key in self.resource_policy_decision_point:
-            return self.resource_policy_decision_point[resource_key]
-
-        return self.empty_pdp
-
     def get_service_pdp(self, service_name):
         """Return a compiled policy indexed by the specified service name, or default (empty)"""
         if service_name in self.service_policy_decision_point:
@@ -158,56 +136,81 @@ class PolicyDecisionPointManager(object):
 
         return self.load_common_service_pdp
 
-    def list_resource_policies(self):
-        return self.resource_policy_decision_point.keys()
+    def get_resource_pdp(self, resource_key):
+        """Return a compiled policy indexed by the specified resource key, or default (empty)"""
+        if resource_key in self.resource_policy_decision_point:
+            return self.resource_policy_decision_point[resource_key]
 
-    def list_service_policies(self):
-        return self.service_policy_decision_point.keys()
+        return self.empty_pdp
 
-    def load_common_service_policy_rules(self, rules_text):
+    # --- Policy rule management
+
+    def set_common_service_policy_rules(self, policy_list):
+        rules_text = self._get_rules_text(policy_list)
         self.common_service_rules = rules_text
         input_source = StringIO(self.create_policy_from_rules(COMMON_SERVICE_POLICY_RULES, rules_text))
         self.load_common_service_pdp = PDP.fromPolicySource(input_source, ReaderFactory)
 
-    def load_service_policy_rules(self, service_name, rules_text):
-        if not rules_text and service_name not in self.service_policy_decision_point:
-            return
+    def list_service_policies(self):
+        return self.service_policy_decision_point.keys()
 
+    def has_service_policy(self, service_name):
+        return service_name in self.service_policy_decision_point
+
+    def set_service_policy_rules(self, service_name, policy_list):
         log.debug("Loading policies for service: %s" % service_name)
 
         self.clear_service_policy(service_name)
-        service_rule_set = self.common_service_rules + rules_text
 
-        # Simply create a new PDP object for the service
-        input_source = StringIO(self.create_policy_from_rules(service_name, service_rule_set))
-        self.service_policy_decision_point[service_name] = PDP.fromPolicySource(input_source, ReaderFactory)
-
-    def load_resource_policy_rules(self, resource_key, rules_text):
-        if not rules_text and resource_key not in self.resource_policy_decision_point:
+        if not policy_list:
+            self.service_policy_decision_point[service_name] = None
             return
 
+        # Create a new PDP object for the service
+        rules_text = self._get_rules_text(policy_list)
+        input_source = StringIO(self.create_policy_from_rules(service_name, rules_text))
+        self.service_policy_decision_point[service_name] = PDP.fromPolicySource(input_source, ReaderFactory)
+
+    def clear_service_policy(self, service_name):
+        self.service_policy_decision_point.pop(service_name, None)
+
+    def list_resource_policies(self):
+        return self.resource_policy_decision_point.keys()
+
+    def has_resource_policy(self, resource_key):
+        return resource_key in self.resource_policy_decision_point
+
+    def set_resource_policy_rules(self, resource_key, policy_list):
         log.debug("Loading policies for resource: %s" % resource_key)
 
         self.clear_resource_policy(resource_key)
 
-        # Simply create a new PDP object for the service
+        if not policy_list:
+            self.resource_policy_decision_point[resource_key] = None
+            return
+
+        # Create a new PDP object for the resource
+        rules_text = self._get_rules_text(policy_list)
         input_source = StringIO(self.create_resource_policy_from_rules(resource_key, rules_text))
         self.resource_policy_decision_point[resource_key] = PDP.fromPolicySource(input_source, ReaderFactory)
 
-    # Remove any policy indexed by the resource_key
     def clear_resource_policy(self, resource_key):
         self.resource_policy_decision_point.pop(resource_key, None)
 
-    # Remove any policy indexed by the service_name
-    def clear_service_policy(self, service_name):
-        self.service_policy_decision_point.pop(service_name, None)
-
-    # Remove all policies
     def clear_policy_cache(self):
+        """Remove all policies"""
         self.resource_policy_decision_point.clear()
         self.service_policy_decision_point.clear()
-        self.load_common_service_policy_rules('')
+        self.set_common_service_policy_rules([])
 
+    def _get_rules_text(self, policy_list):
+        if isinstance(policy_list, basestring):
+            rules_text = policy_list
+        else:
+            rules_text = "\n".join(p.definition for p in policy_list)
+        return rules_text
+
+    # --- Policy evaluation
 
     def create_attribute(self, attrib_class, attrib_id, val):
         attribute = Attribute()
@@ -216,7 +219,6 @@ class PolicyDecisionPointManager(object):
         attribute.attributeValues.append(attrib_class())
         attribute.attributeValues[-1].value = val
         return attribute
-
 
     def create_string_attribute(self, attrib_id, val):
         return self.create_attribute(StringAttributeValue, attrib_id, val)
@@ -236,7 +238,6 @@ class PolicyDecisionPointManager(object):
     def create_object_attribute(self, attrib_id, val):
         return self.create_attribute(self.ObjectAttributeValue, attrib_id, val)
 
-
     def create_org_role_attribute(self, actor_roles, subject):
         attribute = None
         for role in actor_roles:
@@ -254,12 +255,13 @@ class PolicyDecisionPointManager(object):
         op = invocation.get_header_value(MSG_HEADER_OP, 'Unknown')
         actor_id = invocation.get_header_value(MSG_HEADER_ACTOR, ANONYMOUS_ACTOR)
         user_context_id = invocation.get_header_value(MSG_HEADER_USER_CONTEXT_ID, "")
-        user_context_differs = bool(actor_id and user_context_id and actor_id != user_context_id)
+        user_context_differs = bool(actor_id and actor_id != ANONYMOUS_ACTOR and user_context_id and actor_id != user_context_id)
         actor_roles = invocation.get_header_value(MSG_HEADER_ROLES, {})
         message_format = invocation.get_header_value(MSG_HEADER_FORMAT, '')
 
-        # log.info("POLICY DECISION recv=%s actor=%s context=%s differ:%s", receiver, actor_id, user_context_id, user_context_differs)
-        # log.info(" headers: %s", invocation.headers)
+        if receiver == "agpro_exchange":
+            print "### POLICY DECISION rty=%s recv=%s actor=%s context=%s differ:%s" % (receiver_type, receiver, actor_id, user_context_id, user_context_differs)
+            print " Headers: %s" % invocation.headers
 
         #log.debug("Checking XACML Request: receiver_type: %s, sender: %s, receiver:%s, op:%s,  ion_actor_id:%s, ion_actor_roles:%s", receiver_type, sender, receiver, op, ion_actor_id, actor_roles)
 
@@ -346,16 +348,16 @@ class PolicyDecisionPointManager(object):
             return decision
 
         # Else check any policies that might be associated with the resource.
-        decision = self._check_service_request_policies(invocation, 'agent')
+        decision = self._check_service_request_policies(invocation, PROCTYPE_AGENT)
 
         return decision
 
     def check_service_request_policies(self, invocation):
-        decision = self._check_service_request_policies(invocation, 'service')
+        decision = self._check_service_request_policies(invocation, PROCTYPE_SERVICE)
         return decision
 
     def _check_service_request_policies(self, invocation, receiver_type):
-        receiver = invocation.get_message_receiver()
+        receiver = invocation.get_message_receiver()       # The name of service or resource type
         if not receiver:
             raise NotFound('No receiver for this message')
 
@@ -387,7 +389,7 @@ class PolicyDecisionPointManager(object):
             return Decision.NOT_APPLICABLE
 
         if response is None:
-            log.debug("response from PDP contains nothing, so not authorized")
+            log.warn("response from PDP contains nothing, so not authorized")
             return Decision.DENY
 
         if GovernanceDispatcher.POLICY__STATUS_REASON_ANNOTATION in invocation.message_annotations:

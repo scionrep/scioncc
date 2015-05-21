@@ -228,7 +228,7 @@ class ProcManager(object):
             log.info("ProcManager.spawn_process: %s.%s -> pid=%s OK", module, cls, process_id)
 
             if process_type == PROCTYPE_IMMEDIATE:
-                log.info('Terminating immediate process: %s', process_instance.id)
+                log.debug('Terminating immediate process: %s', process_instance.id)
                 self.terminate_process(process_instance.id)
 
                 # Terminate process also triggers TERMINATING/TERMINATED
@@ -237,7 +237,8 @@ class ProcManager(object):
             else:
                 # Update local policies for the new process
                 if self.container.has_capability(self.container.CCAP.GOVERNANCE_CONTROLLER):
-                    self.container.governance_controller.update_container_policies(process_instance, safe_mode=True)
+                    self.container.governance_controller.update_process_policies(
+                                process_instance, safe_mode=True, force_update=False)
 
             return process_instance.id
 
@@ -266,10 +267,9 @@ class ProcManager(object):
 
     def get_a_local_process(self, proc_name=''):
         """
-        Returns a running ION processes in the container for the specified name
+        Returns a running ION process in the container for the specified process name
         """
         for p in self.procs.itervalues():
-
             if p.name == proc_name:
                 return p
 
@@ -277,6 +277,13 @@ class ProcManager(object):
                 return p
 
         return None
+
+    def get_local_service_processes(self, service_name=''):
+        """
+        Returns a list of running ION processes in the container for the specified service name
+        """
+        proc_list = [p for p in self.procs.itervalues() if p.process_type == PROCTYPE_SERVICE and p.name == service_name]
+        return proc_list
 
     def is_local_service_process(self, service_name):
         local_services = self.list_local_processes(PROCTYPE_SERVICE)

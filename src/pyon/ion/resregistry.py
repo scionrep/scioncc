@@ -761,7 +761,7 @@ class ResourceRegistry(object):
             super_actors = list({actor._id for actor, assoc in zip(actors, assocs) if assoc.p == PRED.hasRole and assoc.st == RT.ActorIdentity})
             found_actors.extend(super_actors)
             self.superuser_actors = found_actors
-            log.info("get_superuser_actors(): system actor=%s, superuser actors=%s" % (system_actor._id, super_actors))
+            log.info("get_superuser_actors(): system actor=%s, superuser actors=%s" % (system_actor._id if system_actor else "", super_actors))
         return self.superuser_actors
 
 

@@ -17,7 +17,7 @@ import threading
 
 from pyon.core import bootstrap, exception
 from pyon.core.bootstrap import CFG, IonObject
-from pyon.core.exception import ExceptionFactory, IonException, BadRequest
+from pyon.core.exception import ExceptionFactory, IonException, BadRequest, Unauthorized
 from pyon.net.channel import ChannelClosedError, PublisherChannel, ListenChannel, SubscriberChannel, ServerChannel, BidirClientChannel
 from pyon.core.interceptor.interceptor import Invocation, process_interceptors
 from pyon.util.containers import get_ion_ts, get_ion_ts_millis
@@ -440,7 +440,11 @@ class ListeningBaseEndpoint(BaseEndpoint):
             try:
                 self.body, self.headers = self.endpoint.intercept_in(self.raw_body, self.raw_headers)
             except Exception as ex:
-                log.info("MessageObject.make_body raised an error: \n%s", traceback.format_exc(ex))
+                # This could be the policy interceptor raising Unauthorized
+                if isinstance(ex, Unauthorized):
+                    log.info("Inbound message Unauthorized")
+                else:
+                    log.info("Error in inbound message interceptors", exc_info=True)
                 self.error = ex
 
         def ack(self):
@@ -469,7 +473,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
             You are likely not to use this if using get_one_msg/get_n_msgs.
             """
             if self.error is not None:
-                log.info("Refusing to route a MessageObject with an error")
+                log.info("Refusing to deliver a MessageObject with an error")
                 return
 
             self.endpoint._message_received(self.body, self.headers)
@@ -957,7 +961,7 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
                 # default label for new IonException is '__init__',
                 # but change the label of the first remote exception to show RPC invocation.
                 # other stacks would have already had labels updated.
-                new_label = 'remote call to %s' % (res_headers['receiver'])
+                new_label = 'in remote call to %s' % (headers.get('receiver', '?'))  # res_headers['receiver']
                 top_stack = stacks[0][1]
                 stacks[0] = (new_label, top_stack)
             log.info("RPCRequestEndpointUnit received an error (%d): %s", res_headers['status_code'], res_headers['error_message'])

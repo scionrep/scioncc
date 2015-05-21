@@ -170,12 +170,39 @@ def get_system_actor_header(system_actor=None):
         return get_actor_header(None)
 
 
+def get_valid_principal_commitments(principal_id=None, consumer_id=None):
+    """
+    Returns the list of valid commitments for the specified principal (org or actor.
+    If optional consumer_id (actor) is supplied, then filtered by consumer_id
+    """
+    log.debug("Finding commitments for principal: %s", principal_id)
+    if principal_id is None:
+        return None
+
+    try:
+        gov_controller = bootstrap.container_instance.governance_controller
+        commitments, _ = gov_controller.rr.find_objects(principal_id, PRED.hasCommitment, RT.Commitment, id_only=False)
+        if not commitments:
+            return None
+
+        cur_time = get_ion_ts_millis()
+        commitment_list = [com for com in commitments if (consumer_id == None or com.consumer == consumer_id) and \
+                    (int(com.expiration) == 0 or (int(com.expiration) > 0 and cur_time < int(com.expiration)))]
+        if commitment_list:
+            return commitment_list
+
+    except Exception:
+        log.exception("Could not determine actor resource commitments")
+
+    return None
+
+
 def get_valid_resource_commitments(resource_id=None, actor_id=None):
     """
     Returns the list of valid commitments for the specified resource.
     If optional actor_id is supplied, then filtered by actor_id
     """
-    log.debug("Finding commitments for resource_id: %s and actor_id: %s" % (resource_id, actor_id))
+    log.debug("Finding commitments for resource_id: %s and actor_id: %s", resource_id, actor_id)
     if resource_id is None:
         return None
 
@@ -186,12 +213,8 @@ def get_valid_resource_commitments(resource_id=None, actor_id=None):
             return None
 
         cur_time = get_ion_ts_millis()
-        commitment_list = []
-        for com in commitments:
-            if (actor_id == None or com.consumer == actor_id) and \
-                    (int(com.expiration) == 0 or (int(com.expiration) > 0 and cur_time < int(com.expiration))):
-                commitment_list.append(com)
-
+        commitment_list = [com for com in commitments if (actor_id == None or com.consumer == actor_id) and \
+                    (int(com.expiration) == 0 or (int(com.expiration) > 0 and cur_time < int(com.expiration)))]
         if commitment_list:
             return commitment_list
 
