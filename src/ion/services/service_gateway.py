@@ -803,7 +803,7 @@ class ServiceGateway(object):
         return self.json_response(result)
 
     def gateway_error_response(self, exc):
-        """Forms a service gateway error reponse.
+        """Forms a service gateway error response.
         Can extract multiple stacks from a multi-tier RPC service call exception
         """
         if hasattr(exc, "get_stacks"):
@@ -821,7 +821,7 @@ class ServiceGateway(object):
         else:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             exec_name = exc_type.__name__
-            full_error = traceback.format_exception(*sys.exc_info())
+            full_error = "".join(traceback.format_exception(*sys.exc_info()))
 
         status_code = getattr(exc, "status_code", 400)
         if self.log_errors:

@@ -259,9 +259,9 @@ class PolicyDecisionPointManager(object):
         actor_roles = invocation.get_header_value(MSG_HEADER_ROLES, {})
         message_format = invocation.get_header_value(MSG_HEADER_FORMAT, '')
 
-        if receiver == "agpro_exchange":
-            print "### POLICY DECISION rty=%s recv=%s actor=%s context=%s differ:%s" % (receiver_type, receiver, actor_id, user_context_id, user_context_differs)
-            print " Headers: %s" % invocation.headers
+        # if receiver == "agpro_exchange":
+        #     print "### POLICY DECISION rty=%s recv=%s actor=%s context=%s differ:%s" % (receiver_type, receiver, actor_id, user_context_id, user_context_differs)
+        #     print " Headers: %s" % invocation.headers
 
         #log.debug("Checking XACML Request: receiver_type: %s, sender: %s, receiver:%s, op:%s,  ion_actor_id:%s, ion_actor_roles:%s", receiver_type, sender, receiver, op, ion_actor_id, actor_roles)
 
