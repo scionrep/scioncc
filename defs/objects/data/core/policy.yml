@@ -1,6 +1,6 @@
- # Defines a named set of responsibilities and authorities that a user may fulfill within one Org
- # when interacting with resources.
-UserRole: !Extends_InformationResource
+# Defines a named set of responsibilities and authorities that a user may fulfill within one Org
+# when interacting with resources.
+UserRole: !Extends_SystemResource
   # A permanent valid human readable identifier for the role
   governance_name: ""
   # The permanent Org name this role pertains to
@@ -14,13 +14,11 @@ PolicyTypeEnum: !enum (values=(COMMON_SERVICE_ACCESS, SERVICE_ACCESS, RESOURCE_A
 PolicyDetails:
 ---
 
-# Specifies a set of rules applicable when interacting with designated OOI system resources.
-Policy: !Extends_InformationResource
+# Specifies a set of rules applicable when interacting with designated system resources.
+Policy: !Extends_SystemResource
   # Should the policy be enforced?
   enabled: True
-  # TBD
-  required: True
-  # For ordering of this policy to other applicable policies - if equal, ts_created matters
+  # For ordering of this policy relative to other applicable policies - if equal, ts_created matters
   ordinal: 0
   # Specific type of policy
   policy_type: !PolicyTypeEnum
@@ -32,7 +30,7 @@ Policy: !Extends_InformationResource
   details: !PolicyDetails
 ---
 
-# Bases type to hold a policy access rule
+# Base type to hold a policy access rule
 AccessPolicyDetails: !Extends_PolicyDetails
 ---
 
@@ -42,12 +40,12 @@ ResourceAccessPolicyDetails: !Extends_AccessPolicyDetails
   resource_id: ""
 
 
-# Holds a policy access rule for a specific Service
+# Holds a policy access rule for a specific service
 ServiceAccessPolicyDetails: !Extends_AccessPolicyDetails
   service_name: ""
 
 
-# Base type for service operation precondition policies
+# Base type for operation precondition policies
 OperationPreconditionPolicyDetails: !Extends_PolicyDetails
   # Service operation
   op: ""
@@ -62,7 +60,10 @@ ServiceOperationPreconditionPolicyDetails: !Extends_OperationPreconditionPolicyD
 
 # Holds a process operation precondition policy
 ProcessOperationPreconditionPolicyDetails: !Extends_OperationPreconditionPolicyDetails
+  # ID, name or other descriptor for processes
   process_key: ""
+  # What is process_key?
+  process_key_type:
 
 
 # Defines the scope of applicability of policy, i.e. the subset of resources
