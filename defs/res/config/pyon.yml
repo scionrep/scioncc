@@ -143,6 +143,7 @@ container:
     validate:
       setattr: False
       interceptor: True
+      interceptor_error: True    # Does the interceptor raise an error if validation fails?
 
   timeout:
     shutdown: 30.0

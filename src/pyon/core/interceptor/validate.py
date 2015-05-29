@@ -15,17 +15,19 @@ class ValidateInterceptor(Interceptor):
     Validates IonObject content within message
     """
     enabled = True
+    raise_exception = False
 
     def configure(self, config):
         if "enabled" in config:
             self.enabled = config["enabled"]
         self.enabled = self.enabled and CFG.get_safe("container.objects.validate.interceptor", True)
-        log.debug("ValidateInterceptor enabled: %s" % str(self.enabled))
+        self.raise_exception = CFG.get_safe("container.objects.validate.interceptor_error", False) is True
+        log.debug("ValidateInterceptor enabled: %s" % self.enabled)
 
     def outgoing(self, invocation):
         # Set validate flag in header if IonObject(s) found in message
 
-        #Nothing to validate on the outbound side
+        # Nothing to validate on the outbound side
         return invocation
 
     def incoming(self, invocation):
@@ -49,13 +51,14 @@ class ValidateInterceptor(Interceptor):
 
             def validate_ionobj(obj):
                 if isinstance(obj, IonObjectBase):
-                    obj._validate()
+                    obj._validate(validate_objects=False)
                 return obj
 
             try:
                 walk(payload, validate_ionobj)
             except AttributeError as e:
-                if invocation.headers.has_key("raise-exception") and invocation.headers['raise-exception']:
+                raise_hdr = invocation.headers.get('raise-exception', None)
+                if (self.raise_exception and raise_hdr is not False) or invocation.headers.get('raise-exception', None):
                     log.warn('message failed validation: %s\nheaders %s\npayload %s', e.message, invocation.headers, payload)
                     raise BadRequest(e.message)
                 else:

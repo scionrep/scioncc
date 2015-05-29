@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 
-'''
-@author Luke Campbell <lcampbell@asascience.com>
-@file pyon/core/interceptor/test/interceptor_test.py
-@description test lib for interceptor
-'''
+__author__ = 'Luke Campbell <lcampbell@asascience.com>'
 
 import unittest
 from nose.plugins.attrib import attr
@@ -23,9 +19,11 @@ except ImportError as e:
 
 @attr('UNIT')
 class InterceptorTest(PyonTestCase):
+    def setUp(self):
+        self.patch_cfg('pyon.core.bootstrap.CFG', {'container': {'objects': {'validate': {'interceptor': True}}}})
+
     @unittest.skipIf(not _have_numpy, 'No numpy')
     def test_numpy_encode(self):
-
         a = np.array([90,8010,3,14112,3.14159265358979323846264],dtype='float32')
 
         invoke = Invocation()
@@ -47,7 +45,6 @@ class InterceptorTest(PyonTestCase):
 
         b = received.message
         self.assertTrue((a==b).all())
-
 
     @unittest.skipIf(not _have_numpy, 'No numpy')
     def test_packed_numpy(self):
@@ -130,7 +127,7 @@ class InterceptorTest(PyonTestCase):
         #
         # Test required values
         #
-        raise unittest.SkipTest("Fixme")
+        #raise unittest.SkipTest("Fixme")
         validate_interceptor = ValidateInterceptor()
         validate_interceptor.configure({"enabled": True})
         

@@ -3,18 +3,19 @@
 
 __author__ = 'Adam R. Smith'
 
+from nose.plugins.attrib import attr
+import unittest
+
+from pyon.util.int_test import IonIntegrationTestCase
 
 from pyon.core.registry import IonObjectRegistry
 from pyon.core.bootstrap import IonObject
-from pyon.util.int_test import IonIntegrationTestCase
-from nose.plugins.attrib import attr
-import unittest
 
 
 @attr('UNIT')
 class ObjectTest(IonIntegrationTestCase):
     def setUp(self):
-        self.patch_cfg('pyon.core.bootstrap.CFG', {'container':{'objects':{'validate':{'setattr': True}}}})
+        self.patch_cfg('pyon.core.bootstrap.CFG', {'container': {'objects': {'validate': {'setattr': True}}}})
         self.registry = IonObjectRegistry()
 
     def test_new(self):
@@ -24,7 +25,6 @@ class ObjectTest(IonIntegrationTestCase):
         self.assertEqual(obj.time, "1341269890404")
 
     def test_validate(self):
-
         obj = self.registry.new('SampleObject')
         self.name = 'monkey'
         self.int = 1
@@ -34,22 +34,18 @@ class ObjectTest(IonIntegrationTestCase):
         self.assertRaises(AttributeError, obj._validate)
 
         obj.name = 'monkey'
-        assignment_failed = False
-        try:
+        with self.assertRaises(AttributeError):
             obj.extra_field = 5
-        except AttributeError:
-            assignment_failed = True
-        self.assertTrue(assignment_failed)
-        
+
         taskable_resource = self.registry.new('TaskableResource')
         taskable_resource.name = "Fooy"
         obj.abstract_val = taskable_resource
         self.assertRaises(AttributeError, obj._validate)
         
-        user_info = self.registry.new('ActorIdentity')
-        user_info.name = "Fooy"
-        obj.abstract_val = user_info
-        obj._validate
+        exec_res = self.registry.new('ExecutableResource')
+        exec_res.name = "Fooy"
+        obj.abstract_val = exec_res
+        obj._validate()
 
     @unittest.skip("no more recursive encoding on set")
     def xtest_recursive_encoding(self):
@@ -93,8 +89,6 @@ class ObjectTest(IonIntegrationTestCase):
 
         # check that a unicode element did get utf-8 encoded
         self.assertEqual(obj.a_dict['Four'],'\xe0\xa5\xaa')
-
-
 
     def test_bootstrap(self):
         """ Use the factory and singleton from bootstrap.py/public.py """
