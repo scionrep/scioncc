@@ -50,7 +50,7 @@ def entry():
     parser.add_argument('-l', '--logcfg', type=str, help='Logging config file or config dict content')
     parser.add_argument('-mx', '--mx', action='store_true', help='Start admin Web UI')
     parser.add_argument('-n', '--noshell', action='store_true', help="Do not start a shell")
-    parser.add_argument('-o', '--nomanhole', action='store_true', help="Do not remote-able manhole shell")
+    parser.add_argument('-o', '--nomanhole', action='store_true', help="Do not start remote-able manhole shell")
     parser.add_argument('-p', '--pidfile', type=str, help='PID file to use when --daemon specified. Defaults to cc-<rand>.pid')
     parser.add_argument('-r', '--rel', type=str, help='Deploy file to launch')
     parser.add_argument('-s', '--sysname', type=str, help='System name')
