@@ -4,7 +4,7 @@
 
 __author__ = 'Michael Meisinger'
 
-import collections, traceback, datetime, time, yaml, os
+import collections, traceback, datetime, time, yaml
 import flask, ast, pprint
 from flask import Flask, request, abort
 from gevent.wsgi import WSGIServer
@@ -18,7 +18,7 @@ from interface import objects
 
 
 # Initialize the flask app - abs path so that static files can be loaded from egg
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
+app = Flask(__name__)
 
 DEFAULT_WEB_SERVER_HOSTNAME = "localhost"
 DEFAULT_WEB_SERVER_PORT = 8080
@@ -859,7 +859,7 @@ def process_view_objects():
             fragments.append("<h2>Object Details</h2>")
             fragments.append("<p><pre>")
             obj = Container.instance.object_store.read_doc(obj_id)
-            value = yaml.dump(obj, default_flow_style=False)
+            value = yaml.dump(obj, default_flow_style=False, Dumper=yaml.CDumper)
             fragments.append(value)
             fragments.append("</pre></p>")
 
@@ -886,7 +886,7 @@ def process_view_state():
             fragments.append("<p><pre>")
             obj_state, obj = Container.instance.state_repository.get_state(state_id)
             if obj:
-                value = yaml.dump(obj_state, default_flow_style=False)
+                value = yaml.dump(obj_state, default_flow_style=False, Dumper=yaml.CDumper)
                 fragments.append(value)
             fragments.append("</pre></p>")
 
@@ -1077,7 +1077,7 @@ def get_formatted_value(value, fieldname=None, fieldtype=None, fieldschema=None,
             value = "[%s]" % value.type_
     elif fieldtype in ("list", "dict"):
         if details:
-            value = yaml.dump(value, default_flow_style=False)
+            value = yaml.dump(value, default_flow_style=False, Dumper=yaml.CDumper)
             value = value.replace("\n", "<br>")
             if value.endswith("<br>"):
                 value = value[:-4]
