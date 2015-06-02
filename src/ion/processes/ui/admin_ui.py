@@ -4,7 +4,7 @@
 
 __author__ = 'Michael Meisinger'
 
-import collections, traceback, datetime, time, yaml
+import collections, traceback, datetime, time, yaml, os
 import flask, ast, pprint
 from flask import Flask, request, abort
 from gevent.wsgi import WSGIServer
@@ -17,8 +17,8 @@ from pyon.public import Container, StandaloneProcess, log, PRED, RT, IonObject, 
 from interface import objects
 
 
-# Initialize the flask app
-app = Flask(__name__)
+# Initialize the flask app - abs path so that static files can be loaded from egg
+app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
 
 DEFAULT_WEB_SERVER_HOSTNAME = "localhost"
 DEFAULT_WEB_SERVER_PORT = 8080
