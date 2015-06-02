@@ -33,7 +33,7 @@ class IonObjectBase(object):
     _class_info = {}
 
     def __str__(self):
-        ds = ", ".join("%s=%r" % (k, self.__dict__[k]) for k in self.__dict__.keys() if k != "type_")
+        ds = ", ".join("%s=%r" % (k, self.__dict__[k]) for k in sorted(self.__dict__.keys()) if k != "type_")
         return "%s(%s)" % (self.__class__.__name__, ds)
 
     def __repr__(self):
