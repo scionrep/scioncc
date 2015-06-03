@@ -265,12 +265,7 @@ class IonObjectBase(object):
                 (str(value), type(self).__name__, key, min_val, max_val))
 
     def _check_inheritance_chain(self, typ, expected_type):
-        for baseclz in typ.__bases__:
-            if baseclz.__name__ == expected_type:
-                return True
-            if baseclz.__name__ == "object":
-                return False
-        return False
+        return any(baseclz.__name__ == expected_type for baseclz in typ.__mro__)
 
     def _check_collection_content(self, key, list_values, content_types):
         from pyon.core.registry import issubtype

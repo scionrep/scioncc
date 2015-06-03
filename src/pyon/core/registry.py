@@ -156,7 +156,6 @@ class IonObjectRegistry(object):
             raise NotFound("No matching class found for name %s" % _def)
 
         # Conditionally override the __setattr__ method to include additional client side validation
-        # NOTE: currently mandatory because it performs unicode to UTF-8 str conversion as side effect
         if self.validate_setattr:
             def validating_setattr(self, name, value):
                 from pyon.core.object import BUILT_IN_ATTRS
