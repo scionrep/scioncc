@@ -5,7 +5,6 @@
 from mock import patch
 from unittest import SkipTest
 import unittest
-import os
 from copy import deepcopy
 from gevent import greenlet, spawn
 
@@ -17,6 +16,7 @@ from pyon.util.containers import DotDict, dict_merge
 from pyon.util.log import log
 from pyon.util.file_sys import FileSystem
 
+
 def pre_initialize_ion():
     # Do necessary system initialization
     # Make sure this happens only once
@@ -26,8 +26,7 @@ def pre_initialize_ion():
     iadm.store_interfaces(idempotent=True)
     iadm.close()
 
-# This is the only place where code is executed once before any integration test
-# is run.
+# This is the only place where code is executed once before any integration test is run.
 def initialize_ion_int_tests():
     # Bootstrap pyon CFG, logging and object/resource interfaces
     bootstrap_pyon()
@@ -36,25 +35,22 @@ def initialize_ion_int_tests():
         pre_initialize_ion()
 
 
-
-class IonIntegrationTestCase(unittest.TestCase):
+class IntegrationTestCase(unittest.TestCase):
     """
     Base test class to allow operations such as starting the container
     TODO: Integrate with IonUnitTestCase
     """
     SkipTest = SkipTest
 
-    # @see
-    # http://www.saltycrane.com/blog/2012/07/how-prevent-nose-unittest-using-docstring-when-verbosity-2/
     def shortDescription(self):
+        # @see http://www.saltycrane.com/blog/2012/07/how-prevent-nose-unittest-using-docstring-when-verbosity-2/
         return None
 
-    # override __str__ and __repr__ behavior to show a copy-pastable nosetest name for ion tests
-    #  ion.module:TestClassName.test_function_name
+    # override __str__ and __repr__ behavior to show a copy-pastable nosetest name for tests
+    #  pack.module:TestClassName.test_function_name
     def __repr__(self):
         name = self.id()
         name = name.split('.')
-        #return "%s (%s)" % (name[-1], '.'.join(name[:-1]))
         return "%s ( %s )" % (name[-1], '.'.join(name[:-2]) + ":" + '.'.join(name[-2:]))
     __str__ = __repr__
 
@@ -86,7 +82,6 @@ class IonIntegrationTestCase(unittest.TestCase):
         self.container.start()
 
         bootstrap.testing_fast = False
-
 
     def _stop_container(self):
         bootstrap.testing_fast = True
@@ -141,13 +136,6 @@ class IonIntegrationTestCase(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def _patch_out_fail_fast_kill(self):
-        # Not only is this an enormous hack, it doens't work :/
-        # reinvestigate later
-#        def kill(*args, **kwargs):
-#            def call_in_main_context(main_gl):
-#                main_gl.throw(AssertionError("Container.fail_fast trying to terminate OS process, preventing"))
-#            spawn(call_in_main_context, greenlet.getcurrent())
-
         patcher = patch('pyon.container.cc.Container._kill_fast')
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -172,7 +160,6 @@ class IonIntegrationTestCase(unittest.TestCase):
             datastore.close()
 
         FileSystem._clean(CFG)
-
 
     @staticmethod
     def _get_alt_cfg(cfg_merge):
@@ -200,5 +187,8 @@ class IonIntegrationTestCase(unittest.TestCase):
         patcher = patch.dict(cfg_obj_or_str, *args, **kwargs)
         patcher.start()
         self.addCleanup(patcher.stop)
+
+# Name alias
+IonIntegrationTestCase = IntegrationTestCase
 
 initialize_ion_int_tests()

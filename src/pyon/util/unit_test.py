@@ -3,14 +3,15 @@
 """Unit test base class and utils"""
 
 from copy import deepcopy
-import os
 from mock import Mock, mocksignature, patch, DEFAULT
 import unittest
+from unittest import SkipTest
 from zope.interface import implementedBy
 
 from pyon.core.bootstrap import IonObject, bootstrap_pyon, get_service_registry, CFG
 from pyon.util.containers import dict_merge, DotDict
 from pyon.util.file_sys import FileSystem
+
 
 bootstrap_pyon()
 
@@ -30,25 +31,23 @@ def pop_last_call(mock):
         mock.called = False
     mock.call_count -= 1
 
-class PyonTestCase(unittest.TestCase):
+
+class UnitTestCase(unittest.TestCase):
+    SkipTest = SkipTest
+
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-
         self.addCleanup(self._file_sys_clean)
-    # Call this function at the beginning of setUp if you need a mock ion
-    # obj
 
-    # @see
-    # http://www.saltycrane.com/blog/2012/07/how-prevent-nose-unittest-using-docstring-when-verbosity-2/
     def shortDescription(self):
+        # @see http://www.saltycrane.com/blog/2012/07/how-prevent-nose-unittest-using-docstring-when-verbosity-2/
         return None
 
-    # override __str__ and __repr__ behavior to show a copy-pastable nosetest name for ion tests
-    #  ion.module:TestClassName.test_function_name
+    # override __str__ and __repr__ behavior to show a copy-pastable nosetest name for tests
+    #  pack.module:TestClassName.test_function_name
     def __repr__(self):
         name = self.id()
         name = name.split('.')
-        #return "%s (%s)" % (name[-1], '.'.join(name[:-1]))
         return "%s ( %s )" % (name[-1], '.'.join(name[:-2]) + ":" + '.'.join(name[-2:]))
     __str__ = __repr__
 
@@ -68,7 +67,6 @@ class PyonTestCase(unittest.TestCase):
         FileSystem._clean(CFG)
 
 
-
     def _create_service_mock(self, service_name):
         # set self.clients if not already set
         clients = Mock(name='clients')
@@ -83,7 +81,7 @@ class PyonTestCase(unittest.TestCase):
             mock_service = Mock(name='clients.%s' % dep_name,
                     spec=dep_service)
             setattr(clients, dep_name, mock_service)
-            # set self.dep_name for conevenience
+            # set self.dep_name for convenience
             setattr(self, dep_name, mock_service)
             self.addCleanup(delattr, self, dep_name)
             iface = list(implementedBy(dep_service))[0]
@@ -142,5 +140,6 @@ class PyonTestCase(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-# Alias to make name less Pyon specific
-IonUnitTestCase = PyonTestCase
+# Aliases
+IonUnitTestCase = UnitTestCase
+PyonTestCase = UnitTestCase
