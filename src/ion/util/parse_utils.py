@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Common utilities to parse external input, e.g. for preload"""
+"""Common utilities to parse external input, e.g. for preload and service gateway"""
 
 __author__ = 'Michael Meisinger, Ian Katz'
 
@@ -13,100 +13,136 @@ from interface import objects
 
 def get_typed_value(value, schema_entry=None, targettype=None, strict=False):
     """
-    Performs a value type conversion according to a schema entry or specified target type.
-    Supports simplelist and parsedict special type parsing.
-    @param strict  if True, raise error of not direct match
+    Performs a value type check or conversion according to a schema entry or specified target type.
+    Supports simplelist and parsedict special type parsing from strings.
+    @param strict  if True, raise error of type does not match
     """
+    if not schema_entry and not targettype:
+        raise BadRequest("Invalid schema or targettype")
     targettype = targettype or schema_entry["type"]
     if schema_entry and 'enum_type' in schema_entry:
         enum_clzz = getattr(objects, schema_entry['enum_type'])
-        return enum_clzz._value_map[value]
+        if type(value).__name__ == targettype and value in enum_clzz._str_map:
+            return value
+        if isinstance(value, basestring):
+            if strict and value in enum_clzz._value_map:
+                return enum_clzz._value_map[value]
+            elif not strict:
+                if value in enum_clzz._value_map:
+                    return enum_clzz._value_map[value]
+                for enum_key, enum_val in enum_clzz._value_map.iteritems():
+                    if enum_key.lower() == value.lower():
+                        return enum_val
+        raise BadRequest("Value %s is not valid enum value" % value)
+
     elif targettype == 'str':
         if type(value) is str:
             return value
-        if type(value) is unicode:
+        elif type(value) is unicode:
             return value.encode("utf8")
-        if not strict:
-            return str(value)
-        raise BadRequest("Value %s is no str" % value)
+        if strict:
+            raise BadRequest("Value %s is type %s not str" % (value, type(value).__name__))
+        return str(value)
+
     elif targettype == 'bool':
-        if value in ('TRUE', 'True', 'true', True):
+        if type(value) is bool:
+            return value
+        if strict:
+            raise BadRequest("Value %s is type %s not bool" % (value, type(value).__name__))
+        if value in ('TRUE', 'True', 'true', '1', 1):
             return True
-        if value in ('FALSE', 'False', 'false', False):
+        elif value in ('FALSE', 'False', 'false', '0', 0, '', None):
             return False
-        if not strict and value in ('1', 1):
-            return True
-        if not strict and value in ('0', 0, '', None):
-            return False
-        raise BadRequest("Value %s is no bool" % value)
+        raise BadRequest("Value %s cannot be converted to bool" % value)
+
     elif targettype == 'int':
         if type(value) in (int, long):
             return value
-        if not strict:
-            try:
-                return int(value)
-            except Exception:
-                pass
-        raise BadRequest("Value %s is type %s not int" % (value, type(value)))
+        if strict:
+            raise BadRequest("Value %s is type %s not int" % (value, type(value).__name__))
+        try:
+            return int(value)
+        except Exception:
+            pass
+        raise BadRequest("Value %s cannot be converted to int" % value)
+
     elif targettype == 'float':
         if type(value) == float:
             return value
-        if not strict:
-            try:
-                return float(value)
-            except Exception:
-                pass
-        raise BadRequest("Value %s is type %s not float" % (value, type(value)))
+        if strict:
+            raise BadRequest("Value %s is type %s not float" % (value, type(value).__name__))
+        try:
+            return float(value)
+        except Exception:
+            pass
+        raise BadRequest("Value %s cannot be converted to float" % value)
+
     elif targettype == 'simplelist':
-        return parse_list(value)
+        if isinstance(value, basestring):
+            return parse_list(value)
+        raise BadRequest("Value %s cannot be converted to list as simplelist" % value)
+
     elif targettype == 'parsedict':
-        return parse_dict(str(value))
+        if isinstance(value, basestring):
+            return parse_dict(value)
+        raise BadRequest("Value %s cannot be converted to dict as parsedict" % value)
+
     elif targettype == 'list':
         if type(value) is list:
             return value
-        if not strict and (isinstance(value, tuple) or isinstance(value, set)):
+        if strict:
+            raise BadRequest("Value %s is type %s not list" % (value, type(value).__name__))
+        if isinstance(value, (tuple, set)):
             return list(value)
-        try:
-            ret_val = ast.literal_eval(value)
-        except Exception:
-            ret_val = None
-        if isinstance(ret_val, list):
-            return ret_val
-        if not strict:
-            if isinstance(ret_val, tuple):
+        elif isinstance(value, basestring):
+            try:
+                ret_val = ast.literal_eval(value)
+            except Exception:
+                ret_val = None
+            if isinstance(ret_val, list):
+                return ret_val
+            elif isinstance(ret_val, tuple):
                 return list(ret_val)
-            elif isinstance(value, basestring):
-                return parse_list(value)
-            else:
-                return [value]
-        raise BadRequest("Value %s is type %s not list" % (value, type(value)))
+        if isinstance(value, basestring):
+            return parse_list(value)
+        else:
+            return [value]
+
     elif targettype == 'dict':
         if type(value) is dict:
             return value
-        if not strict and isinstance(value, dict):
+        if strict:
+            raise BadRequest("Value %s is type %s not dict" % (value, type(value).__name__))
+        if isinstance(value, dict):
             return dict(value)
-        try:
-            ret_val = ast.literal_eval(value)
-        except Exception:
-            ret_val = None
-        if isinstance(ret_val, dict):
-            return ret_val
-        if not strict:
-            if isinstance(value, basestring):
-                return parse_dict(value)
-            return dict(value=value)
-        raise BadRequest("Value %s is type %s not dict" % (value, type(value)))
+        elif isinstance(value, basestring):
+            try:
+                ret_val = ast.literal_eval(value)
+            except Exception:
+                ret_val = None
+            if isinstance(ret_val, dict):
+                return ret_val
+            return parse_dict(value)
+        return dict(value=value)
+
     elif targettype == 'NoneType':
         if value is None:
             return None
         if not strict:
             if value in ("None", "NONE", "none", "Null", "NULL", "null", ""):
                 return None
-            return value
+            elif isinstance(value, basestring):
+                return ast.literal_eval(value)
+        return value
+
     elif targettype == 'ANY':
-        return ast.literal_eval(value)
+        if isinstance(value, basestring):
+            return ast.literal_eval(value)
+        return value
+
     else:
         raise BadRequest("Value %s cannot be converted to target type %s" % (value, targettype))
+
 
 def parse_list(value):
     """
@@ -119,6 +155,7 @@ def parse_list(value):
         return []
     return list(value.split(','))
 
+
 def parse_dict(text):
     """
     Parse a text string to obtain a dictionary of unquoted string keys and values.
@@ -129,26 +166,23 @@ def parse_dict(text):
     "{}" will be converted to {}
     "[]" will be converted to []
 
-    For example, an entry in preload would be this:
-
-    PARAMETERS.TXWAVESTATS: False,
-    PARAMETERS.TXREALTIME: True,
-    PARAMETERS.TXWAVEBURST: false,
-    SCHEDULER.ACQUIRE_STATUS: {},
-    SCHEDULER.CLOCK_SYNC: 48.2
-    SCHEDULER.VERSION.number: 3.0
-
-    which would translate back to
-    { "PARAMETERS": { "TXWAVESTATS": False, "TXREALTIME": True, "TXWAVEBURST": "false" },
-      "SCHEDULER": { "ACQUIRE_STATUS": { }, "CLOCK_SYNC", 48.2, "VERSION": {"number": "3.0"}}
-    }
+    For example, an entry could be this:
+      PARAMETERS.TXWAVESTATS: False,
+      PARAMETERS.TXREALTIME: True,
+      PARAMETERS.TXWAVEBURST: false,
+      SCHEDULER.ACQUIRE_STATUS: {},
+      SCHEDULER.CLOCK_SYNC: 48.2
+      SCHEDULER.VERSION.number: 3.0
+    which would translate back to:
+      { "PARAMETERS": { "TXWAVESTATS": False, "TXREALTIME": True, "TXWAVEBURST": "false" },
+        "SCHEDULER": { "ACQUIRE_STATUS": {}, "CLOCK_SYNC", 48.2, "VERSION": {"number": "3.0"}}
+      }
     """
 
     substitutions = {"{}": {}, "[]": [], "True": True, "False": False}
 
     def parse_value(some_val):
-        if some_val in substitutions:
-            return substitutions[some_val]
+        some_val = substitutions.get(some_val, some_val)
 
         try:
             int_val = int(some_val)
@@ -166,7 +200,6 @@ def parse_dict(text):
 
         return some_val
 
-
     def chomp_key_list(out_dict, keys, value):
         """
         turn keys like ['a', 'b', 'c', 'd'] and a value into
@@ -179,7 +212,7 @@ def parse_dict(text):
             if not key in dict_ptr:
                 dict_ptr[key] = {}
             else:
-                if type(dict_ptr[key]) != type({}):
+                if type(dict_ptr[key]) is not dict:
                     raise BadRequest("Building a dict in %s field, but it exists as %s already" %
                                          (key, type(dict_ptr[key])))
             dict_ptr = dict_ptr[key]
@@ -189,11 +222,11 @@ def parse_dict(text):
     if text is None:
         return out
 
-    pairs = text.split(',') # pairs separated by commas
+    pairs = text.split(',')  # pairs separated by commas
     for pair in pairs:
-        if 0 == pair.count(':'):
+        if pair.count(':') == 0:
             continue
-        fields = pair.split(':', 1) # pair separated by first colon
+        fields = pair.split(':', 1)  # pair separated by first colon
         key = fields[0].strip()
         value = fields[1].strip()
 

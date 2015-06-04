@@ -115,7 +115,7 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertIn(actor_id, resp_json["result"][0])
 
-        # Request as POST with params as form data
+        # Request as POST with params directly as form data
         payload = dict(restype="ActorIdentity", id_only=True)
         resp = session.post(self.sg_base_url + "/request/resource_registry/find_resources", data=payload)
         resp_json = self._assert_json_response(resp, None)

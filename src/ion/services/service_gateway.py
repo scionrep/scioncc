@@ -94,7 +94,9 @@ class ServiceGateway(object):
         self.service_blacklist = self.config.get_safe(CFG_PREFIX + ".service_blacklist") or []
         self.service_whitelist = self.config.get_safe(CFG_PREFIX + ".service_whitelist") or []
         self.no_login_whitelist = set(self.config.get_safe(CFG_PREFIX + ".no_login_whitelist") or [])
+
         self.set_cors_headers = self.config.get_safe(CFG_PREFIX + ".set_cors") is True
+        self.strict_types = self.config.get_safe(CFG_PREFIX + ".strict_types") is True
 
         # Swagger spec generation support
         self.swagger_cfg = self.config.get_safe(CFG_PREFIX + ".swagger_spec") or {}
@@ -568,38 +570,46 @@ class ServiceGateway(object):
         Returns a dict with the service request arguments, containing key params
         with the actual values for the service operation parameters.
         """
+        str_args = False
         request_args = {}
         if request.method == "POST" or request.method == "PUT":
             # Use only body args and ignore any args from query string
             if request.headers.get("content-type", "").startswith(CONT_TYPE_JSON):
+                # JSON body request
                 if request.data:
                     request_args = json_loads(request.data)
                     if GATEWAY_ARG_PARAMS not in request_args:
+                        # Magic fallback: Directly use JSON first level as args if params key not present
                         request_args = {GATEWAY_ARG_PARAMS: request_args}
             elif request.form:
-                # Form encoded
+                # Form encoded payload
                 if GATEWAY_ARG_JSON in request.form:
                     payload = request.form[GATEWAY_ARG_JSON]
                     request_args = json_loads(str(payload))
                     if GATEWAY_ARG_PARAMS not in request_args:
+                        # Magic fallback: Directly use JSON first level as args if params key not present
                         request_args = {GATEWAY_ARG_PARAMS: request_args}
                 else:
+                    # Fallback: Directly use form values
+                    str_args = True
                     request_args = {GATEWAY_ARG_PARAMS: request.form.to_dict(flat=True)}
             else:
                 # No args found in body
                 request_args = {GATEWAY_ARG_PARAMS: {}}
 
         elif request.method == "GET":
+            str_args = True
             REQ_ARGS_SPECIAL = {"authtoken", "timeout", "headers"}
             args_dict = request.args.to_dict(flat=True)
             request_args = {k: request.args[k] for k in args_dict if k in REQ_ARGS_SPECIAL}
             req_params = {k: request.args[k] for k in args_dict if k not in REQ_ARGS_SPECIAL}
             request_args[GATEWAY_ARG_PARAMS] = req_params
 
+        request_args["str_args"] = str_args   # Indicate downstream that args are str (GET or form encoded)
         #log.info("Request args: %s" % request_args)
         return request_args
 
-    def _get_typed_arg_value(self, given_value, param_def):
+    def _get_typed_arg_value(self, given_value, param_def, strict):
         """Returns a service operation argument value, based on a given value and param schema definition.
         """
         param_type = param_def["type"]
@@ -613,7 +623,7 @@ class ServiceGateway(object):
         elif is_ion_object_dict(given_value) and (param_type == "NoneType" or hasattr(objects, param_type)):
             return self.create_ion_object(given_value)
         elif param_type in ("str", "bool", "int", "float", "list", "dict", "NoneType"):
-            arg_val = get_typed_value(given_value, targettype=param_type, strict=False)
+            arg_val = get_typed_value(given_value, targettype=param_type, strict=strict)
             return arg_val
         else:
             raise BadRequest("Cannot convert param value to type %s" % param_type)
@@ -631,16 +641,18 @@ class ServiceGateway(object):
             if svc_op_param_list:
                 fill_par = svc_op_param_list[0]
                 fill_par_def = service_op_schema["in"][fill_par]
-                arg_val = self._get_typed_arg_value(id_param, fill_par_def)
+                arg_val = self._get_typed_arg_value(id_param, fill_par_def, strict=False)
                 svc_params[fill_par] = arg_val
             return svc_params
 
         request_args = request_args or {}
+        # Cannot be strict for a URL string query arguments or directly form encoded
+        strict_types = False if request_args.get("str_args", False) else self.strict_types
         req_op_args = request_args.get(GATEWAY_ARG_PARAMS, None) or {}
         for param_name in svc_op_param_list:
             param_def = service_op_schema["in"][param_name]
             if param_name in req_op_args:
-                arg_val = self._get_typed_arg_value(req_op_args[param_name], param_def)
+                arg_val = self._get_typed_arg_value(req_op_args[param_name], param_def, strict=strict_types)
                 svc_params[param_name] = arg_val
         if "timeout" in request_args:
             svc_params["timeout"] = float(request_args["timeout"])
