@@ -6,60 +6,115 @@ __author__ = 'Michael Meisinger, Ian Katz'
 
 import ast
 
-from pyon.public import iex, IonObject, log
+from pyon.public import BadRequest, IonObject, log
 
 from interface import objects
 
 
-def get_typed_value(value, schema_entry=None, targettype=None):
+def get_typed_value(value, schema_entry=None, targettype=None, strict=False):
     """
-    Performs a value type conversion according to a schema specified target type.
+    Performs a value type conversion according to a schema entry or specified target type.
     Supports simplelist and parsedict special type parsing.
+    @param strict  if True, raise error of not direct match
     """
     targettype = targettype or schema_entry["type"]
     if schema_entry and 'enum_type' in schema_entry:
         enum_clzz = getattr(objects, schema_entry['enum_type'])
         return enum_clzz._value_map[value]
     elif targettype == 'str':
+        if type(value) is str:
+            return value
         if type(value) is unicode:
             return value.encode("utf8")
-        return str(value)
+        if not strict:
+            return str(value)
+        raise BadRequest("Value %s is no str" % value)
     elif targettype == 'bool':
-        if value in ('TRUE', 'True', 'true', '1', 1, True):
+        if value in ('TRUE', 'True', 'true', True):
             return True
-        if value in ('FALSE', 'False', 'false', '0', 0, '', None, False):
+        if value in ('FALSE', 'False', 'false', False):
             return False
-        raise iex.BadRequest("Value %s is no bool" % value)
+        if not strict and value in ('1', 1):
+            return True
+        if not strict and value in ('0', 0, '', None):
+            return False
+        raise BadRequest("Value %s is no bool" % value)
     elif targettype == 'int':
-        try:
-            return int(value)
-        except Exception:
-            log.warn("Value %s is type %s not type %s" % (value, type(value), targettype))
-            return ast.literal_eval(value)
+        if type(value) in (int, long):
+            return value
+        if not strict:
+            try:
+                return int(value)
+            except Exception:
+                pass
+        raise BadRequest("Value %s is type %s not int" % (value, type(value)))
     elif targettype == 'float':
-        try:
-            return float(value)
-        except Exception:
-            log.warn("Value %s is type %s not type %s" % (value, type(value), targettype))
-            return ast.literal_eval(value)
+        if type(value) == float:
+            return value
+        if not strict:
+            try:
+                return float(value)
+            except Exception:
+                pass
+        raise BadRequest("Value %s is type %s not float" % (value, type(value)))
     elif targettype == 'simplelist':
         return parse_list(value)
     elif targettype == 'parsedict':
         return parse_dict(str(value))
-    elif targettype == 'list' and type(value) is list:
-        return value
-    elif targettype == 'dict' and type(value) is dict:
-        return value
-    else:
-        log.trace('parsing value as %s: %s', targettype, value)
+    elif targettype == 'list':
+        if type(value) is list:
+            return value
+        if not strict and (isinstance(value, tuple) or isinstance(value, set)):
+            return list(value)
+        try:
+            ret_val = ast.literal_eval(value)
+        except Exception:
+            ret_val = None
+        if isinstance(ret_val, list):
+            return ret_val
+        if not strict:
+            if isinstance(ret_val, tuple):
+                return list(ret_val)
+            elif isinstance(value, basestring):
+                return parse_list(value)
+            else:
+                return [value]
+        raise BadRequest("Value %s is type %s not list" % (value, type(value)))
+    elif targettype == 'dict':
+        if type(value) is dict:
+            return value
+        if not strict and isinstance(value, dict):
+            return dict(value)
+        try:
+            ret_val = ast.literal_eval(value)
+        except Exception:
+            ret_val = None
+        if isinstance(ret_val, dict):
+            return ret_val
+        if not strict:
+            if isinstance(value, basestring):
+                return parse_dict(value)
+            return dict(value=value)
+        raise BadRequest("Value %s is type %s not dict" % (value, type(value)))
+    elif targettype == 'NoneType':
+        if value is None:
+            return None
+        if not strict:
+            if value in ("None", "NONE", "none", "Null", "NULL", "null", ""):
+                return None
+            return value
+    elif targettype == 'ANY':
         return ast.literal_eval(value)
+    else:
+        raise BadRequest("Value %s cannot be converted to target type %s" % (value, targettype))
 
 def parse_list(value):
     """
     Parse a string to extract a simple list of string values.
+    Assumes comma separated values optionally within []
     """
     if value.startswith('[') and value.endswith(']'):
-        value = value[1:len(value)-1].strip()
+        value = value[1:-1].strip()
     elif not value.strip():
         return []
     return list(value.split(','))
@@ -125,13 +180,12 @@ def parse_dict(text):
                 dict_ptr[key] = {}
             else:
                 if type(dict_ptr[key]) != type({}):
-                    raise iex.BadRequest("Building a dict in %s field, but it exists as %s already" %
+                    raise BadRequest("Building a dict in %s field, but it exists as %s already" %
                                          (key, type(dict_ptr[key])))
             dict_ptr = dict_ptr[key]
         last_ptr[keys[-1]] = value
 
-
-    out = { }
+    out = {}
     if text is None:
         return out
 
@@ -145,7 +199,6 @@ def parse_dict(text):
 
         keyparts = key.split(".")
         chomp_key_list(out, keyparts, parse_value(value))
-
 
     return out
 
