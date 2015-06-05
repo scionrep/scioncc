@@ -183,7 +183,7 @@ def get_obj_geospatial_bounds(doc, calculate=True, return_geo_bounds=False):
         # Set bounds from center point
         present, (lat, lon, elev) = get_obj_geospatial_point(doc, False)
         if present:
-            return True, ((lat, lon), )  # Polygon with 1 point
+            return True, ((lat, lon), (lat, lon), (lat, lon), (lat, lon))  # Polygon with 4 point (otherwise error)
 
     return False, None
 
