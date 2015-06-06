@@ -7,7 +7,6 @@ class TargetException(ApplicationException):
 
     def __init__(self, *args, **kwargs):
         super(TargetException, self).__init__(*args, **kwargs)
-        self.drop_chained_init_frame()
 
 
 class TestException(UtilTest):
