@@ -65,6 +65,12 @@ class InterfaceAdmin:
         """
         Main entry point into storing system config
         """
+        # Register some default keys
+        self.dir.register_safe("/", "Agents", description="Running agents", create_only=True)
+        self.dir.register_safe("/", "Config", description="System configuration", create_only=True)
+        self.dir.register_safe("/", "System", description="System management information", create_only=True)
+        self.dir.register_safe("/System", "Locks", description="System exclusive locks", create_only=True)
+
         de = self.dir.lookup(self.DIR_CONFIG_PATH + "/CFG")
         if de:
             print "store_interfaces: Updating system config in directory..."

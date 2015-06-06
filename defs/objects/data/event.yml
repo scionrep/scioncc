@@ -59,6 +59,27 @@ ResourceIssueReportedEvent: !Extends_ResourceEvent
 
 
 # ------------------------------------------------------------------------------------
+# Directory Events
+# Events about the registration of an entry in the directory
+#
+# origin: set to the org_id + ".DIR"
+# sub_type: event specific
+# ------------------------------------------------------------------------------------
+
+# Base type for directory related events in the system.
+DirectoryEvent: !Extends_Event
+---
+
+# Event indicating that directory attributes were changed or the entry was created or deleted.
+# sub_type: REGISTER/UNREGISTER.path.to.parent
+DirectoryModifiedEvent: !Extends_DirectoryEvent
+  org: ""
+  parent: ""
+  key: ""
+  mod_type: !enum (name=DirectoryModificationType, values=(CREATE, UPDATE, DELETE), default=CREATE)
+---
+
+# ------------------------------------------------------------------------------------
 # Agent Events
 # Events about an agent in the system (but not about the controlled device or the registry entry)
 # origin: the resource_id of the agent

@@ -965,8 +965,19 @@ class PostgresDataStore(DataStore):
             org = key[0]
             entry = key[1]
             parent = key[2]
-            query_args.update(dict(org=org, parent=parent, key=entry))
-            query_clause += "org=%(org)s AND parent=%(parent)s AND key=%(key)s"
+            if type(entry) in (list, tuple):
+                # directory entry key is a list - search for multiple
+                query_args.update(dict(org=org, parent=parent))
+                query_clause += "org=%(org)s AND parent=%(parent)s AND key IN ("
+                for i, entry1 in enumerate(entry):
+                    if i > 0:
+                        query_clause += ","
+                    query_args["key"+str(i)] = entry1
+                    query_clause += "%(key"+str(i)+")s"
+                query_clause += ")"
+            else:
+                query_args.update(dict(org=org, parent=parent, key=entry))
+                query_clause += "org=%(org)s AND parent=%(parent)s AND key=%(key)s"
         elif view_name == "by_key" and start_key:
             org = start_key[0]
             entry = start_key[1]

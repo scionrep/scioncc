@@ -21,7 +21,8 @@ CREATE TABLE "%(ds)s_assoc" (id varchar(300) PRIMARY KEY, rev int, doc json,
 GRANT SELECT, INSERT, UPDATE, DELETE on "%(ds)s_assoc" TO ion;
 
 CREATE TABLE "%(ds)s_dir" (id varchar(300) PRIMARY KEY, rev int, doc json,
-    org varchar(60), parent varchar(300), key varchar(300));
+    org varchar(60), parent varchar(300), key varchar(300),
+    CONSTRAINT "%(ds)s_dir_entry_unique" UNIQUE (org, parent, key));
 
 GRANT SELECT, INSERT, UPDATE, DELETE on "%(ds)s_dir" TO ion;
 

@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+"""Minimal set of directory functions directly against the datastore, working before Pyon/Container are started"""
+
 __author__ = 'Seman Said, Michael Meisinger'
 
-from pyon.core.exception import NotFound, BadRequest, Inconsistent
+from pyon.core.exception import NotFound, BadRequest, Inconsistent, Conflict
 from pyon.datastore.datastore_common import DatastoreFactory, DataStore
 from pyon.ion.identifier import create_unique_directory_id
 from pyon.util.containers import get_ion_ts, get_default_sysname, get_safe
@@ -23,6 +25,119 @@ class DirectoryStandalone(object):
     def close(self):
         self.datastore.close()
         self.datastore = None
+
+    # -------------------------------------------------------------------------
+    # Directory register, lookup and find
+
+    def lookup(self, parent, key=None, return_entry=False):
+        """
+        Read entry residing in directory at parent node level.
+        """
+        path = self._get_path(parent, key) if key else parent
+        direntry = self._read_by_path(path)
+        if return_entry:
+            return direntry
+        else:
+            return direntry['attributes'] if direntry else None
+
+
+    def register(self, parent, key, create_only=False, ensure_parents=True, **kwargs):
+        """
+        Add/replace an entry within directory, below a parent node or "/".
+        Note: Replaces (not merges) the attribute values of the entry if existing
+        @retval  DirEntry if previously existing
+        """
+        if not (parent and key):
+            raise BadRequest("Illegal arguments")
+        if not type(parent) is str or not parent.startswith("/"):
+            raise BadRequest("Illegal arguments: parent")
+
+        dn = self._get_path(parent, key)
+
+        entry_old = None
+        direntry = self._read_by_path(dn)
+        cur_time = get_ion_ts()
+
+        if direntry and create_only:
+            # We only wanted to make sure entry exists. Do not change
+            return direntry
+        elif direntry:
+            # Change existing entry's attributes
+            entry_old = direntry.get('attributes')
+            direntry['attributes'] = kwargs
+            direntry['ts_updated'] = cur_time
+            try:
+                self.datastore.update_doc(direntry)
+            except Conflict:
+                # Concurrent update - we accept that we finished the race second and give up
+                pass
+        else:
+            doc = self._create_dir_entry(object_id=create_unique_directory_id(), parent=parent, key=key,
+                attributes=kwargs)
+            if ensure_parents:
+                self._ensure_parents_exist([doc])
+            try:
+                self.datastore.create_doc(doc)
+            except BadRequest as ex:
+                if not ex.message.endswith("already exists"):
+                    raise
+                # Concurrent create - we accept that we finished the race second and give up
+
+        return entry_old
+
+    def register_safe(self, parent, key, **kwargs):
+        """
+        Use this method to protect caller from any form of directory register error
+        """
+        try:
+            return self.register(parent, key, **kwargs)
+        except Exception as ex:
+            pass
+
+    def register_mult(self, entries):
+        """
+        Registers multiple directory entries efficiently in one datastore access.
+        Note: this fails of entries are currently existing, so works for create only.
+        """
+        if type(entries) not in (list, tuple):
+            raise BadRequest("Bad entries type")
+        de_list = []
+        cur_time = get_ion_ts()
+        for parent, key, attrs in entries:
+            de = self._create_dir_entry(object_id=create_unique_directory_id(), parent=parent, key=key,
+                attributes=attrs, ts_created=cur_time, ts_updated=cur_time)
+            de_list.append(de)
+        pe_list = self._ensure_parents_exist(de_list, create=False)
+        self.datastore.create_doc_mult(pe_list + de_list)
+
+    def find_child_entries(self, parent='/', direct_only=True, **kwargs):
+        """
+        Return all child entries (ordered by path) for the given parent path.
+        Does not return the parent itself. Optionally returns child of child entries.
+        Additional kwargs are applied to constrain the search results (limit, descending, skip).
+        @param parent  Path to parent (must start with "/")
+        @param direct_only  If False, includes child of child entries
+        @retval  A list of DirEntry objects for the matches
+        """
+        if not type(parent) is str or not parent.startswith("/"):
+            raise BadRequest("Illegal argument parent: %s" % parent)
+        if direct_only:
+            start_key = [self.orgname, parent, 0]
+            end_key = [self.orgname, parent]
+            res = self.datastore.find_docs_by_view('directory', 'by_parent',
+                start_key=start_key, end_key=end_key, id_only=True, **kwargs)
+        else:
+            path = parent[1:].split("/")
+            start_key = [self.orgname, path, 0]
+            end_key = [self.orgname, list(path) + ["ZZZZZZ"]]
+            res = self.datastore.find_docs_by_view('directory', 'by_path',
+                start_key=start_key, end_key=end_key, id_only=True, **kwargs)
+
+        match = [value for docid, indexkey, value in res]
+        return match
+
+    # -------------------------------------------------------------------------
+    # Internal functions
 
     def _get_path(self, parent, key):
         """
@@ -61,17 +176,6 @@ class DirectoryStandalone(object):
             return view_res[0][2]  # First value
         return None
 
-    def lookup(self, parent, key=None, return_entry=False):
-        """
-        Read entry residing in directory at parent node level.
-        """
-        path = self._get_path(parent, key) if key else parent
-        direntry = self._read_by_path(path)
-        if return_entry:
-            return direntry
-        else:
-            return direntry['attributes'] if direntry else None
-
     def _get_unique_parents(self, entry_list):
         """Returns a sorted, unique list of parents of DirEntries (excluding the root /)"""
         if entry_list and type(entry_list) not in (list, tuple):
@@ -94,60 +198,15 @@ class DirectoryStandalone(object):
                     doc = self._create_dir_entry(object_id=create_unique_directory_id(), parent=pp, key=pk)
                     pe_list.append(doc)
                     if create:
-                        self.datastore.create_doc(doc)
+                        try:
+                            self.datastore.create_doc(doc)
+                        except BadRequest as ex:
+                            if not ex.message.endswith("already exists"):
+                                raise
+                            # Else: Concurrent create
         except Exception as ex:
             print "_ensure_parents_exist(): Error creating directory parents", ex
         return pe_list
-
-    def register(self, parent, key, create_only=False, **kwargs):
-        """
-        Add/replace an entry within directory, below a parent node or "/".
-        Note: Replaces (not merges) the attribute values of the entry if existing
-        @retval  DirEntry if previously existing
-        """
-        if not (parent and key):
-            raise BadRequest("Illegal arguments")
-        if not type(parent) is str or not parent.startswith("/"):
-            raise BadRequest("Illegal arguments: parent")
-
-        dn = self._get_path(parent, key)
-
-        entry_old = None
-        direntry = self._read_by_path(dn)
-        cur_time = get_ion_ts()
-
-        if direntry and create_only:
-            # We only wanted to make sure entry exists. Do not change
-            return direntry
-        elif direntry:
-            # Change existing entry's attributes
-            entry_old = direntry.get('attributes')
-            direntry['attributes'] = kwargs
-            direntry['ts_updated'] = cur_time
-            self.datastore.update_doc(direntry)
-        else:
-            doc = self._create_dir_entry(object_id=create_unique_directory_id(), parent=parent, key=key,
-                attributes=kwargs)
-            self._ensure_parents_exist([doc])
-            self.datastore.create_doc(doc)
-
-        return entry_old
-
-    def register_mult(self, entries):
-        """
-        Registers multiple directory entries efficiently in one datastore access.
-        Note: this fails of entries are currently existing, so works for create only.
-        """
-        if type(entries) not in (list, tuple):
-            raise BadRequest("Bad entries type")
-        de_list = []
-        cur_time = get_ion_ts()
-        for parent, key, attrs in entries:
-            de = self._create_dir_entry(object_id=create_unique_directory_id(), parent=parent, key=key,
-                attributes=attrs, ts_created=cur_time, ts_updated=cur_time)
-            de_list.append(de)
-        pe_list = self._ensure_parents_exist(de_list, create=False)
-        self.datastore.create_doc_mult(pe_list + de_list)
 
     def _update_dir_entry(self, doc, parent, key, attributes=None, ts_updated=''):
         doc['attributes'] = attributes or {}
@@ -167,29 +226,3 @@ class DirectoryStandalone(object):
         doc['ts_created'] = ts_created or get_ion_ts()
         doc['ts_updated'] = ts_updated or get_ion_ts()
         return doc
-
-    def find_child_entries(self, parent='/', direct_only=True, **kwargs):
-        """
-        Return all child entries (ordered by path) for the given parent path.
-        Does not return the parent itself. Optionally returns child of child entries.
-        Additional kwargs are applied to constrain the search results (limit, descending, skip).
-        @param parent  Path to parent (must start with "/")
-        @param direct_only  If False, includes child of child entries
-        @retval  A list of DirEntry objects for the matches
-        """
-        if not type(parent) is str or not parent.startswith("/"):
-            raise BadRequest("Illegal argument parent: %s" % parent)
-        if direct_only:
-            start_key = [self.orgname, parent, 0]
-            end_key = [self.orgname, parent]
-            res = self.datastore.find_docs_by_view('directory', 'by_parent',
-                start_key=start_key, end_key=end_key, id_only=True, **kwargs)
-        else:
-            path = parent[1:].split("/")
-            start_key = [self.orgname, path, 0]
-            end_key = [self.orgname, list(path) + ["ZZZZZZ"]]
-            res = self.datastore.find_docs_by_view('directory', 'by_path',
-                start_key=start_key, end_key=end_key, id_only=True, **kwargs)
-
-        match = [value for docid, indexkey, value in res]
-        return match
