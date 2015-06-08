@@ -160,7 +160,7 @@ class Directory(object):
                                                  sub_type="REGISTER." + parent[1:].replace("/", "."),
                                                  mod_type=DirectoryModificationType.CREATE)
             except BadRequest as ex:
-                if not ex.message.endswith("already exists"):
+                if not ex.message.startswith("DirEntry already exists"):
                     raise
                 # Concurrent create - we accept that we finished the race second and give up
                 log.warn("Concurrent create of %s detected. We lost: %s", dn, kwargs)
@@ -326,7 +326,7 @@ class Directory(object):
             self.dir_store.create(direntry, create_unique_directory_id())
             lock_result = True
         except BadRequest as ex:
-            if ex.message.endswith("already exists"):
+            if ex.message.startswith("DirEntry already exists"):
                 de_old = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
                 if de_old:
                     if self._is_lock_expired(de_old):
@@ -498,7 +498,7 @@ class Directory(object):
                         try:
                             self.dir_store.create(direntry, create_unique_directory_id())
                         except BadRequest as ex:
-                            if not ex.message.endswith("already exists"):
+                            if not ex.message.startswith("DirEntry already exists"):
                                 raise
                             # Else: Concurrent create
         except Exception as ex:

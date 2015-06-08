@@ -16,7 +16,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE on "%(ds)s" TO ion;
 
 CREATE TABLE "%(ds)s_assoc" (id varchar(300) PRIMARY KEY, rev int, doc json,
     s varchar(300) REFERENCES %(ds)s (id) ON DELETE CASCADE, st varchar(80), p varchar(40),
-    o varchar(300) REFERENCES %(ds)s (id) ON DELETE CASCADE, ot varchar(80), retired boolean);
+    o varchar(300) REFERENCES %(ds)s (id) ON DELETE CASCADE, ot varchar(80), retired boolean,
+    CONSTRAINT "%(ds)s_assoc_entry_unique" UNIQUE (s, p, o));
 
 GRANT SELECT, INSERT, UPDATE, DELETE on "%(ds)s_assoc" TO ion;
 
@@ -72,7 +73,7 @@ CREATE INDEX "%(ds)s_all_full_idx" ON "%(ds)s" USING GIST (json_allattr(doc) gis
 
 
 -- Resource association table indexes
-CREATE INDEX "%(ds)s_assoc_s_idx" ON "%(ds)s_assoc" (s, p, o);
+--CREATE INDEX "%(ds)s_assoc_s_idx" ON "%(ds)s_assoc" (s, p, o);  -- Already in unique constraint
 
 CREATE INDEX "%(ds)s_assoc_st_idx" ON "%(ds)s_assoc" (st, p);
 

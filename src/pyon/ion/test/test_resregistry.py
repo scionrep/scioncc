@@ -60,6 +60,10 @@ class TestResourceRegistry(IonIntegrationTestCase):
 
         aid2,_ = self.rr.create_association(rid1, PRED.hasResource, rid3)
 
+        with self.assertRaises(BadRequest) as br:
+            self.rr.create_association(rid1, PRED.hasResource, rid3)
+        self.assertTrue(br.exception.message, "Association already exists")
+
         aid3,_ = self.rr.create_association(rid4, PRED.hasResource, rid3)
 
         with self.assertRaises(Inconsistent) as ex:

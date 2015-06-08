@@ -131,7 +131,7 @@ class TestDirectory(IonUnitTestCase):
         de1 = DirEntry(**de1_attrs)
         with self.assertRaises(BadRequest) as ex:
             de_id1,_ = directory.dir_store.create(de1)
-            self.assertTrue(ex.message.endswith("already exists"))
+            self.assertTrue(ex.message.startswith("DirEntry already exists"))
 
         res_list = directory.find_by_key("dupentry", parent="/some")
         self.assertEquals(1, len(res_list))

@@ -489,21 +489,16 @@ class ResourceRegistry(object):
             if not found_ot:
                 raise BadRequest("Illegal object type %s for predicate %s" % (object_type, predicate))
 
-        # Finally, ensure this isn't a duplicate
-        assoc_list = self.find_associations(subject_id, predicate, object_id, id_only=False)
-        if len(assoc_list) != 0:
-            assoc = assoc_list[0]
-            #print "**** Found associations:"
-            #import pprint
-            #pprint.pprint(assoc_list)
-            raise BadRequest("Association between %s and %s with predicate %s already exists" % (subject_id, object_id, predicate))
-
         assoc = IonObject("Association",
                           s=subject_id, st=subject_type,
                           p=predicate,
                           o=object_id, ot=object_type,
                           ts=get_ion_ts())
-        return self.rr_store.create(assoc, create_unique_association_id())
+
+        # Note: Unique key constraints prevents S, P, O duplicates
+        res = self.rr_store.create(assoc, create_unique_association_id())
+
+        return res
 
     def create_association_mult(self, assoc_list=None):
         """
@@ -563,8 +558,6 @@ class ResourceRegistry(object):
                         break
                 if not found_ot:
                     raise BadRequest("Illegal object type %s for predicate %s" % (new_o.type_, p))
-
-            # Skip duplicate check
 
             assoc = IonObject("Association",
                               s=new_s._id, st=new_s.type_,

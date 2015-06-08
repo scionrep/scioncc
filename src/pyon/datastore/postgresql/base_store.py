@@ -488,7 +488,13 @@ class PostgresDataStore(DataStore):
                 statement = "INSERT INTO " + table + " (id, rev, doc" + xcol + ") VALUES (%(id)s, 1, %(doc)s" + xval + ")"
                 cur.execute(statement, statement_args)
                 oid, version = doc["_id"], "1"
-            except IntegrityError:
+            except IntegrityError as ie:
+                if "_assoc_entry_unique" in ie.message:
+                    raise BadRequest("Association already exists: s=%s, p=%s, o=%s" % (
+                            doc.get("s", "?"), doc.get("p", "?"), doc.get("o", "?")))
+                elif "_dir_entry_unique" in ie.message:
+                    raise BadRequest("DirEntry already exists: %s:%s/%s" % (
+                            doc.get("org", "?"), doc.get("parent", "?"), doc.get("key", "?")))
                 raise BadRequest("Object with id %s already exists" % object_id)
 
         if attachments is not None:

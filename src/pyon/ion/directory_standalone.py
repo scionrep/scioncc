@@ -80,7 +80,7 @@ class DirectoryStandalone(object):
             try:
                 self.datastore.create_doc(doc)
             except BadRequest as ex:
-                if not ex.message.endswith("already exists"):
+                if not ex.message.startswith("DirEntry already exists"):
                     raise
                 # Concurrent create - we accept that we finished the race second and give up
 
@@ -202,7 +202,7 @@ class DirectoryStandalone(object):
                         try:
                             self.datastore.create_doc(doc)
                         except BadRequest as ex:
-                            if not ex.message.endswith("already exists"):
+                            if not ex.message.startswith("DirEntry already exists"):
                                 raise
                             # Else: Concurrent create
         except Exception as ex:
