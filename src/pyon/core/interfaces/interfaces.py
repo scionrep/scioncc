@@ -66,6 +66,7 @@ class InterfaceAdmin:
         Main entry point into storing system config
         """
         # Register some default keys
+        self.dir.register_safe("/", "DIR", sys_name=self.sysname)
         self.dir.register_safe("/", "Agents", description="Running agents", create_only=True)
         self.dir.register_safe("/", "Config", description="System configuration", create_only=True)
         self.dir.register_safe("/", "System", description="System management information", create_only=True)
@@ -101,7 +102,7 @@ class InterfaceAdmin:
             # load all files
             self.store_object_interfaces()
             self.store_service_interfaces()
-            self.store_config_files()
+            #self.store_config_files()
 
         self._register_bulk()
 

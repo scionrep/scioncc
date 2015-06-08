@@ -31,9 +31,6 @@ container:
   datastore:
     default_server: postgresql  # Which server connection (and type) to use as primary datastore
     server_types:               # Definition of the known server types and how to start them
-      couchdb:
-        base: pyon.datastore.couchdb.base_store.CouchDataStore
-        full: pyon.datastore.couchdb.datastore.CouchPyonDataStore
       postgresql:
         base: pyon.datastore.postgresql.base_store.PostgresDataStore
         full: pyon.datastore.postgresql.datastore.PostgresPyonDataStore

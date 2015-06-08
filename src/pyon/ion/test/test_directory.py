@@ -4,6 +4,7 @@ __author__ = 'Thomas R. Lennan, Michael Meisinger'
 __license__ = 'Apache 2.0'
 
 from nose.plugins.attrib import attr
+import gevent
 
 from pyon.util.unit_test import IonUnitTestCase
 from pyon.core.bootstrap import CFG
@@ -14,7 +15,7 @@ from pyon.ion.directory import Directory
 from interface.objects import DirEntry
 
 
-@attr('UNIT',group='datastore')
+@attr('UNIT', group='datastore')
 class TestDirectory(IonUnitTestCase):
 
     def test_directory(self):
@@ -23,14 +24,14 @@ class TestDirectory(IonUnitTestCase):
         ds.delete_datastore()
         ds.create_datastore()
 
-        directory = Directory(datastore_manager=dsm, events_enabled=False)
+        self.patch_cfg('pyon.ion.directory.CFG', {'service': {'directory': {'publish_events': False}}})
+
+        directory = Directory(datastore_manager=dsm)
         directory.start()
 
         #self.addCleanup(directory.dir_store.delete_datastore)
 
         objs = directory.dir_store.list_objects()
-        if CFG.get_safe("container.datastore.default_server", "couchdb").startswith("couch"):
-            self.assert_("_design/directory" in objs)
 
         root = directory.lookup("/DIR")
         self.assert_(root is not None)
@@ -38,7 +39,7 @@ class TestDirectory(IonUnitTestCase):
         entry = directory.lookup("/temp")
         self.assert_(entry is None)
 
-        entry_old = directory.register("/","temp")
+        entry_old = directory.register("/", "temp")
         self.assertEquals(entry_old, None)
 
         # Create a node
@@ -53,11 +54,11 @@ class TestDirectory(IonUnitTestCase):
 
         # The update case
         entry_old = directory.register("/temp", "entry1", foo="ingenious")
-        self.assertEquals(entry_old, {"foo":"awesome"})
+        self.assertEquals(entry_old, {"foo": "awesome"})
 
         # The delete case
         entry_old = directory.unregister("/temp", "entry1")
-        self.assertEquals(entry_old, {"foo":"ingenious"})
+        self.assertEquals(entry_old, {"foo": "ingenious"})
         entry_new = directory.lookup("/temp/entry1")
         self.assertEquals(entry_new, None)
 
@@ -141,7 +142,9 @@ class TestDirectory(IonUnitTestCase):
         ds.delete_datastore()
         ds.create_datastore()
 
-        directory = Directory(datastore_manager=dsm, events_enabled=False)
+        self.patch_cfg('pyon.ion.directory.CFG', {'service': {'directory': {'publish_events': False}}})
+
+        directory = Directory(datastore_manager=dsm)
         directory.start()
 
         lock1 = directory.acquire_lock("LOCK1", lock_info=dict(process="proc1"))
@@ -163,5 +166,42 @@ class TestDirectory(IonUnitTestCase):
 
         lock1 = directory.acquire_lock("LOCK1", lock_info=dict(process="proc3"))
         self.assertEquals(lock1, True)
+
+        # TEST: With lock holders
+
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc1")
+        self.assertEquals(lock5, True)
+
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc1")
+        self.assertEquals(lock5, True)
+
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2")
+        self.assertEquals(lock5, False)
+
+        directory.release_lock("LOCK5")
+
+        # TEST: Timeout
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc1", timeout=100)
+        self.assertEquals(lock5, True)
+
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2")
+        self.assertEquals(lock5, False)
+
+        res = directory.is_locked("LOCK5")
+        self.assertEquals(res, True)
+
+        gevent.sleep(0.15)
+
+        res = directory.is_locked("LOCK5")
+        self.assertEquals(res, False)
+
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2", timeout=100)
+        self.assertEquals(lock5, True)
+
+        gevent.sleep(0.15)
+
+        # TEST: Holder self renew
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2", timeout=100)
+        self.assertEquals(lock5, True)
 
         directory.stop()

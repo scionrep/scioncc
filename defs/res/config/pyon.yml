@@ -267,6 +267,9 @@ service:
   resource_management:
     max_search_results: 250
 
+  directory:
+    publish_events: False
+
   service_gateway:
     trusted_originators: []  # Optional list of trusted addresses; an empty list means open system
     service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible

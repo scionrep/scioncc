@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Directory for system config and registrations in a directory tree"""
+"""System wide directory for config and registrations"""
 
 __author__ = 'Thomas R. Lennan, Michael Meisinger'
 
@@ -12,22 +12,26 @@ from pyon.datastore.datastore import DataStore
 from pyon.ion.event import EventPublisher, EventSubscriber
 from pyon.ion.identifier import create_unique_directory_id
 from pyon.util.log import log
-from pyon.util.containers import get_ion_ts
+from pyon.util.containers import get_ion_ts, get_ion_ts_millis
 
 from interface.objects import DirEntry, DirectoryModificationType
+
+LOCK_DIR_PATH = "/System/Locks"
+LOCK_EXPIRES_ATTR = "expires"
+LOCK_EXPIRES_DEFAULT = 5000
+LOCK_EXPIRES_NEVER = 0
+LOCK_HOLDER_ATTR = "holder"
 
 
 class Directory(object):
     """
     Frontend to a directory functionality backed by a datastore.
-    Terms:
-      directory: instance of a Directory, representing entries within one Org. A tree of entries.
-      path: parent+key (= qualified name of an entry). All paths start with '/'
-      entry: node in the directory tree with a name (key) and parent path, holding arbitrary attributes
-      key: local name of an entry
+    A directory is a system wide datastore backend tree of entries with attributes and child entries.
+    Entries can be identified by a path. The root is '/'.
+    Every Org can have its own directory. The default directory is for the root Org (ION).
     """
 
-    def __init__(self, orgname=None, datastore_manager=None, events_enabled=False, container=None):
+    def __init__(self, orgname=None, datastore_manager=None, container=None):
         self.container = container or bootstrap.container_instance
         # Get an instance of datastore configured as directory.
         datastore_manager = datastore_manager or self.container.datastore_manager
@@ -35,19 +39,12 @@ class Directory(object):
 
         self.orgname = orgname or CFG.system.root_org
         self.is_root = (self.orgname == CFG.system.root_org)
+        self.events_enabled = CFG.get_safe("service.directory.publish_events") is True   # Publish change events?
 
-        self.events_enabled = events_enabled
         self.event_pub = None
         self.event_sub = None
 
     def start(self):
-        # Create directory root entry (for current org) if not existing
-        if CFG.system.auto_bootstrap:
-            root_de = self.register("/", "DIR", sys_name=bootstrap.get_sys_name())
-            if root_de is None:
-                # We created this directory just now
-                pass
-
         if self.events_enabled:
             # init change event publisher
             self.event_pub = EventPublisher()
@@ -58,8 +55,7 @@ class Directory(object):
             #                                  callback=self.receive_directory_change_event)
 
         # Create directory root entry (for current org) if not existing
-        if CFG.system.auto_bootstrap:
-            self.register("/", "DIR", sys_name=bootstrap.get_sys_name())
+        self.register("/", "DIR", sys_name=bootstrap.get_sys_name(), create_only=True)
 
     def stop(self):
         self.close()
@@ -103,9 +99,9 @@ class Directory(object):
     def register(self, parent, key, create_only=False, return_entry=False, ensure_parents=True, **kwargs):
         """
         Add/replace an entry within directory, below a parent node or "/" root.
-        Note: Replaces (not merges) the attribute values of the entry if existing. No optimistic locking exists.
-        register will back off when a concurrent write was detected, meaning that the other writer wins.
-        @param create_only  If True, does not change an existing entry
+        Note: Replaces (not merges) the attribute values of the entry if existing.
+        register will fail when a concurrent write was detected, meaning that the other writer wins.
+        @param create_only  If True, does not change an already existing entry
         @param return_entry  If True, returns DirEntry object of prior entry, otherwise DirEntry attributes dict
         @param ensure_parents  If True, make sure that parent nodes exist
         @retval  DirEntry if previously existing
@@ -141,7 +137,7 @@ class Directory(object):
                                                  mod_type=DirectoryModificationType.UPDATE)
             except Conflict:
                 # Concurrent update - we accept that we finished the race second and give up
-                log.warn("Concurrent update to %s detected. We lose: %s", dn, kwargs)
+                log.warn("Concurrent update to %s detected. We lost: %s", dn, kwargs)
 
             if return_entry:
                 # Reset object back to prior state
@@ -167,7 +163,7 @@ class Directory(object):
                 if not ex.message.endswith("already exists"):
                     raise
                 # Concurrent create - we accept that we finished the race second and give up
-                log.warn("Concurrent create of %s detected. We lose: %s", dn, kwargs)
+                log.warn("Concurrent create of %s detected. We lost: %s", dn, kwargs)
 
         return entry_old
 
@@ -183,7 +179,7 @@ class Directory(object):
     def register_mult(self, entries):
         """
         Registers multiple directory entries efficiently in one datastore access.
-        Note: this fails of entries are currently existing, so works for create only.
+        Note: this fails if entries are already existing, so works for create only.
         """
         if type(entries) not in (list, tuple):
             raise BadRequest("Bad entries type")
@@ -300,29 +296,76 @@ class Directory(object):
     # -------------------------------------------------------------------------
     #  Concurrency Control
 
-    def acquire_lock(self, key, lock_info=None):
+    def acquire_lock(self, key, timeout=LOCK_EXPIRES_DEFAULT, lock_holder=None, lock_info=None):
         """
         Attempts to atomically acquire a lock with the given key and namespace.
+        If holder is given and holder already has the lock, renew.
+        Checks for expired locks.
+        @param timeout  Int value of millis until lock expiration or 0 for no expiration
+        @param lock_holder  Str value identifying lock holder for subsequent exclusive access
+        @param lock_info  Dict value for additional attributes describing lock
+        @retval  bool - could lock be acquired?
         """
         if not key:
-            raise BadRequest("Illegal arguments")
+            raise BadRequest("Missing argument: key")
         if "/" in key:
-            raise BadRequest("Illegal arguments: key")
+            raise BadRequest("Invalid argument value: key")
 
-        direntry = self._create_dir_entry("/System/Locks", key, attributes=lock_info)
-        lock_result = True
+        lock_attrs = {LOCK_EXPIRES_ATTR: get_ion_ts_millis() + timeout if timeout else 0,
+                      LOCK_HOLDER_ATTR: lock_holder or ""}
+        if lock_info:
+            lock_attrs.update(lock_info)
+        expires = int(lock_attrs[LOCK_EXPIRES_ATTR])  # Check type just to be sure
+        if expires and get_ion_ts_millis() > expires:
+            raise BadRequest("Invalid lock expiration value: %s", expires)
+
+        direntry = self._create_dir_entry(LOCK_DIR_PATH, key, attributes=lock_attrs)
+        lock_result = False
         try:
             # This is an atomic operation. It relies on the unique key constraint of the directory service
             self.dir_store.create(direntry, create_unique_directory_id())
+            lock_result = True
         except BadRequest as ex:
             if ex.message.endswith("already exists"):
-                lock_result = False
+                de_old = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
+                if de_old:
+                    if self._is_lock_expired(de_old):
+                        # Lock is expired: remove, try to relock
+                        # Note: even as holder, it's safer to reacquire in this case than renew
+                        log.warn("Removing expired lock: %s/%s", de_old.parent, de_old.key)
+                        try:
+                            # This is safe, because of lock was deleted + recreated in the meantime, it has different id
+                            self._delete_lock(de_old)
+                            # Try recreate - may fail again due to concurrency
+                            self.dir_store.create(direntry, create_unique_directory_id())
+                            lock_result = True
+                        except Exception:
+                            log.exception("Error releasing/reacquiring expired lock %s", de_old.key)
+                    elif lock_holder and de_old.attributes[LOCK_HOLDER_ATTR] == lock_holder:
+                        # Holder currently holds the lock: renew
+                        log.info("Renewing lock %s/%s for holder %s", de_old.parent, de_old.key, lock_holder)
+                        de_old.attributes = lock_attrs
+                        try:
+                            self.dir_store.update(de_old)
+                            lock_result = True
+                        except Exception:
+                            log.exception("Error renewing expired lock %s", de_old.key)
+                # We do nothing if we could not find the lock now...
             else:
                 raise
 
-        log.debug("Directory.acquire_lock(%s): %s -> %s", key, lock_info, lock_result)
+        log.debug("Directory.acquire_lock(%s): %s -> %s", key, lock_attrs, lock_result)
 
         return lock_result
+
+    def is_locked(self, key):
+        if not key:
+            raise BadRequest("Missing argument: key")
+        if "/" in key:
+            raise BadRequest("Invalid argument value: key")
+
+        lock_entry = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
+        return lock_entry and not self._is_lock_expired(lock_entry)
 
     def release_lock(self, key):
         """
@@ -330,17 +373,39 @@ class Directory(object):
         Raises NotFound if lock does not exist.
         """
         if not key:
-            raise BadRequest("Illegal arguments")
+            raise BadRequest("Missing argument: key")
         if "/" in key:
-            raise BadRequest("Illegal arguments: key")
+            raise BadRequest("Invalid argument value: key")
 
         log.debug("Directory.release_lock(%s)", key)
 
-        dir_entry = self.lookup("/System/Locks", key, return_entry=True)
+        dir_entry = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
         if dir_entry:
-            self.dir_store.delete(dir_entry._id)
+            self._delete_lock(dir_entry)
         else:
             raise NotFound("Lock %s not found" % key)
+
+    def release_expired_locks(self):
+        """Removes all expired locks
+        """
+        de_list = self.find_child_entries(LOCK_DIR_PATH, direct_only=True)
+        for de in de_list:
+            if self._is_lock_expired(de):
+                log.warn("Removing expired lock %s/%s", de.parent, de.key)
+                try:
+                    # This is safe, because if lock was deleted + recreated in the meantime, it has different id
+                    self._delete_lock(de)
+                except Exception:
+                    log.exception("Error releasing expired lock %s", de.key)
+
+    def _is_lock_expired(self, lock_entry):
+        if not lock_entry:
+            raise BadRequest("No lock entry provided")
+        return 0 < lock_entry.attributes[LOCK_EXPIRES_ATTR] <= get_ion_ts_millis()
+
+    def _delete_lock(self, lock_entry):
+        lock_entry_id = lock_entry._id
+        self.dir_store.delete(lock_entry_id)
 
     # -------------------------------------------------------------------------
     # Internal functions

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Minimal set of directory functions directly against the datastore, working before Pyon/Container are started"""
+"""Minimal set of directory functions directly against the datastore, for use before Pyon/Container are started"""
 
 __author__ = 'Seman Said, Michael Meisinger'
 
@@ -12,7 +12,8 @@ from pyon.util.containers import get_ion_ts, get_default_sysname, get_safe
 
 class DirectoryStandalone(object):
     """
-    Directory service standalone class
+    Directory interface with minimal dependencies
+    @see pyon.ion.directory.Directory
     """
     def __init__(self, sysname=None, orgname=None, config=None):
         self.orgname = orgname or get_safe(config, 'system.root_org', 'ION')
