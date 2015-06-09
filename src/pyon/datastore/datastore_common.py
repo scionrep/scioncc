@@ -127,6 +127,8 @@ def get_obj_geospatial_point(doc, calculate=True):
         geo_center = doc["location"]
     if "geospatial_point_center" in doc:
         geo_center = doc["geospatial_point_center"]
+    if "details" in doc and type(doc["details"]) is dict and "location" in doc["details"]:
+        geo_center = doc["details"]["location"]
     if not geo_center and calculate:
         # Try to calculate center point from bounds
         present, geo_bounds = get_obj_geospatial_bounds(doc, calculate=False, return_geo_bounds=True)

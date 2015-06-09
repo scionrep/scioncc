@@ -71,6 +71,8 @@ UserIdentityDetails: !Extends_IdentityDetails
   tokens: []
   # Key-value properties for the user; e.g. for configuration or UI preferences
   profile: {}
+  # Registered location, e.g. derived from contact address
+  location: !GeospatialLocation
 
 OAuthClientIdentityDetails: !Extends_IdentityDetails
   # Is this a confidential client?
