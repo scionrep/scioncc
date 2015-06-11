@@ -47,6 +47,8 @@ class DatastoreQueryConst(object):
     XOP_ATTLIKE = XOP_PREFIX + "attlike"    # Find objects with attr matching given pattern (case sensitive)
     XOP_ATTILIKE = XOP_PREFIX + "attilike"  # Find objects with attr matching given pattern (case insensitive)
     XOP_ALLMATCH = XOP_PREFIX + "allmatch"  # Find objects where values occurs within any of the first level attributes
+    XOP_KEYWORD = XOP_PREFIX + "keyword"    # Find objects with 1..n keywords
+    XOP_ALTID = XOP_PREFIX + "altid"        # Find objects with an altid in given values
     XOP_ISTYPE = XOP_PREFIX + "istype"      # Find objects with type or base type equal to given value (e.g. events)
 
     GOP_PREFIX = "gop:"                               # Geospatial operators prefix

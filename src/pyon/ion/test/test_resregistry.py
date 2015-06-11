@@ -524,18 +524,18 @@ class TestResourceRegistry(IonIntegrationTestCase):
 
     def test_resource_query(self):
         res_objs = [
-            (IonObject(RT.TestInstrument, name="ID1", lcstate=LCS.DEPLOYED), ),
+            (IonObject(RT.TestInstrument, name="ID1", lcstate=LCS.DEPLOYED, keywords=["K1", "K2"]), ),
             (IonObject(RT.TestInstrument, name="ID2", lcstate=LCS.INTEGRATED), ),
 
             (IonObject(RT.TestSite, name="IS1", lcstate=LCS.INTEGRATED), ),
 
-            (IonObject(RT.TestPlatform, name="PD1"), ),
+            (IonObject(RT.TestPlatform, name="PD1", keywords=["K", "K1", "K3"]), ),
 
-            (IonObject(RT.TestSite, name="PS1"), ),
+            (IonObject(RT.TestSite, name="PS1", alt_ids=["NS1:ID11", "NS2:ID21"]), ),
 
-            (IonObject(RT.TestSite, name="PS0"), ),
+            (IonObject(RT.TestSite, name="PS0", alt_ids=["NS1:ID12", "NS3:ID22"]), ),
 
-            (IonObject(RT.TestSite, name="OS1"), ),
+            (IonObject(RT.TestSite, name="OS1", alt_ids=["_:IDX", "NS2:ID21"]), ),
 
             (IonObject(RT.TestDataset, name="DP1"), ),
             (IonObject(RT.TestDataset, name="DP2"), ),
@@ -573,7 +573,7 @@ class TestResourceRegistry(IonIntegrationTestCase):
             s, o = res_by_name[sname], res_by_name[oname]
             self.rr.create_association(s, p, o)
 
-        # --- Simple resource filters
+        # TEST: Simple resource filters
 
         rq = ResourceQuery()
         rq.set_filter(rq.filter_type(RT.TestInstrument))
@@ -603,7 +603,55 @@ class TestResourceRegistry(IonIntegrationTestCase):
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 2)
 
-        # Full text search
+        # TEST: Advanced resource filters
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_keyword("K1"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_keyword("K"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_keyword(""))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 0)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_keyword(["K1", "K3"]))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_altid("NS1", "ID11"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_altid("NS2", "ID21"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_altid("NS2"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_altid(None))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertGreaterEqual(len(res_obj), 3)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_altid(["NS1", "NS2"], "ID21"))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        # TEST: Full-text search
+
         rq = ResourceQuery()
         rq.set_filter(rq.filter_matchany("DP"))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
@@ -623,6 +671,12 @@ class TestResourceRegistry(IonIntegrationTestCase):
 
         rq = ResourceQuery()
         rq.set_filter(rq.filter_type(RT.ActorIdentity),
+                      rq.filter_matchany("JoHn", rq.TXT_CONTAINS))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 0)
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.ActorIdentity),
                       rq.filter_matchany("foo.com"))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 2)
@@ -633,14 +687,14 @@ class TestResourceRegistry(IonIntegrationTestCase):
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 0)
 
-        # --- Association query
+        # --- Query with associations
 
         rq = ResourceQuery()
         rq.set_filter(rq.filter_associated_from_subject(res_by_name["ID1"]))
         res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
         self.assertEquals(len(res_obj), 2)
 
-        # --- Association queries with a target filter
+        # --- Query with associations with a target filter
 
         rq = ResourceQuery()
         target_filter = rq.eq(rq.RA_NAME, "DP1")

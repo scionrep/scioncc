@@ -11,6 +11,9 @@ TestDevice: !Extends_TaskableResource
   location: !GeospatialLocation
   geospatial_bounds: !GeospatialBounds
   geospatial_crs: !GeospatialCoordinateReferenceSystem
+  # Tags
+  #@ContentType=str
+  keywords: []
 ---
 
 TestInstrument: !Extends_TestDevice

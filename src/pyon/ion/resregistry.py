@@ -886,28 +886,44 @@ class ResourceQuery(DatastoreQueryBuilder):
                                             order_by=order_by, limit=limit, skip=skip)
 
     def filter_id(self, id_expr):
+        """Include resources with _id equal str or in list"""
         return self.eq_in(DQ.ATT_ID, id_expr)
 
     def filter_type(self, type_expr):
+        """Include resources with type_ equal str or in list"""
         return self.eq_in(DQ.ATT_TYPE, type_expr)
 
     def filter_lcstate(self, expr):
+        """Include resources with lcstate equal str or in list"""
         return self.eq_in(DQ.RA_LCSTATE, expr)
 
     def filter_availability(self, expr):
+        """Include resources with availability equal str or in list"""
         return self.eq_in(DQ.RA_AVAILABILITY, expr)
 
     def filter_name(self, name_expr, cmpop=None):
+        """Include resources with name equal str or in list, using comparison op"""
         return self.txt_cmp(DQ.RA_NAME, name_expr, cmpop)
 
     def filter_attribute(self, attr_name, expr, cmpop=None):
+        """Include resources with given attribute equal str or in list, using comparison op"""
         return self.txt_cmp(attr_name, expr, cmpop)
 
-    def filter_matchany(self, value):
-        """Full text search among the first level attributes"""
-        return self.op_expr(DQ.XOP_ALLMATCH, value)
+    def filter_matchany(self, value, cmpop=None):
+        """Full text search among the first level attributes.
+        Comparison op can be TXT_ICONTAINS or TXT_CONTAINS"""
+        return self.op_expr(DQ.XOP_ALLMATCH, value, cmpop)
+
+    def filter_keyword(self, kw_expr):
+        """Include resources with one or multiple keywords"""
+        return self.op_expr(DQ.XOP_KEYWORD, kw_expr)
+
+    def filter_altid(self, alt_id_ns, alt_id=None):
+        """Include resources with an alt_id and/or alt_id namespace"""
+        return self.op_expr(DQ.XOP_ALTID, alt_id_ns, alt_id)
 
     def filter_owner(self, owner_actor):
+        """Include resources associated to owner id"""
         return self.filter_associated_from_object(object=owner_actor, object_type=RT.ActorIdentity, predicate=PRED.hasOwner)
 
     def filter_by_association(self, target=None, target_type=None, predicate=None, direction=None, target_filter=None):

@@ -112,9 +112,9 @@ class PostgresQueryBuilder(object):
             self.group_by = None
             self.having = None
 
-    def _value(self, value):
+    def _value(self, value, flatten_list=True):
         """Saves a value for later type conformant insertion into the query"""
-        if value and type(value) in (list, tuple):
+        if value and type(value) in (list, tuple) and flatten_list:
             valstr = ",".join(self._value(val) for val in value)
             return valstr
         else:
@@ -174,8 +174,35 @@ class PostgresQueryBuilder(object):
             return "json_string(%sdoc,%s) %s %s" % (table_prefix, self._value(attname), self.OP_STR[op],
                                                     self._value(self._sub_param(value)))
         elif op == DQ.XOP_ALLMATCH:
+            value, cmpop = args
+            if cmpop == DQ.TXT_ICONTAINS:
+                return "json_allattr(%sdoc) ILIKE %s" % (table_prefix, self._value("%" + str(self._sub_param(value)) + "%"))
+            else:
+                return "json_allattr(%sdoc) LIKE %s" % (table_prefix, self._value("%" + str(self._sub_param(value)) + "%"))
+        elif op == DQ.XOP_KEYWORD:
             value = args[0]
-            return "json_allattr(%sdoc) ILIKE %s" % (table_prefix, self._value("%" + str(self._sub_param(value)) + "%"))
+            kw_values = value if type(value) in (list, tuple) else [value]
+            return "%s <@ json_keywords(%sdoc)" % (self._value(kw_values, flatten_list=False), table_prefix)
+        elif op == DQ.XOP_ALTID:
+            alt_id_ns, alt_id = args
+            if type(alt_id_ns) in (list, tuple):
+                alt_id_ns_value = self._value(alt_id_ns, flatten_list=False)
+            else:
+                alt_id_ns_value = self._value([self._sub_param(alt_id_ns)], flatten_list=False)
+            if type(alt_id) in (list, tuple):
+                alt_id_value = self._value(alt_id, flatten_list=False)
+            else:
+                alt_id_value = self._value([self._sub_param(alt_id)], flatten_list=False)
+            if not alt_id and not alt_id_ns:
+                return "json_altids_ns(%sdoc) IS NOT null" % table_prefix
+            elif alt_id and not alt_id_ns:
+                return "%s <@ json_altids_id(%sdoc)" % (alt_id_value, table_prefix)
+            elif alt_id_ns and not alt_id:
+                return "%s <@ json_altids_ns(%sdoc)" % (alt_id_ns_value, table_prefix)
+            else:
+                return "%s <@ json_altids_id(%sdoc) AND %s <@ json_altids_ns(%sdoc)" % (
+                        alt_id_value, table_prefix, alt_id_ns_value, table_prefix)
+
         elif op.startswith(DQ.ROP_PREFIX):
             colname, x1, y1 = args
             return "%s%s %s %s::numrange" % (table_prefix, colname, self.OP_STR[op],
