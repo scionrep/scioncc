@@ -214,7 +214,7 @@ class UIServer(StandaloneProcess):
         full_name = actor_user.contact.individual_names_given + " " + actor_user.contact.individual_name_family
 
         valid_until = int(get_ion_ts_millis() / 1000 + self.session_timeout)
-        set_auth(actor_id, username, full_name, valid_until=valid_until)
+        set_auth(actor_id, username, full_name, valid_until=valid_until, roles=actor_user.contact.roles)
         user_info = get_auth()
         return user_info
 
@@ -227,7 +227,7 @@ class UIServer(StandaloneProcess):
                 if valid:
                     actor_id = flask.g.oauth_user.get("actor_id", "")
                     actor_user = self.idm_client.read_actor_identity(actor_id)
-                    session_attrs = dict(is_logged_in=True, is_registered=True, attributes={}, roles={})
+                    session_attrs = dict(is_logged_in=True, is_registered=True, attributes={"roles":actor_user.details.contact.roles}, roles={})
                     if actor_user.session:
                         session_attrs.update(actor_user.session)
 
@@ -238,7 +238,7 @@ class UIServer(StandaloneProcess):
             actor_id = flask.session.get("actor_id", None)
             if access_token and actor_id:
                 actor_user = self.idm_client.read_actor_identity(actor_id)
-                session_attrs = dict(access_token=access_token, is_logged_in=True, is_registered=True, attributes={}, roles={})
+                session_attrs = dict(access_token=access_token, is_logged_in=True, is_registered=True, attributes={"roles":actor_user.details.contact.roles}, roles={})
                 if actor_user.session:
                     session_attrs.update(actor_user.session)
 
