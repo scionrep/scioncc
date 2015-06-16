@@ -175,10 +175,10 @@ class PostgresQueryBuilder(object):
                                                     self._value(self._sub_param(value)))
         elif op == DQ.XOP_ALLMATCH:
             value, cmpop = args
-            if cmpop == DQ.TXT_ICONTAINS:
-                return "json_allattr(%sdoc) ILIKE %s" % (table_prefix, self._value("%" + str(self._sub_param(value)) + "%"))
-            else:
+            if cmpop == DQ.TXT_CONTAINS:
                 return "json_allattr(%sdoc) LIKE %s" % (table_prefix, self._value("%" + str(self._sub_param(value)) + "%"))
+            else:   # default/others: ICONTAINS
+                return "json_allattr(%sdoc) ILIKE %s" % (table_prefix, self._value("%" + str(self._sub_param(value)) + "%"))
         elif op == DQ.XOP_KEYWORD:
             value = args[0]
             kw_values = value if type(value) in (list, tuple) else [value]
