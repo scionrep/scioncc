@@ -16,7 +16,6 @@ from pyon.core.exception import Timeout as IonTimeout
 from pyon.core.thread import PyonThreadManager, PyonThread, ThreadManager, PyonThreadTraceback, PyonHeartbeatError
 from pyon.util.log import log
 from pyon.ion.service import BaseService
-from pyon.util.async import spawn
 from pyon.util.containers import get_ion_ts, get_ion_ts_millis
 
 STAT_INTERVAL_LENGTH = 60000  # Interval time for process saturation stats collection
@@ -42,12 +41,13 @@ class IonProcessThread(PyonThread):
     Form the base of an ION process.
     """
 
-    def __init__(self, target=None, listeners=None, name=None, service=None, cleanup_method=None, heartbeat_secs=10, **kwargs):
+    def __init__(self, target=None, listeners=None, name=None, service=None, cleanup_method=None,
+                 heartbeat_secs=10, **kwargs):
         """
         Constructs an ION process.
 
-        You don't create one of these directly, the IonProcessThreadManager run by a container does this for
-        you via the ProcManager interface. Call the container's spawn_process method and this method will run.
+        The container's IonProcessThreadManager uses this to create the control part of an ION process,
+        as part of spawn_process.
 
         @param  target          A callable to run in the PyonThread. If None (typical), will use the target method
                                 defined in this class.
@@ -66,7 +66,7 @@ class IonProcessThread(PyonThread):
         self.service            = service
         self._cleanup_method    = cleanup_method
 
-        self.thread_manager     = ThreadManager(failure_notify_callback=self._child_failed) # bubbles up to main thread manager
+        self.thread_manager     = ThreadManager(failure_notify_callback=self._child_failed)  # bubbles up to main thread manager
         self._dead_children     = []        # save any dead children for forensics
         self._ctrl_thread       = None
         self._ctrl_queue        = Queue()
@@ -139,6 +139,7 @@ class IonProcessThread(PyonThread):
             self._heartbeat_op      = None
             self._heartbeat_count   = 0
 
+        #log.debug("%s %s %s", listeners_ok, ctrl_thread_ok, heartbeat_ok)
         return (listeners_ok, ctrl_thread_ok, heartbeat_ok)
 
     @property
@@ -188,16 +189,16 @@ class IonProcessThread(PyonThread):
         to start on startup.
         """
         if self.proc:
-            listener.routing_call           = self._routing_call
+            listener.routing_call = self._routing_call
 
             if self.name:
                 svc_name = "unnamed-service"
                 if self.service is not None and hasattr(self.service, 'name'):
                     svc_name = self.service.name
 
-                listen_thread_name          = "%s-%s-listen-%s" % (svc_name, self.name, len(self.listeners)+1)
+                listen_thread_name = "%s-%s-listen-%s" % (svc_name, self.name, len(self.listeners)+1)
             else:
-                listen_thread_name          = "unknown-listener-%s" % (len(self.listeners)+1)
+                listen_thread_name = "unknown-listener-%s" % (len(self.listeners)+1)
 
             gl = self.thread_manager.spawn(listener.listen, thread_name=listen_thread_name)
             gl.proc._glname = "ION Proc listener %s" % listen_thread_name
@@ -227,7 +228,8 @@ class IonProcessThread(PyonThread):
 
     def target(self, *args, **kwargs):
         """
-        Control entrypoint. Setup the base properties for this process (mainly a listener).
+        Entry point for the main process greenlet.
+        Setup the base properties for this process (mainly a listener).
         """
         if self.name:
             threading.current_thread().name = "%s-target" % self.name
@@ -255,8 +257,7 @@ class IonProcessThread(PyonThread):
                 log.warn("Heartbeat failed: %s, stacktrace:\n%s", hbst, stack_out)
 
         # this is almost a no-op as we don't fall out of the above loop without
-        # exiting the ctrl_thread, but having this line here makes testing much
-        # easier.
+        # exiting the ctrl_thread, but having this line here makes testing much easier.
         self._ctrl_thread.join()
 
     def _routing_call(self, call, context, *callargs, **callkwargs):
@@ -359,7 +360,7 @@ class IonProcessThread(PyonThread):
 
                     continue
 
-            # also check ar if it is set, if it is, that means it is cancelled
+            # If ar is set, means it is cancelled
             if ar.ready():
                 log.info("control_flow: attempting to process message that has been cancelled, ignore")
                 continue
@@ -392,7 +393,8 @@ class IonProcessThread(PyonThread):
 
                 # try decorating the args of the exception with the true traceback
                 # this should be reported by ThreadManager._child_failed
-                exc = PyonThreadTraceback("IonProcessThread _control_flow caught an exception (call: %s, *args %s, **kwargs %s, context %s)\nTrue traceback captured by IonProcessThread' _control_flow:\n\n%s" % (call, callargs, callkwargs, context, traceback.format_exc()))
+                exc = PyonThreadTraceback("IonProcessThread _control_flow caught an exception (call: %s, *args %s, **kwargs %s, context %s)\nTrue traceback captured by IonProcessThread' _control_flow:\n\n%s" % (
+                        call, callargs, callkwargs, context, traceback.format_exc()))
                 e.args = e.args + (exc,)
 
                 # HACK HACK HACK
@@ -442,9 +444,7 @@ class IonProcessThread(PyonThread):
         """
         Starts all listeners in managed greenlets.
 
-        This must be called after starting this IonProcess. Currently, the Container's ProcManager
-        will handle this for you, but if using an IonProcess manually, you must remember to call
-        this method or no attached listeners will run.
+        Usually called by the ProcManager, unless using IonProcess manually.
         """
         try:
             # disable normal error reporting, this method should only be called from startup
@@ -455,11 +455,7 @@ class IonProcessThread(PyonThread):
                 self.add_endpoint(listener)
 
             with Timeout(seconds=CFG.get_safe('container.messaging.timeout.start_listener', 30)):
-                if gevent.__version__.startswith("1"):
-                    gevent.wait([x.get_ready_event() for x in self.listeners])
-                else:
-                    from gevent.event import waitall
-                    waitall([x.get_ready_event() for x in self.listeners])
+                gevent.wait([x.get_ready_event() for x in self.listeners])
 
         except Timeout:
 
@@ -543,6 +539,28 @@ class ImmediateProcess(BaseService):
     Has no messaging attachment.
     """
     process_type = "immediate"
+
+
+class StreamProcess(BaseService):
+    """
+    Base class for a stream process.
+    Such a process handles a sequence of otherwise unconstrained messages, resulting from a
+    subscription. There are no operations.
+    """
+
+    process_type = "stream_process"
+
+    def call_process(self, message, stream_route, stream_id):
+        """
+        Handles pre-processing of packet and process work
+        """
+        self.process(message)
+
+    def process(self, message):
+        """
+        Process a message as arriving based on a subscription.
+        """
+        pass
 
 
 # ---------------------------------------------------------------------------------------------------

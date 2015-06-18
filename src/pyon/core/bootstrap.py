@@ -2,7 +2,6 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 
-
 import uuid
 import os
 import logging

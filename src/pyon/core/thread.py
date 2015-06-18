@@ -36,8 +36,7 @@ class PyonHeartbeatError(PyonThreadError):
 
 class PyonThread(object):
     """
-    @brief Threadlike base class for doing work in the container.
-    Wraps gevent's greenlet class.
+    Thread-like base class for doing work in the container, based on gevent's greenlets.
     """
 
     def __init__(self, target=None, *args, **kwargs):
@@ -63,9 +62,10 @@ class PyonThread(object):
         return id(self.proc)
 
     def _spawn(self):
-        # Gevent spawn
+        """ Spawn a gevent greenlet using defined target method and args.
+        """
         gl = spawn(self.target, *self.spawn_args, **self.spawn_kwargs)
-        gl.link(lambda _: self.ev_exit.set())
+        gl.link(lambda _: self.ev_exit.set())    # Set exit event when we terminate
         gl._glname = "ION Thread %s" % str(self.target)
         return gl
 
@@ -142,7 +142,7 @@ class PyonThread(object):
 
 class ThreadManager(object):
     """
-    @brief Manage spawning threads of multiple kinds and ensure they're alive.
+    Manage spawning threads of multiple kinds and ensure they're alive.
     TODO: Add heartbeats with zeromq for monitoring and restarting.
     """
 
@@ -172,7 +172,7 @@ class ThreadManager(object):
 
     def spawn(self, target=None, **kwargs):
         """
-        @brief Spawn a pyon thread
+        Spawn a pyon thread
 
         """
         log.debug("ThreadManager.spawn, target=%s, kwargs=%s", target, kwargs)

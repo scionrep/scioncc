@@ -1,28 +1,27 @@
 #!/usr/bin/env python
-'''
-@author Luke Campbell <LCampbell@ASAScience.com>
-@file pyon/ion/stream.py
-@date Fri Sep  7 14:31:28 EDT 2012
-@brief Ion Stream-based publishing and subscribing
-'''
+
+"""Stream-based publishing and subscribing"""
+
+__author__ = 'Luke Campbell <LCampbell@ASAScience.com>'
 
 import gevent
 
 from pyon.core.exception import BadRequest
 from pyon.net.endpoint import Publisher, Subscriber
-from pyon.util.log import log
 from pyon.ion.service import BaseService
+from pyon.util.log import log
+
 from interface.objects import StreamRoute
 
 
 class StreamPublisher(Publisher):
-    '''
-    Stream Publisher maintains the "stream" concept and properly encapsulates outgoing messages in the streaming
-    packet. Stream Publisher is intended to be used in an Ion Process.
-    '''
+    """
+    StreamPublisher maintains the "stream" concept and properly encapsulates outgoing messages in the streaming
+    packet. StreamPublisher is intended to be used in an ION process.
+    """
 
     def __init__(self, process=None, stream_id='', stream_route=None, exchange_point='', routing_key=''):
-        '''
+        """
         Creates a StreamPublisher which publishes to the specified stream by default and is attached to the
         specified process.
         @param process        The process which the subscriber is to be attached.
@@ -30,7 +29,7 @@ class StreamPublisher(Publisher):
         @param stream_route   A StreamRoute corresponding to the stream_id
         @param exchange_point The name of the exchange point, to be used in lieu of stream_route or stream_id
         @param routing_key    The routing key to be used in lieu of stream_route or stream_id
-        '''
+        """
         super(StreamPublisher, self).__init__()
         if not isinstance(process, BaseService):
             raise BadRequest('No valid process provided.')
@@ -65,10 +64,10 @@ class StreamPublisher(Publisher):
         self.xp_route = self.xp.create_route(self.stream_route.routing_key)
 
     def publish(self, msg, stream_id='', stream_route=None):
-        '''
+        """
         Encapsulates and publishes a message; the message is sent to either the specified
         stream/route or the stream/route specified at instantiation
-        '''
+        """
         xp = self.xp
         xp_route = self.xp_route
         log.trace('Exchange: %s', xp.exchange)
@@ -78,13 +77,15 @@ class StreamPublisher(Publisher):
         else:
             stream_route = self.stream_route
         log.trace('Publishing (%s,%s)', xp.exchange, stream_route.routing_key)
-        super(StreamPublisher,self).publish(msg, to_name=xp_route, headers={'exchange_point':stream_route.exchange_point, 'stream':stream_id or self.stream_id})
+        super(StreamPublisher, self).publish(msg, to_name=xp_route,
+                                             headers={'exchange_point': stream_route.exchange_point,
+                                                      'stream': stream_id or self.stream_id})
 
 
 class StreamSubscriber(Subscriber):
-    '''
-    StreamSubscriber is a subscribing class to be attached to an Ion process which adheres to the
-    Ion based Stream Pubsub framework.
+    """
+    StreamSubscriber is a subscribing class to be attached to an ION process; it adheres to the
+    stream pubsub framework.
 
     The callback should accept three parameters:
       message      The incoming message
@@ -94,14 +95,14 @@ class StreamSubscriber(Subscriber):
     Ex:
       def receive(msg, route, stream_id):
           pass
-    '''
+    """
     def __init__(self, process, exchange_name, callback=None):
-        '''
+        """
         Creates a new StreamSubscriber which will listen on the specified queue (exchange_name).
         @param process       The Ion Process to attach to.
         @param exchange_name The subscribing queue name.
         @param callback      The callback to execute upon receipt of a packet.
-        '''
+        """
         if not isinstance(process, BaseService):
             raise BadRequest('No valid process was provided.')
         self.container = process.container
@@ -111,26 +112,26 @@ class StreamSubscriber(Subscriber):
         super(StreamSubscriber, self).__init__(from_name=self.xn, callback=self.preprocess)
 
     def preprocess(self, msg, headers):
-        '''
-        De-encapsulates the incoming message and calls the callback.
+        """
+        Unwrap the incoming message and calls the callback.
         @param msg     The incoming packet.
         @param headers The headers of the incoming message.
-        '''
+        """
         route = StreamRoute(headers['exchange_point'], headers['routing_key'])
         self.callback(msg, route, headers['stream'])
 
     def start(self):
-        '''
+        """
         Begins consuming on the queue.
-        '''
+        """
         self.started = True
         self.greenlet = gevent.spawn(self.listen)
         self.greenlet._glname = "StreamSubscriber"
 
     def stop(self):
-        '''
+        """
         Ceases consuming on the queue.
-        '''
+        """
         if not self.started:
             raise BadRequest("Subscriber is not running.")
         self.close()
@@ -140,19 +141,19 @@ class StreamSubscriber(Subscriber):
 
 
 class StandaloneStreamPublisher(Publisher):
-    '''
-    StandaloneStreamPublisher is a Publishing endpoint which uses Ion Streams but
+    """
+    StandaloneStreamPublisher is a Publishing endpoint which uses streams but
     does not belong to a process.
 
     This endpoint is intended for testing and debugging not to be used in service
     or process implementations.
-    '''
+    """
     def __init__(self, stream_id, stream_route):
-        '''
+        """
         Creates a new StandaloneStreamPublisher
         @param stream_id    The stream identifier
         @param stream_route The StreamRoute to publish on.
-        '''
+        """
         super(StandaloneStreamPublisher, self).__init__()
         from pyon.container.cc import Container
         self.stream_id = stream_id
@@ -165,13 +166,13 @@ class StandaloneStreamPublisher(Publisher):
 
 
     def publish(self, msg, stream_id='', stream_route=None):
-        '''
+        """
         Encapsulates and publishes the message on the specified stream/route or
         the one specified at instantiation.
         @param msg          Outgoing message
         @param stream_id    Stream Identifier
         @param stream_route Stream Route
-        '''
+        """
         from pyon.container.cc import Container
         stream_id = stream_id or self.stream_id
         xp = self.xp
@@ -184,19 +185,19 @@ class StandaloneStreamPublisher(Publisher):
 
 
 class StandaloneStreamSubscriber(Subscriber):
-    '''
+    """
     StandaloneStreamSubscriber is a Subscribing endpoint which uses Streams but
     does not belong to a process.
 
     This endpoint is intended for testing and debugging not to be used in service
     or process implementations.
-    '''
+    """
     def __init__(self, exchange_name, callback):
-        '''
+        """
         Creates a new StandaloneStreamSubscriber
         @param exchange_name The name of the queue to listen on.
         @param callback      The callback to execute on receipt of a packet
-        '''
+        """
         from pyon.container.cc import Container
         self.xn = Container.instance.ex_manager.create_xn_queue(exchange_name)
         self.callback = callback
@@ -204,26 +205,26 @@ class StandaloneStreamSubscriber(Subscriber):
         super(StandaloneStreamSubscriber, self).__init__(name=self.xn, callback=self.preprocess)
 
     def preprocess(self, msg, headers):
-        '''
+        """
         Performs de-encapsulation of incoming packets and calls the callback.
         @param msg     The incoming packet.
         @param headers The headers of the incoming message.
-        '''
+        """
         route = StreamRoute(headers['exchange_point'], headers['routing_key'])
         self.callback(msg, route, headers['stream'])
 
     def start(self):
-        '''
+        """
         Begin consuming on the queue.
-        '''
+        """
         self.started = True
         self.greenlet = gevent.spawn(self.listen)
         self.greenlet._glname = "StandaloneStreamSubscriber"
 
     def stop(self):
-        '''
+        """
         Cease consuming on the queue.
-        '''
+        """
         if not self.started:
             raise BadRequest("Subscriber is not running.")
         self.close()

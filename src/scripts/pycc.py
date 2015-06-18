@@ -412,7 +412,7 @@ def main(opts, *args, **kwargs):
         /____/\___/_/\____/_/ |_/   \____/\____/""",   
                         exit_msg = 'Leaving SciON CC shell, shutting down container.')
 
-                    ipshell('Pyon (PID: %s) - SciON CC interactive IPython shell. Type ionhelp() for help' % os.getpid())
+                    ipshell('SciON CC IPython shell. PID: %s. Type ionhelp() for help' % os.getpid())
                     break
                 except Exception as ex:
                     log.debug("Failed IPython initialize attempt (try #%s): %s", tries, str(ex))

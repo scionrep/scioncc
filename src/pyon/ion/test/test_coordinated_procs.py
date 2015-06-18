@@ -2,24 +2,15 @@
 
 __author__ = 'Michael Meisinger'
 
-from unittest import SkipTest
-from mock import Mock, patch, ANY, sentinel, call
 from nose.plugins.attrib import attr
-import random
 from gevent.event import AsyncResult, Event
 import gevent
+import random
 
-from pyon.util.int_test import IntegrationTestCase
+from pyon.util.int_test import IntegrationTestCase, SkipTest
 
-from pyon.agent.agent import ResourceAgent
-from pyon.container.procs import ProcManager
-from pyon.core.exception import BadRequest, NotFound
-from pyon.ion.endpoint import ProcessRPCServer
-from pyon.ion.process import IonProcessError
 from pyon.public import PRED, CCAP, IonObject, log, get_ion_ts_millis, EventSubscriber, EventPublisher, OT
-from pyon.ion.service import BaseService
 
-from interface.objects import ProcessStateEnum
 from interface.services.examples.ihello_service import BaseHelloService, HelloServiceClient
 
 
@@ -35,8 +26,7 @@ class CoordinatedProcess(BaseHelloService):
 
         self.bg_loop = gevent.spawn(self._bg_loop)
 
-        self.evt_sub = EventSubscriber(event_type=OT.ResourceCommandEvent,
-                                       callback=self._on_event)
+        self.evt_sub = EventSubscriber(event_type=OT.ResourceCommandEvent, callback=self._on_event)
         self.add_endpoint(self.evt_sub)
 
     def _bg_loop(self):
@@ -93,6 +83,7 @@ class CoordinatedProcess(BaseHelloService):
         pass
 
 
+@attr('INT', group='coi')
 class CoordinatedProcessTest(IntegrationTestCase):
 
     def setUp(self):

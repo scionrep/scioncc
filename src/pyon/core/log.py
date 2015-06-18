@@ -1,14 +1,11 @@
-"""Basic pyon logging (with or without container)
-
-   NOTE: the functionality of this module has moved to putil.logging.config.
-         currently this module is maintained for API compatability, but is implemented using the new package.
-"""
+"""Logging config helpers, using putil.logging.config."""
 
 import logging
 from putil.logging import config
 
 DEFAULT_LOGGING_PATHS = ['res/config/logging.yml', 'res/config/logging.local.yml']
 logging_was_configured = False
+
 
 def configure_logging(logging_conf_paths, logging_config_override=None):
     """
