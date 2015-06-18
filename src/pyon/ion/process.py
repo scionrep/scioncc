@@ -38,23 +38,21 @@ class IonProcessError(StandardError):
 
 class IonProcessThread(PyonThread):
     """
-    Form the base of an ION process.
+    The control part of an ION process.
     """
 
     def __init__(self, target=None, listeners=None, name=None, service=None, cleanup_method=None,
                  heartbeat_secs=10, **kwargs):
         """
-        Constructs an ION process.
-
-        The container's IonProcessThreadManager uses this to create the control part of an ION process,
-        as part of spawn_process.
+        Constructs the control part of an ION process.
+        Used by the container's IonProcessThreadManager, as part of spawn_process.
 
         @param  target          A callable to run in the PyonThread. If None (typical), will use the target method
                                 defined in this class.
         @param  listeners       A list of listening endpoints attached to this thread.
         @param  name            The name of this ION process.
         @param  service         An instance of the BaseService derived class which contains the business logic for
-                                an ION process.
+                                the ION process.
         @param  cleanup_method  An optional callable to run when the process is stopping. Runs after all other
                                 notify_stop calls have run. Should take one param, this instance.
         @param  heartbeat_secs  Number of seconds to wait in between heartbeats.
@@ -93,7 +91,7 @@ class IonProcessThread(PyonThread):
 
     def heartbeat(self):
         """
-        Returns a tuple indicating everything is ok.
+        Returns a 3-tuple indicating everything is ok.
 
         Should only be called after the process has been started.
         Checks the following:
@@ -166,9 +164,8 @@ class IonProcessThread(PyonThread):
 
     def _child_failed(self, child):
         """
-        Occurs when any child greenlet fails.
-
-        Propagates the error up to the process supervisor.
+        Callback from gevent as set in the TheadManager, when a child greenlet fails.
+        Kills the ION process main greenlet. This propagates the error up to the process supervisor.
         """
         # remove the child from the list of children (so we can shut down cleanly)
         for x in self.thread_manager.children:
@@ -177,7 +174,7 @@ class IonProcessThread(PyonThread):
                 break
         self._dead_children.append(child)
 
-        # kill this main, we should be noticed by the container's proc manager
+        # kill this process's main greenlet. This should be noticed by the container's proc manager
         self.proc.kill(child.exception)
 
     def add_endpoint(self, listener):
@@ -200,9 +197,9 @@ class IonProcessThread(PyonThread):
             else:
                 listen_thread_name = "unknown-listener-%s" % (len(self.listeners)+1)
 
-            gl = self.thread_manager.spawn(listener.listen, thread_name=listen_thread_name)
-            gl.proc._glname = "ION Proc listener %s" % listen_thread_name
-            self._listener_map[listener] = gl
+            listen_thread = self.thread_manager.spawn(listener.listen, thread_name=listen_thread_name)
+            listen_thread.proc._glname = "ION Proc listener %s" % listen_thread_name
+            self._listener_map[listener] = listen_thread
             self.listeners.append(listener)
         else:
             self._startup_listeners.append(listener)
@@ -229,7 +226,7 @@ class IonProcessThread(PyonThread):
     def target(self, *args, **kwargs):
         """
         Entry point for the main process greenlet.
-        Setup the base properties for this process (mainly a listener).
+        Setup the base properties for this process (mainly the control thread).
         """
         if self.name:
             threading.current_thread().name = "%s-target" % self.name
@@ -321,12 +318,11 @@ class IonProcessThread(PyonThread):
 
     def _control_flow(self):
         """
-        Main process thread of execution method.
+        Entry point for process control thread of execution.
 
-        This method is run inside a greenlet and exists for each ION process. Listeners
-        attached to the process, either RPC Servers or Subscribers, synchronize their calls
-        by placing future calls into the queue by calling _routing_call.  This is all done
-        automatically for you by the Container's Process Manager.
+        This method is run by the control greenlet for each ION process. Listeners attached
+        to the process, either RPC Servers or Subscribers, synchronize calls to the process
+        by placing call requests into the queue by calling _routing_call.
 
         This method blocks until there are calls to be made in the synchronized queue, and
         then calls from within this greenlet.  Any exception raised is caught and re-raised
@@ -366,18 +362,16 @@ class IonProcessThread(PyonThread):
                 continue
 
             try:
-                # ******                                                      ******
+                # ******************************************************************
                 # ****** THIS IS WHERE THE RPC OPERATION/SERVICE CALL IS MADE ******
-                # ******                                                      ******
 
                 with self.service.push_context(context):
                     with self.service.container.context.push_context(context):
                         self._ctrl_current = ar
                         res = call(*callargs, **callkwargs)
 
-                # ******                                                      ******
                 # ****** END CALL, EXCEPTION HANDLING FOLLOWS                 ******
-                # ******                                                      ******
+                # ******************************************************************
 
             except OperationInterruptedException:
                 # endpoint layer takes care of response as it's the one that caused this
@@ -388,10 +382,8 @@ class IonProcessThread(PyonThread):
                 if self._log_call_exception:
                     log.exception("PROCESS exception: %s" % e.message)
 
-                # Raise the exception in the calling greenlet, and don't
-                # wait for it to die - it's likely not going to do so.
-
-                # try decorating the args of the exception with the true traceback
+                # Raise the exception in the calling greenlet.
+                # Try decorating the args of the exception with the true traceback -
                 # this should be reported by ThreadManager._child_failed
                 exc = PyonThreadTraceback("IonProcessThread _control_flow caught an exception (call: %s, *args %s, **kwargs %s, context %s)\nTrue traceback captured by IonProcessThread' _control_flow:\n\n%s" % (
                         call, callargs, callkwargs, context, traceback.format_exc()))
@@ -418,7 +410,8 @@ class IonProcessThread(PyonThread):
             ar.set(res)
 
     def _record_proc_time(self, cur_time):
-        """Keep the _proc_time of the prior and prior-prior intervals for stats computation"""
+        """ Keep the _proc_time of the prior and prior-prior intervals for stats computation
+        """
         cur_interval = cur_time / STAT_INTERVAL_LENGTH
         if cur_interval == self._proc_interval_num:
             # We're still in the same interval - no update

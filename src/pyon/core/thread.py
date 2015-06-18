@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Classes to build and manage concurrent pyon worker processes (greenlets/threads)."""
+"""Classes to build and manage concurrent Pyon worker greenlets, aka threads."""
 
 __author__ = "Adam R. Smith"
 
@@ -56,9 +56,11 @@ class PyonThread(object):
         self.proc = None
         self.supervisor = None
 
-        self.ev_exit = Event()
+        self.ev_exit = Event()   # Event that is set when greenlet exits
 
     def _pid(self):
+        """ And internal, non global thread identifier.
+        """
         return id(self.proc)
 
     def _spawn(self):
@@ -83,7 +85,7 @@ class PyonThread(object):
 
     @property
     def pid(self):
-        """ Return the process ID for the spawned thread. If not spawned yet, return 0. """
+        """ Return the internal process ID for the spawned thread. If not spawned yet, return 0. """
         if self.proc is None:
             return 0
         return self._pid()
@@ -95,7 +97,7 @@ class PyonThread(object):
 
     def start(self):
         self.proc = self._spawn()
-        self.proc._glname = "Container process supervisor"
+        self.proc._glname = ""
         return self
 
     def notify_stop(self):
@@ -142,7 +144,7 @@ class PyonThread(object):
 
 class ThreadManager(object):
     """
-    Manage spawning threads of multiple kinds and ensure they're alive.
+    Manage spawning greenlet threads and ensure they're alive.
     TODO: Add heartbeats with zeromq for monitoring and restarting.
     """
 
