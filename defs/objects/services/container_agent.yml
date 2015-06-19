@@ -57,7 +57,7 @@ methods:
     out:
       success: True
 
-  stop:
+  stop_container:
     docstring: |
       Shutdown the container gracefully after shutting down all processes on it.
     in:

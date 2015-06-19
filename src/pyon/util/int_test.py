@@ -86,7 +86,7 @@ class IntegrationTestCase(unittest.TestCase):
     def _stop_container(self):
         bootstrap.testing_fast = True
         if self.container:
-            self.container.stop()
+            self.container.stop(do_exit=False)
             self.container = None
         self._force_clean()         # deletes only
         bootstrap.testing_fast = False

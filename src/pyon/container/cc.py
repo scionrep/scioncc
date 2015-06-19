@@ -273,7 +273,11 @@ class Container(BaseContainerAgent):
                 log.warn("Pidfile could not be deleted: %s" % str(e))
             self.pidfile = None
 
-    def stop(self):
+    def stop_container(self):
+        log.info("Received request to stop container")
+        gl = gevent.spawn_later(0.5, self.stop)
+
+    def stop(self, do_exit=True):
         log.info("=============== Container stopping... ===============")
 
         self._status = TERMINATING
@@ -306,6 +310,8 @@ class Container(BaseContainerAgent):
         self._status = TERMINATED
 
         log.info("Container stopped.")
+        if do_exit:
+            os.kill(os.getpid(), signal.SIGTERM)
 
     def start_app(self, appdef=None, config=None):
         with self._push_status("START_APP"):

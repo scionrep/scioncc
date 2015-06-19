@@ -335,7 +335,7 @@ def main(opts, *args, **kwargs):
             if container:
                 cancel_func = install_terminate_handler()
                 try:
-                    container.stop()
+                    container.stop(do_exit=False)
                 finally:
                     cancel_func()
             return True
