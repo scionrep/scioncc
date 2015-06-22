@@ -8,6 +8,12 @@ CapabilityContainer: !Extends_TaskableResource
   cc_agent: ""
   # Log of most recent container status snapshots
   status_log: []
+
+
+ContainerHeartbeat:
+  container_id: ""
+  ts: ""
+  attributes: {}
 ---
 
 # Defines one argument that a process can receive on startup. This does not set an instance value.

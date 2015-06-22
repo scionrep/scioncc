@@ -5,8 +5,6 @@
 # Do not modify this file! Set overrides in pyon.local.yml, in additional
 # YML files, in deploy files and through the command line
 
-# DO NOT ADD NEW TOP LEVEL KEYS AND REQUEST APPROPRIATE CFG KEYS
-
 
 # ----------------------------------------------------------------------------------
 # The "system" root entry defines settings for the distributed SciON system that this
@@ -21,11 +19,11 @@ system:
   # The name of the actor used for actions on behalf of the SciON system
   system_actor: ionsystem
 
-  # Global flag indicating debug mode to all system participants
+  # Global flag indicating debug mode to all processes
   debug: True
 
   # Global flag that indicates if pycc programs should check on startup for
-  # the presence of persisted system config and interfaces and store otherwise.
+  # the presence of persisted system config and interfaces. If not, create these.
   # Use this in development only as this leads to race conditions with multiple
   # concurrently starting containers, or execute bin/store_interfaces before.
   auto_bootstrap: True
@@ -37,7 +35,7 @@ system:
   # Indicates whether policy should be loaded during system bootstrap (False is for development only)
   load_policy: False
 
-  # The base Web UI URL to generate absolute links from
+  # The base Web UI URL to generate absolute links from. URL prefix from a public view.
   web_ui_url: http://localhost:4000/
 
 
@@ -122,34 +120,49 @@ container:
   messaging:
     auto_register: True
     names:
-      durable: False         # Declare exchanges and queues as durable to survive broker restart
+      durable: False            # Declare exchanges and queues as durable to survive broker restart
     server:
       primary: amqp
       privileged:
     management:
       server: rabbit_manage
     endpoint:
-      prefetch_count: 1      # how many messages to prefetch from broker by default
+      prefetch_count: 1         # how many messages to prefetch from broker per consumer, by default
     timeout:
       start_listener: 30.0
-      receive: 30            # RPC receive timeout in seconds
+      receive: 30               # RPC receive timeout in seconds
+
+  execution_engine:             # Configure this container's process execution engine
+    type: scioncc               # Set to scioncc for a container
+    name: services              # Name of this execution engine instance
+    capacity:                   # Configures the capacity model
+      model: slots                # Possible models: slots (allow discrete maximum number of processes)
+      max: 100                    # Upper bound (slots per container)
+    deployment:                 # Configures properties related to logical deployment
+      region: default             # Location level 1: Region
+      availability_zone: default  # Location level 2: Logical availability zone
+      sub_zone: default           # Location level 3: E.g. rack, host, VM
+    heartbeat:                  # Configures this container's heartbeat broadcast
+      enabled: True               # Toggle switch
+      topic: bx_containers        # Topic name for published container heartbeats
+      publish_interval: 10        # Publish interval in seconds
 
   process:
-    exit_once_empty: True    # Whether the container should exit once all spawned processes have been terminated
-    log_exceptions: False    # Whether all RPC call invocation exceptions should be logged
-    max_replicas: 0          # Limit the number of process replicas to start per container (0 is unlimited)
+    exit_once_empty: True         # Whether the container should exit once all spawned processes have been terminated
+    log_exceptions: False         # Whether all RPC call invocation exceptions should be logged
+    max_replicas: 0               # Limit the number of process replicas to start per container (0 is unlimited)
 
   objects:
     validate:
-      setattr: False
-      interceptor: True
-      interceptor_error: True    # Does the interceptor raise an error if validation fails?
+      setattr: False              # Checks on update if attribute is in schema, but not value/type
+      interceptor: True           # Checks objects when received in messages
+      interceptor_error: True     # Does the interceptor raise an error if validation fails?
 
   timeout:
-    shutdown: 30.0
-    heartbeat: 30.0
-    heartbeat_proc_time_threshold: 600.0
-    heartbeat_proc_count_threshold: 20
+    shutdown: 30.0                # How long for container shutdown before force terminate?
+    heartbeat: 30.0               # How long between internal per-process heartbeats
+    heartbeat_proc_time_threshold: 600.0     # How long can a process be "stuck" with the same stack trace
+    heartbeat_proc_count_threshold: 20       # How many heartbeats can a process be "stuck" with the same stack trace
 
   org_boundary: False  # If True, then check against policies related to the Org below; else do not.
 
@@ -159,9 +172,10 @@ container:
     force_clean: False
     root: /tmp/scion
 
-  tracer:
-    enabled: False        # Enable the database class and message tracer in container
-    max_entries: 10000    # Length of trace buffer
+  tracer:                         # Configures the tracer development tool (records messages and db access)
+    enabled: False                # Toggle switch
+    max_entries: 10000            # Length of trace buffer
+
 
 # TODO: Move into container and split into process and messaging
 interceptor:
@@ -192,6 +206,7 @@ interceptor:
     message_incoming: [encode, validate]
     process_outgoing: [governance]
     process_incoming: [governance]
+
 
 # ----------------------------------------------------------------------------------
 # The "exchange" root entry contains config of the system wide Exchange for bootstrap
@@ -269,6 +284,16 @@ service:
 
   directory:
     publish_events: False
+
+  process_management:
+    process_dispatcher:
+      aggregator:
+        container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
+      engine:
+        type: default        # PD decision engine
+      executor:
+        type: global         # global (schedule via agent commands) or local (to local container only)
+        retry: tbd
 
   service_gateway:
     trusted_originators: []  # Optional list of trusted addresses; an empty list means open system

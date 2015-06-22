@@ -4,11 +4,20 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger, Dave Foster <dfoster@asascience.com>'
 
+import atexit
+import msgpack
+import os
+import signal
+import traceback
+import sys
+import gevent
+from gevent.event import Event
+from contextlib import contextmanager
+
 from pyon.container import ContainerCapability
 from pyon.core import bootstrap
 from pyon.core.bootstrap import CFG
 from pyon.core.exception import ContainerError, BadRequest
-from pyon.datastore.datastore import DataStore
 from pyon.ion.event import EventPublisher
 from pyon.ion.endpoint import ProcessRPCServer
 from pyon.net.transport import LocalRouter
@@ -22,15 +31,6 @@ from pyon.util.file_sys import FileSystem
 from interface.objects import ContainerStateEnum
 from interface.services.icontainer_agent import BaseContainerAgent
 
-import atexit
-import msgpack
-import os
-import signal
-import traceback
-import sys
-import gevent
-from contextlib import contextmanager
-
 # Capability constants for use in:
 # if self.container.has_capability(CCAP.RESOURCE_REGISTRY):
 CCAP = DotDict()
@@ -41,6 +41,7 @@ RUNNING = "RUNNING"
 TERMINATING = "TERMINATING"
 TERMINATED = "TERMINATED"
 
+
 class Container(BaseContainerAgent):
     """
     The Capability Container. Its purpose is to spawn/monitor processes and services
@@ -48,8 +49,7 @@ class Container(BaseContainerAgent):
     and the various forms of datastores in the systems.
     """
 
-    # Singleton static variables
-    #node        = None
+    # Class static variables
     id          = None
     name        = None
     pidfile     = None
@@ -469,11 +469,63 @@ class ContainerAgentCapability(ContainerCapability):
         proc = self.container.proc_manager.proc_sup.spawn(name=self.container.name, listeners=[rsvc], service=self.container)
         self.container.proc_manager.proc_sup.ensure_ready(proc)
         proc.start_listeners()
+
+        # Start a heartbeat
+        self.heartbeat_cfg = CFG.get_safe("container.execution_engine.heartbeat") or {}
+        self.heartbeat_enabled = self.heartbeat_cfg.get("enabled", False) is True
+        if self.heartbeat_enabled:
+            self.heartbeater = ContainerHeartbeater(self.container, self.heartbeat_cfg)
+            self.heartbeater.start()
     def stop(self):
-        pass
+        if self.heartbeat_enabled:
+            self.heartbeater.stop()
 
 
 class FileSystemCapability(ContainerCapability):
     def __init__(self, container):
         ContainerCapability.__init__(self, container)
         self.container.file_system = FileSystem(CFG)
+
+
+class ContainerHeartbeater(object):
+    """ Utility class that implements the container heartbeat publishing mechanism """
+    def __init__(self, container, cfg):
+        self.container = container
+        self.heartbeat_cfg = cfg
+        self.started = False
+
+    def start(self):
+        from pyon.net.endpoint import Publisher
+        from pyon.util.async import spawn
+        self.heartbeat_quit = Event()
+        self.heartbeat_interval = float(self.heartbeat_cfg.get("publish_interval", 60))
+        self.heartbeat_topic = self.heartbeat_cfg.get("topic", "heartbeat")
+        self.heartbeat_pub = Publisher(to_name=self.heartbeat_topic)
+
+        # Directly spawn a greenlet - we don't want this to be a supervised IonProcessThread
+        self.heartbeat_gl = spawn(self.heartbeat_loop)
+        self.started = True
+        log.info("Started container heartbeat (interval=%s, topic=%s)", self.heartbeat_interval, self.heartbeat_topic)
+
+    def stop(self):
+        if self.started:
+            self.heartbeat_quit.set()
+            self.heartbeat_gl.join(timeout=1)
+            self.started = False
+
+    def heartbeat_loop(self):
+        self.publish_heartbeat()
+        while not self.heartbeat_quit.wait(timeout=self.heartbeat_interval):
+            self.publish_heartbeat()
+
+    def publish_heartbeat(self):
+        try:
+            hb_msg = self.get_heartbeat_message()
+            self.heartbeat_pub.publish(hb_msg)
+        except Exception:
+            log.exception("Error publishing heatbeat")
+
+    def get_heartbeat_message(self):
+        from interface.objects import ContainerHeartbeat
+        hb_msg = ContainerHeartbeat(container_id=self.container.id)
+        return hb_msg
