@@ -346,7 +346,7 @@ class Directory(object):
                             log.exception("Error releasing/reacquiring expired lock %s", de_old.key)
                     elif lock_holder and de_old.attributes[LOCK_HOLDER_ATTR] == lock_holder:
                         # Holder currently holds the lock: renew
-                        log.info("Renewing lock %s/%s for holder %s", de_old.parent, de_old.key, lock_holder)
+                        log.debug("Renewing lock %s/%s for holder %s", de_old.parent, de_old.key, lock_holder)
                         de_old.attributes = lock_attrs
                         try:
                             self.dir_store.update(de_old)
@@ -370,7 +370,7 @@ class Directory(object):
         lock_entry = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
         return lock_entry and not self._is_lock_expired(lock_entry)
 
-    def release_lock(self, key):
+    def release_lock(self, key, lock_holder=None):
         """
         Releases lock identified by key.
         Raises NotFound if lock does not exist.
@@ -384,6 +384,8 @@ class Directory(object):
 
         dir_entry = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
         if dir_entry:
+            if lock_holder and dir_entry.attributes[LOCK_HOLDER_ATTR] != lock_holder:
+                raise BadRequest("Cannot release lock - not currently lock holder")
             self._delete_lock(dir_entry)
         else:
             raise NotFound("Lock %s not found" % key)
