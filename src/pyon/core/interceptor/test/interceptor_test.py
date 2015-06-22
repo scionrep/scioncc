@@ -366,8 +366,8 @@ class InterceptorTest(PyonTestCase):
 
 
     def test_encode_dotdict(self):
-        from interface.messages import process_dispatcher_schedule_process_in
-        msg_obj = process_dispatcher_schedule_process_in()
+        from interface.messages import process_management_schedule_process_in
+        msg_obj = process_management_schedule_process_in()
         msg_obj.name = "process"
         msg_obj.configuration = {"process": {"property": "FOO"}}
 
@@ -380,7 +380,7 @@ class InterceptorTest(PyonTestCase):
         received = encode.incoming(mangled)
         msg_rec1 = received.message
 
-        msg_obj = process_dispatcher_schedule_process_in()
+        msg_obj = process_management_schedule_process_in()
         msg_obj.name = "process"
         msg_obj.configuration = DotDict()
         msg_obj.configuration.process.property = "FOO"

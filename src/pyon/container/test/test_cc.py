@@ -51,7 +51,7 @@ class TestCCInt(IonIntegrationTestCase):
     def test_start_hello(self):
         # start a service over messaging
         self._start_container()
-        cc_client = ContainerAgentClient(name=self.container.name)
+        cc_client = ContainerAgentClient(to_name=self.container.name)
 
         p = cc_client.spawn_process('hello', 'ion.services.examples.hello_service', 'HelloService')
 

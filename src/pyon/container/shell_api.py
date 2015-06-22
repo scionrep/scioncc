@@ -101,22 +101,7 @@ def procs(ret=False):
 def ms():
     print "List of messaging endpoints"
     print "---------------------------"
-    #print "Servers (listeners):"
-    from pyon.net.endpoint import BaseEndpoint
-    from collections import defaultdict
-    endpoint_by_group = defaultdict(list)
-    for elist in BaseEndpoint.endpoint_by_name.values():
-        for ep in elist:
-            if hasattr(ep, "_process"):
-                endpoint_by_group[ep._process.id].append(ep)
-            else:
-                endpoint_by_group["none"].append(ep)
-
-    proclist = container.proc_manager.procs
-    for name in sorted(endpoint_by_group.keys()):
-        print "%s (%s)" % (name, proclist[name]._proc_name if name in proclist else "")
-        print "\n".join(("  %s, %s" % (ed.name if hasattr(ed, 'name') else '', ed) for ed in sorted(endpoint_by_group[name],
-                                        key=lambda ep: (ep.__class__.__name__, getattr(ep, 'name')))))
+    print "(TBD)"
 
 def apps():
     print "List of active pyon apps"

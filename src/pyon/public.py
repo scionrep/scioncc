@@ -33,8 +33,8 @@ __all__ += ['DatastoreQueryBuilder', 'DQ']
 from pyon.ion.process import IonProcessThreadManager, ImmediateProcess, SimpleProcess, StandaloneProcess, StreamProcess, get_ion_actor_id
 __all__ += ['IonProcessThreadManager', 'ImmediateProcess', 'SimpleProcess', 'StandaloneProcess', 'StreamProcess', 'get_ion_actor_id']
 
-from pyon.ion.endpoint import ProcessRPCClient, ProcessRPCServer, ProcessSubscriber, ProcessPublisher
-__all__ += ['ProcessRPCClient', 'ProcessRPCServer', 'ProcessSubscriber', 'ProcessPublisher']
+from pyon.ion.endpoint import ProcessRPCClient, ProcessRPCServer, ProcessSubscriber, ProcessPublisher, ProcessEventSubscriber
+__all__ += ['ProcessRPCClient', 'ProcessRPCServer', 'ProcessSubscriber', 'ProcessPublisher', 'ProcessEventSubscriber']
 
 from pyon.ion.event import EventPublisher, EventSubscriber, EventQuery
 __all__ += ['EventPublisher', 'EventSubscriber', 'EventQuery']

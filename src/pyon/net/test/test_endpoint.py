@@ -14,6 +14,7 @@ from gevent import sleep
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.util.unit_test import PyonTestCase
 from pyon.core import exception
+from pyon.core.exception import BadRequest
 from pyon.core.bootstrap import get_sys_name, CFG
 from pyon.container.cc import Container
 from pyon.core.interceptor.interceptor import Invocation
@@ -198,12 +199,10 @@ class TestSendingBaseEndpoint(PyonTestCase):
         self.assertEquals(ep._send_name.exchange, sentinel.xp)
         self.assertEquals(ep._send_name.queue, sentinel.rkey)
 
-    @patch('pyon.net.endpoint.log')
-    def test_init_with_old_name_gives_warn(self, mocklog):
-        ep = SendingBaseEndpoint(name=(sentinel.xp, sentinel.rkey))
+    def test_init_with_old_name_gives_warn(self):
+        ep = SendingBaseEndpoint(to_name=(sentinel.xp, sentinel.rkey))
         self.assertEquals(ep._send_name.exchange, sentinel.xp)
         self.assertEquals(ep._send_name.queue, sentinel.rkey)
-        self.assertTrue(mocklog.warn.called)
 
     def test_init_with_to_name_namepair(self):
         class MyNameTrio(NameTrio):
@@ -252,12 +251,6 @@ class TestListeningBaseEndpoint(PyonTestCase):
         ch = ep._create_channel()
         self.assertIn('transport', ep.node.channel.call_args[1])
         self.assertIn(fn, ep.node.channel.call_args[1].itervalues())
-
-    @patch('pyon.net.endpoint.log')
-    def test_init_with_name_instead_of_from_name(self, mocklog):
-        ep = ListeningBaseEndpoint(node=Mock(spec=NodeB), name=sentinel.name)
-        self.assertEquals(mocklog.warn.call_count, 1)
-        self.assertIn("deprecated", mocklog.warn.call_args[0][0])
 
     def test_get_ready_event(self):
         ep = ListeningBaseEndpoint(node=Mock(spec=NodeB))
@@ -597,7 +590,7 @@ class TestRPCClient(PyonTestCase, RecvMockMixin):
 
     def test_rpc_client_with_unnamed_args(self):
         rpcc = RPCClient(to_name="simply", iface=ISimpleInterface)
-        self.assertRaises(AssertionError, rpcc.simple, "zap", "zip")
+        self.assertRaises(BadRequest, rpcc.simple, "zap", "zip")
 
 @attr('UNIT')
 class TestRPCResponseEndpoint(PyonTestCase, RecvMockMixin):

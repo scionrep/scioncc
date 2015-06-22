@@ -4,18 +4,21 @@
 
 __author__ = 'Michael Meisinger, David Stuebe, Dave Foster <dfoster@asascience.com>'
 
-from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES, MSG_HEADER_TOKENS
-from pyon.net.transport import BaseTransport
-from pyon.net.endpoint import Publisher, Subscriber, EndpointUnit, process_interceptors, RPCRequestEndpointUnit, BaseEndpoint, RPCClient, RPCResponseEndpointUnit, RPCServer, PublisherEndpointUnit, SubscriberEndpointUnit
-from pyon.ion.event import BaseEventSubscriberMixin
-from pyon.util.log import log
-from pyon.core.exception import Timeout as IonTimeout
 from gevent.timeout import Timeout
 
+from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES, MSG_HEADER_TOKENS
+from pyon.core.exception import Timeout as IonTimeout
+from pyon.net.transport import BaseTransport
+from pyon.net.endpoint import (Publisher, Subscriber, EndpointUnit, process_interceptors, RPCRequestEndpointUnit,
+        BaseEndpoint, RPCClient, RPCResponseEndpointUnit, RPCServer, PublisherEndpointUnit, SubscriberEndpointUnit)
+from pyon.ion.event import BaseEventSubscriberMixin
+from pyon.util.log import log
 
-#############################################################################
+
+# -----------------------------------------------------------------------------
 # PROCESS LEVEL ENDPOINTS
-#############################################################################
+#
+
 class ProcessEndpointUnitMixin(EndpointUnit):
     """
     Common-base mixin for Process related endpoints.
@@ -121,7 +124,7 @@ class ProcessEndpointUnitMixin(EndpointUnit):
 
         # This set of tokens is set independently of the actor
         if actor_tokens:
-            header['ion-actor-tokens'] = actor_tokens
+            header[MSG_HEADER_TOKENS] = actor_tokens
         if expiry:
             header[MSG_HEADER_VALID] = expiry
         if container_id:
@@ -165,6 +168,7 @@ class ProcessRPCClient(RPCClient):
         if 'to_name' in kwargs and kwargs['to_name'] is not None and not isinstance(kwargs['to_name'], BaseTransport):
             container = (hasattr(self._process, 'container') and self._process.container) or self._get_container_instance()
             if container:
+                # Client creates the service XN
                 kwargs['to_name'] = container.create_xn_service(kwargs['to_name'])
             else:
                 log.info('No container at ProcessRPCClient init time, will wait until message send to upgrade to Exchange Object')
@@ -200,6 +204,7 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
     def __init__(self, process=None, routing_call=None, **kwargs):
         ProcessEndpointUnitMixin.__init__(self, process=process)
         RPCResponseEndpointUnit.__init__(self, **kwargs)
+
         self._routing_call = routing_call
 
     def _message_received(self, msg, headers):
@@ -278,7 +283,6 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
         Gets the process' saturation, as an integer percentage (process time / total time).
         """
         total, _, proc, interval, interval_run = self._process._process.time_stats  # we want the ION proc's stats
-        #return str(int(proc / float(total) * 100))  # Total
         return str(int(interval_run / float(interval) * 100))  # Percentage in current (partial) and prior interval
 
 
@@ -291,7 +295,7 @@ class ProcessRPCServer(RPCServer):
         self._routing_call = routing_call
 
         # don't make people set service and process when they're almost always the same
-        if not "service" in kwargs:
+        if "service" not in kwargs:
             kwargs = kwargs.copy()
             kwargs['service'] = process
 
@@ -447,10 +451,12 @@ class ProcessEventSubscriber(ProcessSubscriber, BaseEventSubscriberMixin):
 
         log.debug("ProcessEventSubscriber events pattern %s", self.binding)
 
-        ProcessSubscriber.__init__(self, from_name=self._ev_recv_name, binding=self.binding, callback=callback, process=process, routing_call=routing_call, **kwargs)
+        ProcessSubscriber.__init__(self, from_name=self._ev_recv_name, binding=self.binding,
+                                   callback=callback, process=process, routing_call=routing_call, **kwargs)
 
     def __str__(self):
-        return "ProcessEventSubscriber at %s:\n\trecv_name: %s\n\tprocess: %s\n\tcb: %s" % (hex(id(self)), str(self._recv_name), str(self._process), str(self._callback))
+        return "ProcessEventSubscriber at %s:\n\trecv_name: %s\n\tprocess: %s\n\tcb: %s" % (
+                hex(id(self)), str(self._recv_name), str(self._process), str(self._callback))
 
     def _create_channel(self, **kwargs):
         """
@@ -461,4 +467,3 @@ class ProcessEventSubscriber(ProcessSubscriber, BaseEventSubscriberMixin):
             ch.queue_auto_delete = self._auto_delete
 
         return ch
-
