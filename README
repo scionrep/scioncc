@@ -5,17 +5,21 @@ Scientific Observatory Network (SciON)
 (C) Individual Contributors, 2014-2015
 Open source under BSD license. See LICENSE for details.
 
-Some parts base on the:
+===========================================================
+Code is in parts based on the:
 
 Ocean Observatories Initiative Cyberinfrastructure (OOI CI)
 Integrated Observatory Network (ION)
 
 (C) The Regents of the University of California, 2010-2014
-Open source under BSD license. See LICENSE for details.
+Open source under BSD license.
+
+(C) University of Chicago, 2013
+Open source under Apache 2.0 license (execution env.)
 ===========================================================
 
 
-## See also: [ScionCC Wiki](https://github.com/scionrep/scioncc/wiki)
+See also: ScionCC Wiki, https://github.com/scionrep/scioncc/wiki
 
 
 DESCRIPTION
@@ -43,6 +47,11 @@ misc/           make and install libraries and documentation
 obj/            (symlink) to defs/objects
 res/            (symlink) to defs/res
 src/            project source code and packages root (also contains setup.py)
+src/pyon/       code for the Pyon framework (config, messaging, logging, objects)
+                and the ScionCC container and related utils
+src/ion/        code for higher level services, processes, UIs and agents
+src/putil/      code for Pyon independent utils (not gevent aware)
+src/scripts/    code for script entry points
 
 
 INSTALL
