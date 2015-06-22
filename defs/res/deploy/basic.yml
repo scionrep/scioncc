@@ -65,8 +65,8 @@ apps:
     processapp: [resource_management, ion.services.resource_management_service, ResourceManagementService]
     bootlevel: 10
 
-#  - name: process_dispatcher
-#    processapp: [process_dispatcher, ion.services.process_dispatcher_service, ProcessDispatcherService]
+#  - name: process_management
+#    processapp: [process_management, ion.services.process_management_service, ProcessManagementService]
 #    bootlevel: 10
 
   # The bootstrap for loading policy should be the final bootstrap process.
