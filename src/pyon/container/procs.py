@@ -379,8 +379,15 @@ class ProcManager(object):
             ep = ProcessRPCServer(**kwargs)
         return ep
 
+    def _add_process_publishers(self, process_instance, config):
+        # Add publishers if declared...
+        publish_streams = get_safe(config, "process.publish_streams")
+        pub_names = self._set_publisher_endpoints(process_instance, publish_streams)
+        return pub_names
+
     # -----------------------------------------------------------------
     # PROCESS TYPE: service
+    # - has service listen binding/queue and RPC interface
     def _spawn_service_process(self, process_id, name, module, cls, config, proc_attr):
         """
         Spawn a process acting as a service worker.
@@ -389,7 +396,7 @@ class ProcManager(object):
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
 
         listen_name = get_safe(config, "process.listen_name") or process_instance.name
-        listen_name_xo = self.container.create_xn_service(listen_name)
+        listen_name_xo = self.container.create_service_xn(listen_name)
 
         log.debug("Service Process (%s) listen_name: %s", name, listen_name)
         process_instance._proc_listen_name = listen_name
@@ -427,28 +434,33 @@ class ProcManager(object):
 
     # -----------------------------------------------------------------
     # PROCESS TYPE: stream process
+    # - has stream listen binding/queue
+    # - has publishers if declared
     def _spawn_stream_process(self, process_id, name, module, cls, config, proc_attr):
         """
         Spawn a process acting as a data stream process.
         Attach to subscription queue with process function.
         """
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
+        listeners = []
 
+        # Stream listener
         listen_name = get_safe(config, "process.listen_name") or name
         log.debug("Stream Process (%s) listen_name: %s", name, listen_name)
         process_instance._proc_listen_name = listen_name
 
         process_instance.stream_subscriber = StreamSubscriber(process=process_instance, exchange_name=listen_name,
                                                               callback=process_instance.call_process)
+        listeners.append(process_instance.stream_subscriber)
 
-        # Add publishers if any...
-        publish_streams = get_safe(config, "process.publish_streams")
-        pub_names = self._set_publisher_endpoints(process_instance, publish_streams)
+        pub_names = self._add_process_publishers(process_instance, config)
 
-        pid_listener_xo = self.container.create_xn_process(process_instance.id)
-        rsvc = self._create_listening_endpoint(node=self.container.node,
-                                               from_name=pid_listener_xo,
-                                               process=process_instance)
+        # Private PID listener
+        # pid_listener_xo = self.container.create_process_xn(process_instance.id)
+        # rsvc = self._create_listening_endpoint(node=self.container.node,
+        #                                        from_name=pid_listener_xo,
+        #                                        process=process_instance)
+        # listeners.append(rsvc)
 
         # cleanup method to delete process queue (@TODO: leaks a bit here - should use XOs)
         def cleanup(*args):
@@ -458,7 +470,7 @@ class ProcManager(object):
 
         proc = self.proc_sup.spawn(name=process_instance.id,
                                    service=process_instance,
-                                   listeners=[rsvc, process_instance.stream_subscriber],
+                                   listeners=listeners,
                                    proc_name=process_instance._proc_name,
                                    cleanup_method=cleanup)
         proc.proc._glname = "ION Proc %s" % process_instance._proc_name
@@ -484,6 +496,8 @@ class ProcManager(object):
 
     # -----------------------------------------------------------------
     # PROCESS TYPE: agent
+    # - has resource ID (or if non-existent PID) listen binding/queue
+    # - has RPC interface
     def _spawn_agent_process(self, process_id, name, module, cls, config, proc_attr):
         """
         Spawn a process acting as agent process.
@@ -499,7 +513,8 @@ class ProcManager(object):
         if resource_id:
             process_instance.resource_id = resource_id
 
-            resource_id_xo = self.container.create_xn_process(resource_id)
+            # Resource ID listener
+            resource_id_xo = self.container.create_process_xn(resource_id)
 
             alistener = self._create_listening_endpoint(node=self.container.node,
                                                         from_name=resource_id_xo,
@@ -507,12 +522,14 @@ class ProcManager(object):
 
             listeners.append(alistener)
 
-        pid_listener_xo = self.container.create_xn_process(process_instance.id)
-        rsvc = self._create_listening_endpoint(node=self.container.node,
-                                               from_name=pid_listener_xo,
-                                               process=process_instance)
+        else:
+            # Private PID listener
+            pid_listener_xo = self.container.create_process_xn(process_instance.id)
+            rsvc = self._create_listening_endpoint(node=self.container.node,
+                                                   from_name=pid_listener_xo,
+                                                   process=process_instance)
 
-        listeners.append(rsvc)
+            listeners.append(rsvc)
 
         proc = self.proc_sup.spawn(name=process_instance.id,
                                    service=process_instance,
@@ -549,20 +566,22 @@ class ProcManager(object):
 
     # -----------------------------------------------------------------
     # PROCESS TYPE: standalone
+    # - has PID binding/queue with RPC interface
+    # - has publishers if declared
     def _spawn_standalone_process(self, process_id, name, module, cls, config, proc_attr):
         """
         Spawn a process acting as standalone process.
         Attach to service pid.
         """
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
-        pid_listener_xo = self.container.create_xn_process(process_instance.id)
+
+        # Private PID listener
+        pid_listener_xo = self.container.create_process_xn(process_instance.id)
         rsvc = self._create_listening_endpoint(node=self.container.node,
                                                from_name=pid_listener_xo,
                                                process=process_instance)
 
-        # Add publishers if any...
-        publish_streams = get_safe(config, "process.publish_streams")
-        pub_names = self._set_publisher_endpoints(process_instance, publish_streams)
+        pub_names = self._add_process_publishers(process_instance, config)
 
         # cleanup method to delete process queue (@TODO: leaks a bit here - should use XOs)
         def cleanup(*args):
@@ -598,15 +617,15 @@ class ProcManager(object):
 
     # -----------------------------------------------------------------
     # PROCESS TYPE: simple
+    # - has publishers if declared
     def _spawn_simple_process(self, process_id, name, module, cls, config, proc_attr):
         """
         Spawn a process acting as simple process.
         No attachments.
         """
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
-        # Add publishers if any...
-        publish_streams = get_safe(config, "process.publish_streams")
-        pub_names = self._set_publisher_endpoints(process_instance, publish_streams)
+
+        pub_names = self._add_process_publishers(process_instance, config)
 
         # cleanup method to delete process queue (@TODO: leaks a bit here - should use XOs)
         def cleanup(*args):
@@ -635,6 +654,8 @@ class ProcManager(object):
 
     # -----------------------------------------------------------------
     # PROCESS TYPE: immediate
+    # - will not be registered
+    # - will be terminated right after start
     def _spawn_immediate_process(self, process_id, name, module, cls, config, proc_attr):
         """
         Spawn a process acting as immediate one off process.

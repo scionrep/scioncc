@@ -236,7 +236,6 @@ class TestNodeB(PyonTestCase):
 
         bcbmock.assert_called_once_with(self._node.client.channel, 'on_open_callback', channel_number=None)
 
-    @patch('pyon.net.messaging.traceback', Mock())
     @patch('pyon.net.messaging.blocking_cb', return_value=None)
     @patch('pyon.container.cc.Container.instance')
     def test__new_transport_fails(self, containermock, bcbmock):

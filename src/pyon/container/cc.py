@@ -462,7 +462,7 @@ class LocalRouterCapability(ContainerCapability):
 class ContainerAgentCapability(ContainerCapability):
     def start(self):
         # Start the CC-Agent API
-        listen_name = self.container.create_xn_process(self.container.name)
+        listen_name = self.container.create_process_xn(self.container.name, auto_delete=True)
         rsvc = ProcessRPCServer(from_name=listen_name, service=self.container, process=self.container)
 
         # Start an ION process with the right kind of endpoint factory

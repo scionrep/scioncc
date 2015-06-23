@@ -177,13 +177,14 @@ class IonProcessThread(PyonThread):
         # kill this process's main greenlet. This should be noticed by the container's proc manager
         self.proc.kill(child.exception)
 
-    def add_endpoint(self, listener):
+    def add_endpoint(self, listener, activate=True):
         """
         Adds a listening endpoint to be managed by this ION process.
 
         Spawns the listen loop and sets the routing call to synchronize incoming messages
         here. If this process hasn't been started yet, adds it to the list of listeners
         to start on startup.
+        @param activate  If True (default), start consuming from listener
         """
         if self.proc:
             listener.routing_call = self._routing_call
@@ -197,7 +198,7 @@ class IonProcessThread(PyonThread):
             else:
                 listen_thread_name = "unknown-listener-%s" % (len(self.listeners)+1)
 
-            listen_thread = self.thread_manager.spawn(listener.listen, thread_name=listen_thread_name)
+            listen_thread = self.thread_manager.spawn(listener.listen, thread_name=listen_thread_name, activate=activate)
             listen_thread.proc._glname = "ION Proc listener %s" % listen_thread_name
             self._listener_map[listener] = listen_thread
             self.listeners.append(listener)

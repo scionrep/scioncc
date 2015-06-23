@@ -31,6 +31,44 @@ class TransportError(StandardError):
     pass
 
 
+class NameTrio(object):
+    """
+    Internal representation of a messaging name, consisting of name/queue/binding (optional).
+    Created and used at the Endpoint layer and sometimes Channel layer.
+    """
+    def __init__(self, exchange=None, queue=None, binding=None):
+        """
+        Creates a NameTrio.
+        If either exchange or queue is a tuple, it will use that as a (exchange, queue, binding (optional)) triple.
+
+        @param  exchange    An exchange name. You would typically use the sysname for that.
+        @param  queue       Queue name.
+        @param  binding     A binding/routing key (used for both recv and send sides). Optional,
+                            and if not specified, defaults to the *internal* queue name.
+        """
+        if isinstance(exchange, tuple):
+            self._exchange, self._queue, self._binding = list(exchange) + ([None] * (3 - len(exchange)))
+        elif isinstance(queue, tuple):
+            self._exchange, self._queue, self._binding = list(queue) + ([None] * (3 - len(queue)))
+        else:
+            self._exchange, self._queue,self._binding = exchange, queue, binding
+
+    @property
+    def exchange(self):
+        return self._exchange
+
+    @property
+    def queue(self):
+        return self._queue
+
+    @property
+    def binding(self):
+        return self._binding or self._queue
+
+    def __str__(self):
+        return "XAdr(%s,%s,bnd=%s)" % (self.exchange, self.queue, self.binding)
+
+
 class BaseTransport(object):
     def declare_exchange_impl(self, exchange, **kwargs):
         raise NotImplementedError()
@@ -273,7 +311,6 @@ class AMQPTransport(BaseTransport):
         return False
 
     def close(self):
-
         if self.lock:
             return
 
@@ -304,7 +341,8 @@ class AMQPTransport(BaseTransport):
 
         def cb(*args, **kwargs):
             ret = list(args)
-            if len(kwargs): ret.append(kwargs)
+            if len(kwargs):
+                ret.append(kwargs)
             ar.set(ret)
 
         eb = lambda ch, *args: ar.set(TransportError("_sync_call could not complete due to an error (%s)" % args))
@@ -318,7 +356,7 @@ class AMQPTransport(BaseTransport):
 
         if isinstance(ret_vals, TransportError):
 
-            # mark this channel as poison, do not use again!
+            # Mark this channel as bad, do not use again!
             # don't test for type here, we don't want to have to import PyonSelectConnection
             if hasattr(self._client.transport, 'connection') and hasattr(self._client.transport.connection, 'mark_bad_channel'):
                 self._client.transport.connection.mark_bad_channel(self._client.channel_number)
@@ -337,28 +375,24 @@ class AMQPTransport(BaseTransport):
         #log.debug("AMQPTransport.declare_exchange_impl(%s): %s, T %s, D %s, AD %s", self._client.channel_number, exchange, exchange_type, durable, auto_delete)
         arguments = {}
 
-        if os.environ.get('QUEUE_BLAME', None) is not None:
-            testid = os.environ['QUEUE_BLAME']
-            arguments.update({'created-by': testid})
-
         self._sync_call(self._client.exchange_declare, 'callback',
-                                             exchange=exchange,
-                                             type=exchange_type,
-                                             durable=durable,
-                                             auto_delete=auto_delete,
-                                             arguments=arguments)
+                        exchange=exchange,
+                        type=exchange_type,
+                        durable=durable,
+                        auto_delete=auto_delete,
+                        arguments=arguments)
 
     def delete_exchange_impl(self, exchange, **kwargs):
         log.debug("AMQPTransport.delete_exchange_impl(%s): %s", self._client.channel_number, exchange)
         self._sync_call(self._client.exchange_delete, 'callback', exchange=exchange)
 
-    def declare_queue_impl(self, queue, durable=False, auto_delete=True):
+    def declare_queue_impl(self, queue, durable=False, auto_delete=True, msg_expiration=None, expiration=None):
         #log.debug("AMQPTransport.declare_queue_impl(%s): %s, D %s, AD %s", self._client.channel_number, queue, durable, auto_delete)
         arguments = {}
-
-        if os.environ.get('QUEUE_BLAME', None) is not None:
-            testid = os.environ['QUEUE_BLAME']
-            arguments.update({'created-by': testid})
+        if msg_expiration is not None:
+            arguments["x-message-ttl"] = int(msg_expiration)
+        if expiration is not None:
+            arguments["x-expires"] = int(expiration)
 
         frame = self._sync_call(self._client.queue_declare, 'callback',
                                 queue=queue or '',
@@ -375,15 +409,16 @@ class AMQPTransport(BaseTransport):
     def bind_impl(self, exchange, queue, binding):
         #log.debug("AMQPTransport.bind_impl(%s): EX %s, Q %s, B %s", self._client.channel_number, exchange, queue, binding)
         self._sync_call(self._client.queue_bind, 'callback',
-                                        queue=queue,
-                                        exchange=exchange,
-                                        routing_key=binding)
+                        queue=queue,
+                        exchange=exchange,
+                        routing_key=binding)
 
     def unbind_impl(self, exchange, queue, binding):
         #log.debug("AMQPTransport.unbind_impl(%s): EX %s, Q %s, B %s", self._client.channel_number, exchange, queue, binding)
-        self._sync_call(self._client.queue_unbind, 'callback', queue=queue,
-                                                     exchange=exchange,
-                                                     routing_key=binding)
+        self._sync_call(self._client.queue_unbind, 'callback',
+                        queue=queue,
+                        exchange=exchange,
+                        routing_key=binding)
 
     def ack_impl(self, delivery_tag):
         """
@@ -407,9 +442,9 @@ class AMQPTransport(BaseTransport):
         """
         #log.debug("AMQPTransport.start_consume_impl(%s): %s", self._client.channel_number, queue)
         consumer_tag = self._client.basic_consume(callback,
-                                            queue=queue,
-                                            no_ack=no_ack,
-                                            exclusive=exclusive)
+                                                  queue=queue,
+                                                  no_ack=no_ack,
+                                                  exclusive=exclusive)
         return consumer_tag
 
     def stop_consume_impl(self, consumer_tag):
@@ -424,7 +459,7 @@ class AMQPTransport(BaseTransport):
         # to wait until our consumer tag is removed from the pika channel's consumers dict.
         # See: https://gist.github.com/3751870
 
-        attempts = 5
+        attempts = 6
         while attempts > 0:
             if consumer_tag not in self._client._consumers:
                 break
@@ -432,7 +467,8 @@ class AMQPTransport(BaseTransport):
                 log.debug("stop_consume_impl waiting for ctag to be removed from consumers, attempts rem: %s", attempts)
 
             attempts -= 1
-            sleep(1)
+
+            sleep(1) if attempts < 4 else sleep(0.1)        # Wait shorter the first few times
 
         if consumer_tag in self._client._consumers:
             raise TransportError("stop_consume_impl did not complete in the expected amount of time, transport may be compromised")
@@ -449,8 +485,8 @@ class AMQPTransport(BaseTransport):
         """
         log.debug("AMQPTransport.get_stats_impl(%s): Q %s", self._client.channel_number, queue)
         frame = self._sync_call(self._client.queue_declare, 'callback',
-                                        queue=queue or '',
-                                        passive=True)
+                                queue=queue or '',
+                                passive=True)
         return frame.method.message_count, frame.method.consumer_count
 
     def purge_impl(self, queue):
@@ -479,8 +515,11 @@ class AMQPTransport(BaseTransport):
         else:
             delivery_mode = None
 
+        expiration = properties.get("expiration", None) if properties else None
+        expiration = str(expiration) if expiration else None
         props = BasicProperties(headers=properties,
-                                delivery_mode=delivery_mode)
+                                delivery_mode=delivery_mode,
+                                expiration=expiration)
 
         self._client.basic_publish(exchange=exchange,       # todo
                                    routing_key=routing_key, # todo
@@ -488,45 +527,6 @@ class AMQPTransport(BaseTransport):
                                    properties=props,
                                    immediate=immediate,     # todo
                                    mandatory=mandatory)     # todo
-
-
-class NameTrio(object):
-    """
-    Internal representation of a name/queue/binding (optional).
-    Created and used at the Endpoint layer and sometimes Channel layer.
-    """
-    def __init__(self, exchange=None, queue=None, binding=None):
-        """
-        Creates a NameTrio.
-
-        If either exchange or queue is a tuple, it will use that as a (exchange, queue, binding (optional)) triple.
-
-        @param  exchange    An exchange name. You would typically use the sysname for that.
-        @param  queue       Queue name.
-        @param  binding     A binding/routing key (used for both recv and send sides). Optional,
-                            and if not specified, defaults to the *internal* queue name.
-        """
-        if isinstance(exchange, tuple):
-            self._exchange, self._queue, self._binding = list(exchange) + ([None] * (3 - len(exchange)))
-        elif isinstance(queue, tuple):
-            self._exchange, self._queue, self._binding = list(queue) + ([None] * (3 - len(queue)))
-        else:
-            self._exchange, self._queue,self._binding = exchange, queue, binding
-
-    @property
-    def exchange(self):
-        return self._exchange
-
-    @property
-    def queue(self):
-        return self._queue
-
-    @property
-    def binding(self):
-        return self._binding or self._queue
-
-    def __str__(self):
-        return "XAdr(%s,%s,B: %s)" % (self.exchange, self.queue, self.binding)
 
 
 class TopicTrie(object):

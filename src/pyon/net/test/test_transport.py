@@ -356,21 +356,6 @@ class TestAMQPTransportCommonMethods(PyonTestCase):
                                                    auto_delete=True,
                                                    arguments={})
 
-    @patch('pyon.net.transport.os', new_callable=MagicMock)
-    def test_declare_exchange_impl_queue_blame(self, osmock):
-        osmock.environ.get.return_value = True
-        osmock.environ.__getitem__.return_value = sentinel.testid
-
-        self.tp.declare_exchange_impl(sentinel.exchange)
-
-        self.tp._sync_call.assert_called_once_with(self.tp._client.exchange_declare,
-                                                   'callback',
-                                                   exchange=sentinel.exchange,
-                                                   type='topic',
-                                                   durable=False,
-                                                   auto_delete=True,
-                                                   arguments={'created-by':sentinel.testid})
-
     def test_delete_exchange_impl(self):
         self.tp.delete_exchange_impl(sentinel.exchange)
         self.tp._sync_call.assert_called_once_with(self.tp._client.exchange_delete,
@@ -386,22 +371,6 @@ class TestAMQPTransportCommonMethods(PyonTestCase):
                                                    auto_delete=True,
                                                    durable=False,
                                                    arguments={})
-
-        self.assertEquals(retqueue, self.tp._sync_call.return_value.method.queue)
-
-    @patch('pyon.net.transport.os', new_callable=MagicMock)
-    def test_declare_queue_impl_queue_blame(self, osmock):
-        osmock.environ.get.return_value = True
-        osmock.environ.__getitem__.return_value = sentinel.testid
-
-        retqueue = self.tp.declare_queue_impl(sentinel.queue)
-
-        self.tp._sync_call.assert_called_once_with(self.tp._client.queue_declare,
-                                                   'callback',
-                                                   queue=sentinel.queue,
-                                                   durable=False,
-                                                   auto_delete=True,
-                                                   arguments={'created-by':sentinel.testid})
 
         self.assertEquals(retqueue, self.tp._sync_call.return_value.method.queue)
 
@@ -467,7 +436,7 @@ class TestAMQPTransportCommonMethods(PyonTestCase):
         self.tp._client._consumers.__contains__.side_effect = [True, False, False] # is checked once more at exit of method
 
         self.tp.stop_consume_impl(sentinel.ctag)
-        sleepmock.assert_called_once_with(1)
+        sleepmock.assert_called_once_with(0.1)
 
     def test_setup_listener(self):
         cb = Mock()
@@ -505,24 +474,26 @@ class TestAMQPTransportCommonMethods(PyonTestCase):
 
     @patch('pyon.net.transport.BasicProperties')
     def test_publish_impl(self, bpmock):
-        self.tp.publish_impl(sentinel.exchange, sentinel.routing_key, sentinel.body, sentinel.properties)
+        self.tp.publish_impl(sentinel.exchange, sentinel.routing_key, sentinel.body, {})
 
         self.tp._client.basic_publish.assert_called_once_with(exchange=sentinel.exchange,
                                                               routing_key=sentinel.routing_key,
                                                               body=sentinel.body,
-                                                              properties=bpmock(headers=sentinel.properties,
+                                                              properties=bpmock(headers={},
+                                                                                expiration=None,
                                                                                 delivery_mode=None),
                                                               immediate=False,
                                                               mandatory=False)
 
     @patch('pyon.net.transport.BasicProperties')
     def test_publish_impl_durable(self, bpmock):
-        self.tp.publish_impl(sentinel.exchange, sentinel.routing_key, sentinel.body, sentinel.properties, durable_msg=True)
+        self.tp.publish_impl(sentinel.exchange, sentinel.routing_key, sentinel.body, {'expiration': 99}, durable_msg=True)
 
         self.tp._client.basic_publish.assert_called_once_with(exchange=sentinel.exchange,
                                                               routing_key=sentinel.routing_key,
                                                               body=sentinel.body,
-                                                              properties=bpmock(headers=sentinel.properties,
+                                                              properties=bpmock(headers={},
+                                                                                expiration="99",
                                                                                 delivery_mode=2),
                                                               immediate=False,
                                                               mandatory=False)

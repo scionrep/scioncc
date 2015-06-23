@@ -23,7 +23,7 @@ class StreamPubsubTest(IonIntegrationTestCase):
 
     def tearDown(self):
         for queue in self.queue_cleanup:
-            xn = self.container.ex_manager.create_xn_queue(queue)
+            xn = self.container.ex_manager.create_queue_xn(queue)
             xn.delete()
         for exchange in self.exchange_cleanup:
             xp = self.container.ex_manager.create_xp(exchange)

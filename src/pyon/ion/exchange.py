@@ -4,26 +4,23 @@
 
 __author__ = 'Michael Meisinger, Dave Foster'
 
+import gevent
+import requests
+import simplejson as json
+import socket
+import time
+
 from pyon.core import bootstrap
 from pyon.core.bootstrap import CFG, get_service_registry
+from pyon.core.exception import Timeout, ServiceUnavailable, ServerError
+from pyon.ion.endpoint import ProcessEndpointUnitMixin
+from pyon.ion.identifier import create_simple_unique_id
+from pyon.ion.resource import RT
 from pyon.net import messaging
 from pyon.net.transport import NameTrio, TransportError, XOTransport
 from pyon.util.containers import get_safe
 from pyon.util.log import log
-from pyon.ion.resource import RT
-from pyon.core.exception import Timeout, ServiceUnavailable, ServerError
-from pyon.ion.endpoint import ProcessEndpointUnitMixin
-from pyon.ion.identifier import create_simple_unique_id
 
-import gevent
-import requests
-import simplejson as json
-import time
-import socket
-
-from interface.objects import ExchangeName as ResExchangeName
-from interface.objects import ExchangeSpace as ResExchangeSpace
-from interface.objects import ExchangePoint as ResExchangePoint
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 
@@ -49,10 +46,10 @@ class ExchangeManager(object):
         # Define the callables that can be added to Container public API
         self.container_api = [self.create_xs,
                               self.create_xp,
-                              self.create_xn_service,
-                              self.create_xn_process,
-                              self.create_xn_queue,
-                              self.create_xn_event]
+                              self.create_service_xn,
+                              self.create_process_xn,
+                              self.create_queue_xn,
+                              self.create_event_xn]
 
         # Add the public callables to Container
         for call in self.container_api:
@@ -172,15 +169,13 @@ class ExchangeManager(object):
 
     def stop(self, *args, **kwargs):
         # ##############
-        # HACK HACK HACK
+        # HACK
         #
         # It appears during shutdown that when a channel is closed, it's not FULLY closed by the pika connection
         # until the next round of _handle_events. We have to yield here to let that happen, in order to have close
         # work fine without blowing up.
         # ##############
         time.sleep(0.1)
-        # ##############
-        # /HACK
         # ##############
 
         log.debug("ExchangeManager.stopping (%d connections)", len(self._nodes) + len(self._priv_nodes))
@@ -274,15 +269,6 @@ class ExchangeManager(object):
             return self._xs_cache[name]
 
         return None
-        # Commented out MM 2/17/15 - Not needed and slowing things down
-
-        # xs_objs, _ = self._rr.find_resources(RT.ExchangeSpace, name=name)
-        # if len(xs_objs) != 1:
-        #     log.warn("Could not find ExchangeSpace resource with name: %s", name)
-        #     return None
-        #
-        # self._xs_cache[name] = xs_objs[0]
-        # return xs_objs[0]
 
     def _bootstrap_default_org(self):
         """
@@ -305,11 +291,10 @@ class ExchangeManager(object):
 
     def _create_root_xs(self):
         """
-        The ROOT/default XS needs a special creation because simply trying to create it is a chicken/egg problem.
-        We simulate the EMS here.
+        The ROOT/default XS needs a special creation - simulate EMS here.
         """
         node_name, node = self._get_node_for_xs(self.system_xs_name)
-        transport       = self._get_priv_transport(node_name)
+        transport = self._get_priv_transport(node_name)
 
         xs = ExchangeSpace(self,
                            transport,
@@ -318,27 +303,6 @@ class ExchangeManager(object):
                            exchange_type='topic',
                            durable=False,            # @TODO: configurable?
                            auto_delete=True)
-
-        # Commented out MM 2/17/15 - Not needed and not correct (Org assoc not created)
-
-        # # create ExchangeSpace resource if there is none
-        # rids, _ = self._rr.find_resources(restype=RT.ExchangeSpace, name=self.system_xs_name, id_only=True)
-        # if not rids:
-        #     xso = ResExchangeSpace(name=self.system_xs_name)
-        #
-        #     # @TODO: we have a bug in the CC, need to skirt around the event publisher capability which shouldn't be there
-        #     reset = False
-        #     if self.container.has_capability(self.container.CCAP.EVENT_PUBLISHER):
-        #         self.container._capabilities.remove(self.container.CCAP.EVENT_PUBLISHER)
-        #         reset = True
-        #
-        #     rid, _ = self._rr.create(xso)
-        #
-        #     # @TODO remove this
-        #     if reset:
-        #         self.container._capabilities.append(self.container.CCAP.EVENT_PUBLISHER)
-        #
-        #     self._xs_cache[self.system_xs_name] = self._rr.read(rid)
 
         # ensure_default_declared will take care of any declaration we need to do
         return xs
@@ -396,9 +360,7 @@ class ExchangeManager(object):
         Finds a node to be used by an ExchangeSpace.
 
         Looks up the given exchange space in CFG under the exchange.exchange_brokers section.
-
         Will return the default node if none found.
-
         Returns a 2-tuple of name, node.
         """
         for broker_name, broker_cfg in CFG.get_safe('exchange.exchange_brokers', {}).iteritems():
@@ -420,7 +382,6 @@ class ExchangeManager(object):
         Finds a node to be used by an ExchangePoint, falling back to an ExchangeSpace if none found.
 
         Similar to _get_node_for_xs.
-
         Returns a 2-tuple of name, node.
         """
         for broker_name, broker_cfg in CFG.get_safe('exchange.exchange_brokers', {}).iteritems():
@@ -436,12 +397,9 @@ class ExchangeManager(object):
         log.debug("ExchangeManager.create_xs: %s", name)
 
         node_name, node = self._get_node_for_xs(name)
-        transport       = self._get_priv_transport(node_name)
+        transport = self._get_priv_transport(node_name)
 
-        xs = ExchangeSpace(self,
-                           transport,
-                           node,
-                           name,
+        xs = ExchangeSpace(self, transport, node, name,
                            exchange_type=exchange_type,
                            durable=durable,
                            auto_delete=auto_delete)
@@ -481,12 +439,7 @@ class ExchangeManager(object):
         node_name, node = self._get_node_for_xp(name, xs._exchange)
         transport       = self._get_priv_transport(node_name)
 
-        xp = ExchangePoint(self,
-                           transport,
-                           node,
-                           name,
-                           xs,
-                           **kwargs)
+        xp = ExchangePoint(self, transport, node, name, xs, **kwargs)
 
         # put in xn_by_name anyway
         self.xn_by_name[name] = xp
@@ -522,26 +475,11 @@ class ExchangeManager(object):
         transport       = self._get_priv_transport(node_name)
 
         if xn_type == "service":
-            xn = ExchangeNameService(self,
-                                     transport,
-                                     node,
-                                     name,
-                                     xs,
-                                     **kwargs)
+            xn = ServiceExchangeName(self, transport, node, name, xs, **kwargs)
         elif xn_type == "process":
-            xn = ExchangeNameProcess(self,
-                                     transport,
-                                     node,
-                                     name,
-                                     xs,
-                                     **kwargs)
+            xn = ProcessExchangeName(self, transport, node, name, xs, **kwargs)
         elif xn_type == "queue":
-            xn = ExchangeNameQueue(self,
-                                   transport,
-                                   node,
-                                   name,
-                                   xs,
-                                   **kwargs)
+            xn = QueueExchangeName(self, transport, node, name, xs, **kwargs)
         else:
             raise StandardError("Unknown XN type: %s" % xn_type)
 
@@ -562,18 +500,19 @@ class ExchangeManager(object):
 
         return xn
 
-    def create_xn_service(self, name, xs=None, **kwargs):
+    def create_service_xn(self, name, xs=None, **kwargs):
         return self._create_xn('service', name, xs=xs, **kwargs)
 
-    def create_xn_process(self, name, xs=None, **kwargs):
+    def create_process_xn(self, name, xs=None, **kwargs):
         return self._create_xn('process', name, xs=xs, **kwargs)
 
-    def create_xn_queue(self, name, xs=None, **kwargs):
+    def create_queue_xn(self, name, xs=None, **kwargs):
         return self._create_xn('queue', name, xs=xs, **kwargs)
 
-    def create_xn_event(self, name, event_type=None, origin=None, sub_type=None, origin_type=None, pattern=None, xp=None, **kwargs):
+    def create_event_xn(self, name, event_type=None, origin=None, sub_type=None, origin_type=None, pattern=None,
+                        xp=None, auto_delete=None, **kwargs):
         """
-        Creates an ExchangeNameEvent suitable for listening with an EventSubscriber.
+        Creates an EventExchangeName suitable for listening with an EventSubscriber.
         
         Pass None for the name to have one automatically generated.
         If you pass a pattern, it takes precedence over making a new one from event_type/origin/sub_type/origin_type.
@@ -587,19 +526,16 @@ class ExchangeManager(object):
             eventxp = CFG.get_safe('exchange.core.events', DEFAULT_EVENTS_XP)
             xp = self.create_xp(eventxp)
 
-        node      = xp.node
+        node = xp.node
         transport = xp._transports[0]
 
-        xn = ExchangeNameEvent(self,
-                               transport,
-                               node,
-                               name,
-                               xp,
+        xn = EventExchangeName(self, transport, node, name, xp,
                                event_type=event_type,
-                               origin=origin,
                                sub_type=sub_type,
+                               origin=origin,
                                origin_type=origin_type,
                                pattern=pattern,
+                               auto_delete=auto_delete,
                                **kwargs)
 
         self._register_xn(name, xn, xp)
@@ -999,10 +935,12 @@ class ExchangeName(XOTransport, NameTrio):
                              node=node)
         NameTrio.__init__(self, exchange=None, queue=name)
 
-        self._xs             = xs
+        self._xs = xs
 
-        if durable is not None:     self._xn_durable = durable
-        if auto_delete is not None: self._xn_auto_delete = auto_delete
+        if durable is not None:
+            self._xn_durable = durable
+        if auto_delete is not None:
+            self._xn_auto_delete = auto_delete
 
     @property
     def queue_durable(self):
@@ -1077,6 +1015,9 @@ class ExchangeName(XOTransport, NameTrio):
 
     def purge(self):
         return self.purge_impl(self.queue)
+
+    def __str__(self):
+        return self.xn_type + "-" + NameTrio.__str__(self)
 
 
 class ExchangePoint(ExchangeName):
@@ -1160,12 +1101,12 @@ class ExchangePointRoute(ExchangeName):
         raise StandardError("ExchangePointRoute does not support delete")
 
 
-class ExchangeNameProcess(ExchangeName):
+class ProcessExchangeName(ExchangeName):
     xn_type = "XN_PROCESS"
     pass
 
 
-class ExchangeNameService(ExchangeName):
+class ServiceExchangeName(ExchangeName):
     xn_type = "XN_SERVICE"
 
     @ExchangeName.queue_durable.getter
@@ -1183,7 +1124,8 @@ class ExchangeNameService(ExchangeName):
 
         return False
 
-class ExchangeNameQueue(ExchangeName):
+
+class QueueExchangeName(ExchangeName):
     xn_type = "XN_QUEUE"
 
     @property
@@ -1195,14 +1137,17 @@ class ExchangeNameQueue(ExchangeName):
     def setup_listener(self, binding, default_cb):
         log.debug("ExchangeQueue.setup_listener: passing on binding")
 
-class ExchangeNameEvent(ExchangeName):
+
+class EventExchangeName(ExchangeName):
     """
     Listening ExchangeName for Event subscribers.
     """
     xn_type = "XN_EVENT"
 
-    def __init__(self, exchange_manager, privileged_transport, node, name, xp, event_type=None, origin=None, sub_type=None, origin_type=None, pattern=None):
-        ExchangeName.__init__(self, exchange_manager, privileged_transport, node, name, xp)     # xp goes to xs param
+    def __init__(self, exchange_manager, privileged_transport, node, name, xp, event_type=None, origin=None,
+                 sub_type=None, origin_type=None, pattern=None, auto_delete=None):
+        # xp goes to xs param
+        ExchangeName.__init__(self, exchange_manager, privileged_transport, node, name, xp, auto_delete=auto_delete)
 
         self._queue = name
 
@@ -1217,9 +1162,5 @@ class ExchangeNameEvent(ExchangeName):
 
     @property
     def queue_durable(self):
+        # TODO: Is this correct? This overshadows the base class.
         return self._xs.queue_durable
-
-    @property
-    def queue_auto_delete(self):
-        return self._xs.queue_auto_delete
-

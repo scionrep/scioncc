@@ -4,32 +4,30 @@
 Provides a messaging channel protocol.
 
 Defines the configuration parameter values and execution/command sequence.
-(The configuration may require in-band communication with the broker. This
+The configuration may require in-band communication with the broker. This
 communication can only occur once the Channel transport is technically in a
 state that is ready (connectionMade).
 
 Once configured, the Channel Protocol is used to administer the
 operational state of the Channel (start or stop consuming; etc.) and to
-facilitate communication (delivery/sending of messages) between amqp
+facilitate communication (delivery/sending of messages) between AMQP
 messaging and the application.
 
-The Channel Protocol mediates between the application using it and the amqp
-protocol underlying it...so the Channel Protocol is a transport protocol in
-the language of amqp methods and ooi exchange nomenclature.
+The Channel Protocol mediates between the application using it and the AMQP
+protocol underlying it... so the Channel Protocol is a transport protocol in
+the language of AMQP methods and ScionCC exchange nomenclature.
 
-The Channel Protocol doesn't
-make a lot of sense for the 'interactive'
+The Channel Protocol doesn't make a lot of sense for the 'interactive'
 style client methods, like accept, or listen.
 Listen kind of does, it says go into listening mode.
 If the Channel Protocol is a state machine, then it's states are being
 changed by the client interface...and communication events?
-When it is first being configured, it is in a pre-ready state, and the amqp
+When it is first being configured, it is in a pre-ready state, and the AMQP
 methods drive the state transitions. 
 If listen means "put the protocol in the mode where received messages mean
 making new connection contexts"...then accept means...
 Accept is the synchronous version of getting a message received while in
 listen mode
-
 
 TODO:
 [ ] Use nowait on amqp config methods and handle channel exceptions with pika
@@ -38,17 +36,18 @@ TODO:
 point will ack when the content of a delivery naturally concludes (channel
 is closed)
 """
-from pyon.util.log import log
+
+from contextlib import contextmanager
 from gevent import queue as gqueue
 from gevent.lock import RLock
-from contextlib import contextmanager
 from gevent.event import AsyncResult, Event
+import traceback
+
+from pyon.core.bootstrap import CFG
 from pyon.net.transport import AMQPTransport, NameTrio
 from pyon.util.fsm import FSM
-from pyon.core.bootstrap import CFG
-import sys
-import os
-import traceback
+from pyon.util.log import log
+
 
 class ChannelError(StandardError):
     """
@@ -102,12 +101,13 @@ class BaseChannel(object):
         self._fsm = FSM(self.S_INIT)
         self._fsm.add_transition(self.I_ATTACH, self.S_INIT, None, self.S_ACTIVE)
         self._fsm.add_transition(self.I_CLOSE, self.S_ACTIVE, self._on_close, self.S_CLOSED)
-        self._fsm.add_transition(self.I_CLOSE, self.S_CLOSED, lambda *args: self.on_channel_close(None, 0, ""), self.S_CLOSED)              # closed is a goal state, multiple closes are ok
-        self._fsm.add_transition(self.I_CLOSE, self.S_INIT, None, self.S_CLOSED)                # INIT to CLOSED is fine too
+        # CLOSED is a goal state, multiple closes are ok
+        self._fsm.add_transition(self.I_CLOSE, self.S_CLOSED, lambda *args: self.on_channel_close(None, 0, ""), self.S_CLOSED)
+        self._fsm.add_transition(self.I_CLOSE, self.S_INIT, None, self.S_CLOSED)    # INIT to CLOSED is fine too
 
     @property
     def exchange_auto_delete(self):
-        # Fix OOIION-1710: Added because exchanges get deleted on broker restart
+        # TODO: Check - exchanges get deleted on broker restart
         if CFG.get_safe('container.messaging.names.durable', False):
             self._exchange_auto_delete = False
             return False
@@ -129,7 +129,7 @@ class BaseChannel(object):
 
     @property
     def exchange_durable(self):
-        # Fix OOIION-1710: Added because exchanges get deleted on broker restart
+        # TODO: Check - exchanges get deleted on broker restart
         if CFG.get_safe('container.messaging.names.durable', False):
             self._exchange_durable = True
             return True
@@ -201,7 +201,6 @@ class BaseChannel(object):
         assert self._transport
 
         with self._ensure_transport():
-
 #           log.debug("Exchange declare: %s, TYPE %s, DUR %s AD %s", self._exchange, self._exchange_type,
 #                                                                 self.exchange_durable, self.exchange_auto_delete)
 
@@ -261,8 +260,7 @@ class BaseChannel(object):
         """
         #log.trace("BaseChannel.close_impl (%s)", self.get_channel_id())
         if self._transport:
-
-            # the close destroys self._transport, so keep a ref here
+            # The close destroys self._transport, so keep a ref here
             transport = self._transport
             with self._ensure_transport():
                 transport.close()
@@ -337,6 +335,7 @@ class BaseChannel(object):
         if self._fsm.current_state != self.S_CLOSED and self._fsm.next_state is None:
             self._fsm.current_state = self.S_CLOSED
 
+
 class SendChannel(BaseChannel):
     """
     A channel that can only send.
@@ -363,10 +362,6 @@ class SendChannel(BaseChannel):
         routing_key = name.binding    # uses "_queue" if binding not explictly defined
         headers = headers or {}
 
-        if os.environ.get('QUEUE_BLAME', None) is not None:
-            testid = os.environ['QUEUE_BLAME'].split(',')
-            headers['QUEUE_BLAME'] = testid
-
         # are we sending to a durable location?
         # @TODO is this the best way to tell?
         # basically is checking to see if send_name is an XO
@@ -383,6 +378,7 @@ class SendChannel(BaseChannel):
                                          mandatory=False,
                                          durable_msg=durable_msg)
 
+
 class RecvChannel(BaseChannel):
     """
     A channel that can only receive.
@@ -394,9 +390,11 @@ class RecvChannel(BaseChannel):
     _recv_binding   = None      # binding this queue is listening on (set via _bind)
 
     # queue defaults
-    _queue_auto_delete  = None
-    _queue_durable      = None
-    _queue_exclusive    = False
+    _queue_auto_delete    = None
+    _queue_durable        = None
+    _queue_exclusive      = False
+    _queue_msg_expiration = None
+    _queue_expiration     = None
 
     # consumer defaults
     _consumer_exclusive = False
@@ -489,6 +487,34 @@ class RecvChannel(BaseChannel):
     def queue_auto_delete(self, value):
         self._queue_auto_delete = value
 
+    @property
+    def queue_msg_expiration(self):
+        if self._queue_msg_expiration is not None:
+            return self._queue_msg_expiration
+
+        if hasattr(self._recv_name, 'queue_msg_expiration'):
+            return self._recv_name.queue_msg_expiration
+
+        return None
+
+    @queue_msg_expiration.setter
+    def queue_msg_expiration(self, value):
+        self._queue_msg_expiration = value
+
+    @property
+    def queue_expiration(self):
+        if self._queue_expiration is not None:
+            return self._queue_expiration
+
+        if hasattr(self._recv_name, 'queue_expiration'):
+            return self._recv_name.queue_expiration
+
+        return None
+
+    @queue_expiration.setter
+    def queue_expiration(self, value):
+        self._queue_expiration = value
+
     def setup_listener(self, name=None, binding=None):
         """
         Prepares this receiving channel for listening for messages.
@@ -523,7 +549,7 @@ class RecvChannel(BaseChannel):
             self._recv_name = name
 
         self._declare_exchange(exchange)
-        queue   = self._declare_queue(queue)
+        queue = self._declare_queue(queue)
         binding = binding or self._recv_binding or self._recv_name.binding or queue      # last option should only happen in the case of anon-queue
 
         self._bind(binding)
@@ -568,9 +594,7 @@ class RecvChannel(BaseChannel):
 
     def start_consume(self):
         """
-        Starts consuming messages.
-
-        setup_listener must have been called first.
+        Starts consuming messages. setup_listener must have been called first.
         """
         if not self._consuming:
             self._consuming = True
@@ -578,9 +602,7 @@ class RecvChannel(BaseChannel):
 
     def _on_start_consume(self):
         """
-        Starts consuming messages.
-
-        setup_listener must have been called first.
+        Starts consuming messages. setup_listener must have been called first.
         """
         #log.debug("RecvChannel._on_start_consume")
 
@@ -682,7 +704,7 @@ class RecvChannel(BaseChannel):
         BaseChannel.close_impl(self)
 
     def _declare_queue(self, queue):
-        # prepend xp name in the queue for anti-clobbering
+        # Prepend xp name in the queue for anti-clobbering
         if queue and not queue.startswith(self._recv_name.exchange + "."):
             queue = ".".join([self._recv_name.exchange, queue])
             #log.debug('Auto-prepending exchange to queue name for anti-clobbering: %s', queue)
@@ -691,7 +713,9 @@ class RecvChannel(BaseChannel):
         with self._ensure_transport():
             queue_name = self._transport.declare_queue_impl(queue=queue or '',
                                                             auto_delete=self.queue_auto_delete,
-                                                            durable=self.queue_durable)
+                                                            durable=self.queue_durable,
+                                                            msg_expiration=self.queue_msg_expiration,
+                                                            expiration=self.queue_expiration)
 
         # save the new recv_name if our queue name differs (anon queue via '', or exchange prefixing)
         if queue_name != self._recv_name.queue:
@@ -764,6 +788,7 @@ class RecvChannel(BaseChannel):
         with self._ensure_transport():
             return self._transport.purge_impl(queue=self._recv_name.queue)
 
+
 class PublisherChannel(SendChannel):
 
     def send(self, data, headers=None):
@@ -776,12 +801,13 @@ class PublisherChannel(SendChannel):
         self._declare_exchange(self._send_name.exchange)
         SendChannel.send(self, data, headers=headers)
 
+
 class BidirClientChannel(SendChannel, RecvChannel):
     """
     This should be pooled for the receiving side?
 
     @TODO: As opposed to current endpoint scheme - no need to spawn a listening greenlet simply to loop on recv(),
-    you can use this channel to send first then call recieve linearly, no need for greenletting.
+    you can use this channel to send first then call receive linearly, no need for greenletting.
     """
     _consumer_exclusive = True
 
@@ -795,16 +821,17 @@ class BidirClientChannel(SendChannel, RecvChannel):
         else:
             headers = {}
 
-        if not 'reply-to' in headers:
+        if 'reply-to' not in headers:
             headers['reply-to'] = "%s,%s" % (self._recv_name.exchange, self._recv_name.queue)
 
         SendChannel._send(self, name, data, headers=headers)
 
+
 class ListenChannel(RecvChannel):
     """
     Used for listening patterns (RR server, Subscriber).
-    Main use is accept() - listens continously on one queue, pulls messages off, creates a new channel
-                           to interact and returns it
+    Main use is accept() - listens continuously on one queue, pulls messages off,
+    creates a new channel to interact and returns it
     """
 
     # States, Inputs for ListenChannel FSM
@@ -917,7 +944,9 @@ class ListenChannel(RecvChannel):
         state.
         """
 
-        assert self._fsm.current_state in [self.S_ACTIVE, self.S_CLOSED], "Channel must be in active/closed state to accept, currently %s (forget to ack messages?)" % str(self._fsm.current_state)
+        assert self._fsm.current_state in [self.S_ACTIVE, self.S_CLOSED], \
+                "Channel must be in active/closed state to accept, currently %s (forget to ack messages?)" % \
+                str(self._fsm.current_state)
 
         was_consuming = self._consuming
 
@@ -969,17 +998,29 @@ class SubscriberChannel(ListenChannel):
 
         ListenChannel.close_impl(self)
 
+
 class ServerChannel(ListenChannel):
+    """
+    Handles listening endpoints with reply.
+    """
 
     class BidirAcceptChannel(ListenChannel.AcceptedListenChannel, SendChannel):
         pass
 
     def _create_accepted_channel(self, transport, msg):
+        """ Creates a channel back to the reply-to name. """
+        # TODO: Use RabbitMQ direct reply without queue: https://www.rabbitmq.com/direct-reply-to.html
         # pull apart msglist to get a reply-to name
         reply_to_set = set((x[1].get('reply-to') for x in msg))
         assert len(reply_to_set) == 1, "Differing reply-to addresses seen, unsure how to proceed"
 
-        send_name = NameTrio(tuple(reply_to_set.pop().split(',')))    # @TODO: stringify is not the best
+        xs_name, xn_name = reply_to_set.pop().split(',', 1)
+        binding = xn_name
+        if binding.startswith(xs_name):
+            # Binding should not be prefixed by XS such as queue name (not anonymous queues)
+            binding = binding[len(xs_name)+1:]
+        send_name = NameTrio(xs_name, xn_name, binding)
+
         ch = self.BidirAcceptChannel(parent_channel=self)
         ch._recv_name = self._recv_name     # for debugging / queue len for sflow
         ch.attach_transport(transport)

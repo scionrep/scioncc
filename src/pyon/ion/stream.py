@@ -106,7 +106,7 @@ class StreamSubscriber(Subscriber):
         if not isinstance(process, BaseService):
             raise BadRequest('No valid process was provided.')
         self.container = process.container
-        self.xn = self.container.ex_manager.create_xn_queue(exchange_name)
+        self.xn = self.container.ex_manager.create_queue_xn(exchange_name)
         self.started = False
         self.callback = callback or process.call_process
         super(StreamSubscriber, self).__init__(from_name=self.xn, callback=self.preprocess)
@@ -199,7 +199,7 @@ class StandaloneStreamSubscriber(Subscriber):
         @param callback      The callback to execute on receipt of a packet
         """
         from pyon.container.cc import Container
-        self.xn = Container.instance.ex_manager.create_xn_queue(exchange_name)
+        self.xn = Container.instance.ex_manager.create_queue_xn(exchange_name)
         self.callback = callback
         self.started = False
         super(StandaloneStreamSubscriber, self).__init__(name=self.xn, callback=self.preprocess)

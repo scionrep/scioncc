@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""ION messaging endpoints"""
+"""Messaging endpoints that are ION process aware"""
 
 __author__ = 'Michael Meisinger, David Stuebe, Dave Foster <dfoster@asascience.com>'
 
@@ -160,6 +160,9 @@ class ProcessRPCRequestEndpointUnit(ProcessEndpointUnitMixin, RPCRequestEndpoint
 
 
 class ProcessRPCClient(RPCClient):
+    """
+    Requester side of RPC
+    """
     endpoint_unit_type = ProcessRPCRequestEndpointUnit
 
     def __init__(self, process=None, **kwargs):
@@ -169,7 +172,7 @@ class ProcessRPCClient(RPCClient):
             container = (hasattr(self._process, 'container') and self._process.container) or self._get_container_instance()
             if container:
                 # Client creates the service XN
-                kwargs['to_name'] = container.create_xn_service(kwargs['to_name'])
+                kwargs['to_name'] = container.create_service_xn(kwargs['to_name'])
             else:
                 log.info('No container at ProcessRPCClient init time, will wait until message send to upgrade to Exchange Object')
 
@@ -185,7 +188,7 @@ class ProcessRPCClient(RPCClient):
             if not container:
                 raise StandardError("No container found, can not upgrade to ExchangeObject")
 
-            self._send_name = container.create_xn_service(self._send_name)
+            self._send_name = container.create_service_xn(self._send_name)
 
         # upgrade one timers too
         if to_name is not None and not isinstance(to_name, BaseTransport):
@@ -193,7 +196,7 @@ class ProcessRPCClient(RPCClient):
             if not container:
                 raise StandardError("No container found, can not upgrade to ExchangeObject")
 
-            to_name = container.create_xn_service(to_name)
+            to_name = container.create_service_xn(to_name)
 
         newkwargs = kwargs.copy()
         newkwargs['process'] = self._process
@@ -209,10 +212,8 @@ class ProcessRPCResponseEndpointUnit(ProcessEndpointUnitMixin, RPCResponseEndpoi
 
     def _message_received(self, msg, headers):
         """
-        Message received override for processes.
-
-        Sets the process context here to be used for subsequent calls out by this
-        process to other processes, or replies.
+        Message received override for processes. Sets the process context here to be used for
+        subsequent calls out by this process to other processes, or replies.
         """
 
         ######
@@ -337,7 +338,6 @@ class ProcessPublisherEndpointUnit(ProcessEndpointUnitMixin, PublisherEndpointUn
 
 
 class ProcessPublisher(Publisher):
-
     endpoint_unit_type = ProcessPublisherEndpointUnit
 
     def __init__(self, process=None, **kwargs):
@@ -410,7 +410,9 @@ class ProcessSubscriberEndpointUnit(ProcessEndpointUnitMixin, SubscriberEndpoint
 
 
 class ProcessSubscriber(Subscriber):
-
+    """
+    Process aware general pattern subscriber. Executes callbacks within process control greenlet.
+    """
     endpoint_unit_type = ProcessSubscriberEndpointUnit
 
     def __init__(self, process=None, routing_call=None, **kwargs):
@@ -434,36 +436,27 @@ class ProcessSubscriber(Subscriber):
         return Subscriber.create_endpoint(self, **newkwargs)
 
     def __str__(self):
-        return "ProcessSubscriber at %s:\n\trecv_name: %s\n\tprocess: %s\n\tcb: %s" % (hex(id(self)), str(self._recv_name), str(self._process), str(self._callback))
+        return "ProcessSubscriber at %s:\n\trecv_name: %s\n\tprocess: %s\n\tcb: %s" % (
+                hex(id(self)), str(self._recv_name), str(self._process), str(self._callback))
 
 
-#
-# ProcessEventSubscriber
-#
 class ProcessEventSubscriber(ProcessSubscriber, BaseEventSubscriberMixin):
+    """
+    Process aware event subscriber. Executes callbacks within process control greenlet.
+    """
     def __init__(self, xp_name=None, event_type=None, origin=None, queue_name=None, callback=None,
                  sub_type=None, origin_type=None, process=None, routing_call=None, auto_delete=None, *args, **kwargs):
 
-        self._auto_delete = auto_delete
-
-        BaseEventSubscriberMixin.__init__(self, xp_name=xp_name, event_type=event_type, origin=origin,
-                                          queue_name=queue_name, sub_type=sub_type, origin_type=origin_type)
+        BaseEventSubscriberMixin.__init__(self, event_type=event_type, sub_type=sub_type,
+                                          origin=origin, origin_type=origin_type,
+                                          xp_name=xp_name, queue_name=queue_name, auto_delete=auto_delete)
 
         log.debug("ProcessEventSubscriber events pattern %s", self.binding)
 
         ProcessSubscriber.__init__(self, from_name=self._ev_recv_name, binding=self.binding,
-                                   callback=callback, process=process, routing_call=routing_call, **kwargs)
+                                   callback=callback, process=process, routing_call=routing_call,
+                                   auto_delete=self._auto_delete, **kwargs)
 
     def __str__(self):
         return "ProcessEventSubscriber at %s:\n\trecv_name: %s\n\tprocess: %s\n\tcb: %s" % (
                 hex(id(self)), str(self._recv_name), str(self._process), str(self._callback))
-
-    def _create_channel(self, **kwargs):
-        """
-        Override to set the channel's queue_auto_delete property.
-        """
-        ch = ProcessSubscriber._create_channel(self, **kwargs)
-        if self._auto_delete is not None:
-            ch.queue_auto_delete = self._auto_delete
-
-        return ch

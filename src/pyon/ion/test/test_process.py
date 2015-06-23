@@ -63,7 +63,7 @@ class ProcessTest(PyonTestCase):
         p.start_listeners()
 
         self.assertEquals(len(p.thread_manager.children), 2)
-        mocklistener.listen.assert_called_once_with(thread_name=ANY)
+        mocklistener.listen.assert_called_once_with(thread_name=ANY, activate=True)
         self.assertEqual(mocklistener.routing_call, p._routing_call)
 
         p._notify_stop()

@@ -22,7 +22,7 @@ from pyon.core.bootstrap import get_sys_name
 from pyon.core import exception
 from pyon.core.bootstrap import CFG
 from pyon.util.async import spawn
-from pyon.ion.exchange import ExchangeManager, ExchangeNameProcess, ExchangeNameService, ExchangeName, ExchangeNameQueue, ExchangeManagerError, DEFAULT_SYSTEM_XS
+from pyon.ion.exchange import ExchangeManager, ProcessExchangeName, ServiceExchangeName, ExchangeName, QueueExchangeName, ExchangeManagerError, DEFAULT_SYSTEM_XS
 from pyon.net.endpoint import RPCServer, Subscriber, Publisher
 from pyon.net.transport import BaseTransport, NameTrio, TransportError
 from pyon.net.messaging import NodeB
@@ -394,7 +394,7 @@ class TestExchangeManagerInt(IonIntegrationTestCase):
     #     name = str(uuid4())[0:6]
     #     bind = str(uuid4())[0:6]
     #
-    #     xn = self.container.ex_manager.create_xn_queue(name)
+    #     xn = self.container.ex_manager.create_queue_xn(name)
     #     xn.unbind(bind)
     #
     #     self.assertRaises(TransportError, xn.unbind, bind)
@@ -449,22 +449,22 @@ class TestExchangeObjects(PyonTestCase):
         self.assertEquals(len(self.ex_manager.xn_by_name), 0)
 
         # now create some XNs underneath default exchange
-        xn1 = self.ex_manager.create_xn_process('xn1')
+        xn1 = self.ex_manager.create_process_xn('xn1')
         self.assertEquals(xn1._xs, self.ex_manager.default_xs)
         self.assertIn('xn1', self.ex_manager.xn_by_name)
         self.assertIn(xn1, self.ex_manager.xn_by_name.values())
         self.assertEquals(xn1, self.ex_manager.xn_by_name['xn1'])
-        self.assertIsInstance(xn1, ExchangeNameProcess)
+        self.assertIsInstance(xn1, ProcessExchangeName)
 
         self.assertEquals({self.system_xs_name:[xn1]}, self.ex_manager.xn_by_xs)
 
-        xn2 = self.ex_manager.create_xn_service('xn2')
+        xn2 = self.ex_manager.create_service_xn('xn2')
         self.assertIn('xn2', self.ex_manager.xn_by_name)
         self.assertIn(xn2, self.ex_manager.xn_by_xs[self.system_xs_name])
         self.assertEquals(xn2.xn_type, 'XN_SERVICE')
 
         # create one under our second xn3
-        xn3 = self.ex_manager.create_xn_queue('xn3', xs)
+        xn3 = self.ex_manager.create_queue_xn('xn3', xs)
         self.assertIn('xn3', self.ex_manager.xn_by_name)
         self.assertIn(xn3, self.ex_manager.xn_by_xs['exchange'])
         self.assertNotIn(xn3, self.ex_manager.xn_by_xs[self.system_xs_name])
@@ -561,17 +561,17 @@ class TestExchangeObjects(PyonTestCase):
     def test__create_xn_unknown_type(self):
         self.assertRaises(StandardError, self.ex_manager._create_xn, sentinel.unknown)
 
-    def test_create_xn_service(self):
-        xn      = self.ex_manager.create_xn_service('servicename')
+    def test_create_service_xn(self):
+        xn      = self.ex_manager.create_service_xn('servicename')
         qstr    = '%s.%s' % (xn.exchange, 'servicename')        # what we expect the queue name to look like
 
         self.assertIsInstance(xn, ExchangeName)
-        self.assertIsInstance(xn, ExchangeNameService)
+        self.assertIsInstance(xn, ServiceExchangeName)
 
         # exclusive attrs to XN
         self.assertEquals(xn._xs, self.ex_manager.default_xs)
-        self.assertEquals(xn._xn_auto_delete, ExchangeNameService._xn_auto_delete)
-        self.assertEquals(xn._xn_durable, ExchangeNameService._xn_durable)
+        self.assertEquals(xn._xn_auto_delete, ServiceExchangeName._xn_auto_delete)
+        self.assertEquals(xn._xn_durable, ServiceExchangeName._xn_durable)
         self.assertEquals(xn.xn_type, 'XN_SERVICE')
 
         # underlying attrs
@@ -589,25 +589,25 @@ class TestExchangeObjects(PyonTestCase):
         self.assertIn(xn, self.ex_manager.xn_by_xs[self.system_xs_name])
 
         # declaration
-        self.pt.declare_queue_impl.assert_called_once(qstr, durable=ExchangeNameService._xn_durable, auto_delete=ExchangeNameService._xn_auto_delete)
+        self.pt.declare_queue_impl.assert_called_once(qstr, durable=ServiceExchangeName._xn_durable, auto_delete=ServiceExchangeName._xn_auto_delete)
 
-    def test_create_xn_process(self):
-        xn = self.ex_manager.create_xn_process('procname')
-
-        self.assertIsInstance(xn, ExchangeName)
-        self.assertIsInstance(xn, ExchangeNameProcess)
-
-    def test_create_xn_queue(self):
-        xn = self.ex_manager.create_xn_queue('queuename')
+    def test_create_process_xn(self):
+        xn = self.ex_manager.create_process_xn('procname')
 
         self.assertIsInstance(xn, ExchangeName)
-        self.assertIsInstance(xn, ExchangeNameQueue)
+        self.assertIsInstance(xn, ProcessExchangeName)
+
+    def test_create_queue_xn(self):
+        xn = self.ex_manager.create_queue_xn('queuename')
+
+        self.assertIsInstance(xn, ExchangeName)
+        self.assertIsInstance(xn, QueueExchangeName)
 
     def test_create_xn_with_different_xs(self):
         xs = self.ex_manager.create_xs(sentinel.xs)
         xs_exstr = '%s.%s' % (get_sys_name(), str(sentinel.xs))     # what we expect the exchange property to return
 
-        xn      = self.ex_manager.create_xn_service('servicename', xs)
+        xn      = self.ex_manager.create_service_xn('servicename', xs)
         qstr    = '%s.%s' % (xn.exchange, 'servicename')        # what we expect the queue name to look like
 
         # check mappings
@@ -617,7 +617,7 @@ class TestExchangeObjects(PyonTestCase):
         self.assertEquals(xn.queue, qstr)
 
     def test_delete_xn(self):
-        xn      = self.ex_manager.create_xn_process('procname')
+        xn      = self.ex_manager.create_process_xn('procname')
         qstr    = '%s.%s' % (xn.exchange, 'procname')
 
         self.assertIn('procname', self.ex_manager.xn_by_name)
@@ -630,7 +630,7 @@ class TestExchangeObjects(PyonTestCase):
         self.pt.delete_queue_impl.assert_called_once_with(qstr)
 
     def test_xn_setup_listener(self):
-        xn      = self.ex_manager.create_xn_service('servicename')
+        xn      = self.ex_manager.create_service_xn('servicename')
         qstr    = '%s.%s' % (xn.exchange, 'servicename')        # what we expect the queue name to look like
 
         xn.setup_listener(sentinel.binding, None)
@@ -638,14 +638,14 @@ class TestExchangeObjects(PyonTestCase):
         self.pt.bind_impl.assert_called_once_with(xn.exchange, qstr, sentinel.binding)
 
     def test_xn_bind(self):
-        xn      = self.ex_manager.create_xn_service('servicename')
+        xn      = self.ex_manager.create_service_xn('servicename')
 
         xn.bind(sentinel.bind)
 
         self.pt.bind_impl.assert_called_once_with(xn.exchange, xn.queue, sentinel.bind)
 
     def test_xn_unbind(self):
-        xn      = self.ex_manager.create_xn_service('servicename')
+        xn      = self.ex_manager.create_service_xn('servicename')
 
         xn.unbind(sentinel.bind)
 
@@ -664,7 +664,7 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
 
     def test_rpc_with_xn(self):
         # get an xn to use for send/recv
-        xn = self.container.ex_manager.create_xn_service('hello')
+        xn = self.container.ex_manager.create_service_xn('hello')
         self.addCleanup(xn.delete)
 
         # create an RPCServer for a hello service
@@ -696,10 +696,10 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
         xs = self.container.create_xs('other')
         self.assertEquals(xs.node, self.container.ex_manager._nodes['other'])
 
-        xn = self.container.create_xn_service('hello', xs=xs)
+        xn = self.container.create_service_xn('hello', xs=xs)
         self.assertEquals(xn.node, self.container.ex_manager._nodes['other'])
 
-        xn = self.container.create_xn_service('other_hello')
+        xn = self.container.create_service_xn('other_hello')
         self.assertEquals(xn.node, self.container.ex_manager._nodes['system_broker'])
 
         # @TODO: name collisions in xn_by_name/RR with same name/different XS?
@@ -716,7 +716,7 @@ class TestExchangeObjectsInt(IonIntegrationTestCase):
         # SETUP COMPLETE, BEGIN TESTING OF EXCHANGE OBJECTS
         #
 
-        xq = self.container.ex_manager.create_xn_queue('random_queue')
+        xq = self.container.ex_manager.create_queue_xn('random_queue')
         self.addCleanup(xq.delete)
 
         # recv'd messages from the subscriber
@@ -856,7 +856,7 @@ class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
         self.assertIn(xp.exchange, self.container.ex_manager.list_exchanges())
 
     def test_create_xn(self):
-        xn = self.container.ex_manager.create_xn_service('test_service')
+        xn = self.container.ex_manager.create_service_xn('test_service')
         self.addCleanup(xn.delete)
 
         self.assertIn(xn.queue, self.container.ex_manager.list_queues())
@@ -885,7 +885,7 @@ class TestExchangeObjectsCreateDelete(IonIntegrationTestCase):
     def test_delete_xn(self):
         # same as the other deletes except with queues instead
 
-        xn = self.container.ex_manager.create_xn_service('test_service')
+        xn = self.container.ex_manager.create_service_xn('test_service')
 
         self.assertIn(xn.queue, self.container.ex_manager.list_queues())
 
@@ -917,7 +917,7 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
 
     @patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'messaging':{'names':{'durable':False}}}}))
     def test_durable_off_on_create(self):
-        xq = self.container.ex_manager.create_xn_queue('belb')
+        xq = self.container.ex_manager.create_queue_xn('belb')
         self.addCleanup(xq.delete)
 
         # declared, find it via internal management API call
@@ -929,7 +929,7 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
         self.assertFalse(filtered[0])       # not durable
 
     def test_durable_on_on_create(self):
-        xq = self.container.ex_manager.create_xn_queue('belb')
+        xq = self.container.ex_manager.create_queue_xn('belb')
         self.addCleanup(xq.delete)
 
         # declared, find it via internal management API call
@@ -944,7 +944,7 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
         xp = self.container.ex_manager.create_xp('an_xp')
         #self.addCleanup(xp.delete)
 
-        xq = self.container.ex_manager.create_xn_queue('no_matter', xp)
+        xq = self.container.ex_manager.create_queue_xn('no_matter', xp)
         self.addCleanup(xq.delete)
         xq.bind('one')
 
@@ -969,7 +969,7 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
             self.assertIn('Method Not Allowed', e.message)
 
     def test_xn_service_is_not_durable_with_cfg_on(self):
-        xns = self.container.ex_manager.create_xn_service('fake_service')
+        xns = self.container.ex_manager.create_service_xn('fake_service')
         self.addCleanup(xns.delete)
 
         # declared, find it via internal management API call

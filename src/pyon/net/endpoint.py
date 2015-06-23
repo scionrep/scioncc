@@ -6,12 +6,8 @@ from gevent import event
 from gevent.lock import RLock
 from gevent.timeout import Timeout
 from zope import interface
-import pprint
 import uuid
-import time
 import inspect
-import traceback
-import sys
 from types import MethodType
 import threading
 
@@ -27,10 +23,6 @@ from pyon.net.transport import NameTrio, BaseTransport, XOTransport
 # create special logging category for RPC message tracking
 import logging
 rpclog = logging.getLogger('rpc')
-
-# create global accumulator for RPC times
-from putil.timer import Timer, Accumulator
-stats = Accumulator(keys='!total', persist=True)
 
 # Callback hooks for message in and out. Signature: def callback(msg, headers, env)
 callback_msg_out = None
@@ -72,7 +64,7 @@ class EndpointUnit(object):
     def __init__(self, endpoint=None, interceptors=None):
         self._endpoint = endpoint
         self.interceptors = interceptors
-        self._unique_name = uuid.uuid4().hex    # MM: For use as send/destination name (in part. RPC queues)
+        self._unique_name = uuid.uuid4().hex    # For use as default queue name (e.g. for RPC queues)
 
     @property
     def interceptors(self):
@@ -399,6 +391,7 @@ class MessageObject(object):
     attributes will remain None and the error attribute will be set. Calling route()
     will be a no-op, but ack/reject work.
     """
+
     def __init__(self, msgtuple, ackmethod, rejectmethod, ep_unit):
         """
         Creates a MessageObject.
@@ -470,20 +463,23 @@ class ListeningBaseEndpoint(BaseEndpoint):
     """
     Message receive communications.
     """
-
     channel_type = ListenChannel
 
-    def __init__(self, node=None, from_name=None, binding=None, transport=None):
+    def __init__(self, node=None, from_name=None, binding=None, transport=None, auto_delete=None):
         BaseEndpoint.__init__(self, node=node, transport=transport)
 
         # Set origin as NameTrio - can also be an XO
         self._recv_name = self._ensure_name_trio(from_name)
+
+        self._auto_delete = auto_delete
 
         # Set node from XO
         if isinstance(self._recv_name, XOTransport):
             if self.node is not None and self.node != self._recv_name.node:
                 log.warn("ListeningBaseEndpoint.__init__: setting new node from XO when node already set")
             self.node = self._recv_name.node
+            if auto_delete is not None:
+                self._recv_name.queue_auto_delete = auto_delete
 
         self._ready_event = event.Event()
         self._binding = binding
@@ -498,7 +494,12 @@ class ListeningBaseEndpoint(BaseEndpoint):
         elif self._transport is not None:
             kwargs.update({'transport': self._transport})
 
-        return BaseEndpoint._create_channel(self, **kwargs)
+        ch = BaseEndpoint._create_channel(self, **kwargs)
+        if self._auto_delete is not None:
+            ch.queue_auto_delete = self._auto_delete
+        elif hasattr(self._recv_name, "queue_auto_delete"):
+            ch.queue_auto_delete = self._recv_name.queue_auto_delete
+        return ch
 
     def get_ready_event(self):
         """
@@ -510,7 +511,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
     def _setup_listener(self, name, binding=None):
         self._chan.setup_listener(name, binding=binding)
 
-    def listen(self, binding=None, thread_name=None):
+    def listen(self, binding=None, thread_name=None, activate=True):
         """
         Main driving method for ListeningBaseEndpoint.
 
@@ -521,7 +522,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
         if thread_name:
             threading.current_thread().name = thread_name
 
-        self.prepare_listener(binding=binding)
+        self.prepare_listener(binding=binding, activate=activate)
 
         # Notify any listeners of our readiness
         self._ready_event.set()
@@ -539,10 +540,12 @@ class ListeningBaseEndpoint(BaseEndpoint):
                 if m is not None:
                     m.ack()
 
-    def prepare_listener(self, binding=None):
-        """ Creates a channel, prepares it, and begins consuming on it. """
+    def prepare_listener(self, binding=None, activate=True):
+        """ Creates a channel, prepares it i.e. declares the queue and binding,
+        and optionally creates a consumer on it. """
         self.initialize(binding=binding)
-        self.activate()
+        if activate:
+            self.activate()
 
     def initialize(self, binding=None):
         """
@@ -845,9 +848,13 @@ class RequestEndpointUnit(BidirectionalEndpointUnit):
 
         # we have a timeout, update reply-by header
         headers['reply-by'] = str(int(headers['ts']) + int(timeout * 1000))
-        ep_name = NameTrio(self.channel._send_name.exchange)    # anonymous queue
-        # TODO: Set a better name for RPC response queue with system prefix
-        #ep_name = NameTrio(self.channel._send_name.exchange, self._unique_name)
+        if self.channel._recv_name is None:
+            # Only set name when channel is new.
+            # Create a name for the sender/queue for the response to arrive back
+            ep_name = self._endpoint._ensure_name_trio("rpc_" + self._unique_name)
+        else:
+            # RPC RecvChannel got pooled and reused with a previous recv_name/queue.
+            ep_name = NameTrio(self.channel._send_name.exchange)
         self.channel.setup_listener(ep_name)
 
         # Call base _send, and get back the actual headers that were sent.
@@ -928,21 +935,12 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
 
     def _send(self, msg, headers=None, **kwargs):
         log_message("MESSAGE SEND >>> RPC-request", msg, headers, is_send=True)
-        timer = Timer(logger=None) if stats.is_log_enabled() else None
 
         ######
         ###### THIS IS WHERE A BLOCKING RPC REQUEST IS PERFORMED ######
         ######
         res, res_headers = RequestEndpointUnit._send(self, msg, headers=headers, **kwargs)
 
-        if timer:
-            # record elapsed time in RPC stats
-            receiver = headers.get('receiver', '?')  # header field is generally: exchange,queue
-            receiver = receiver.split(',')[-1]       # want to log just the service_name for consistency
-            receiver = receiver.split('.')[-1]       # want to log just the service_name for consistency
-            stepid = 'rpc-client.%s.%s=%s' % (receiver, headers.get('op', '?'), res_headers["status_code"])
-            timer.complete_step(stepid)
-            stats.add(timer)
         log_message("MESSAGE RECV >>> RPC-reply", res, res_headers, is_send=False)
 
         # Check response header
@@ -1055,7 +1053,6 @@ class RPCClient(RequestResponseClient):
     def _set_svc_method(self, name, in_obj, callargs, doc):
         """
         Common method to properly set a friendly-named remote call method on this RPCClient.
-
         Only supports keyword arguments for now.
         """
         def svcmethod(self, *args, **kwargs):
@@ -1079,11 +1076,7 @@ class RPCClient(RequestResponseClient):
         assert op
         assert headers is None or isinstance(headers, dict)
 
-        if headers is not None:
-            headers = headers.copy()
-        else:
-            headers = {}
-
+        headers = headers.copy() if headers is not None else {}
         headers['op'] = op
 
         return RequestResponseClient.request(self, msg, headers=headers, timeout=timeout)
@@ -1096,7 +1089,7 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
 
     def intercept_in(self, msg, headers):
         """
-        ERR This is wrong
+        ERR This is wrong - MM why?
         """
 
         try:
@@ -1133,8 +1126,6 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         ts = get_ion_ts()
         response_headers['msg-rcvd'] = ts
 
-        timer = Timer(logger=None) if stats.is_log_enabled() else None
-
         ######
         ###### THIS IS WHERE AN ENDPOINT OPERATION EXCEPTION IS HANDLED  ######
         ######
@@ -1158,20 +1149,6 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         ######
         ######
         ######
-
-        if timer:
-            # record elapsed time in RPC stats
-            op = headers.get('op', '')
-            if op:
-                receiver = headers.get('receiver', '?')  # header field is generally: exchange,queue
-                receiver = receiver.split(',')[-1]       # want to log just the service_name for consistency
-                receiver = receiver.split('.')[-1]       # want to log just the service_name for consistency
-                stepid = 'rpc-server.%s.%s=%s' % (receiver, headers.get('op', '?'), response_headers["status_code"])
-            else:
-                parts = headers.get('routing_key', 'unknown').split('.')
-                stepid = 'server.' + '.'.join( [ parts[i] for i in xrange(min(3, len(parts))) ] )
-            timer.complete_step(stepid)
-            stats.add(timer)
 
         try:
             return self.send(result, response_headers)
@@ -1234,7 +1211,7 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
                         return None, self._create_error_response(code=400, msg="Argument %s not present in op signature" % arg_name)
 
         ######
-        ###### THIS IS WHERE THE ENDPOINT OPERATION IS CALLED ######
+        ###### THIS IS WHERE THE ENDPOINT OPERATION IS SUBMITTED TO THE PROCESS ######
         ######
         result = self._make_routing_call(ro_meth, timeout, **cmd_arg_obj)
         response_headers = {'status_code': 200,
