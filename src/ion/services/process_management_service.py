@@ -14,7 +14,8 @@ class ProcessManagementService(BaseProcessManagementService):
 
     def on_init(self):
         self.rr = self.clients.resource_registry
-        self._pd_core = ProcessDispatcher(process=self)
+        pd_cfg = self.CFG.get_safe("service.process_management.process_dispatcher") or {}
+        self._pd_core = ProcessDispatcher(process=self, config=pd_cfg)
 
     def on_start(self):
         self._pd_core.start()
@@ -71,8 +72,8 @@ class ProcessManagementService(BaseProcessManagementService):
         if require_update:
             self.rr.update(process_obj)
 
-        res = self._pd_core.schedule(process_id, pd_obj, schedule, configuration, name)
-        return res
+        cmd_id = self._pd_core.schedule(process_id, pd_obj, schedule, configuration, name)
+        return cmd_id
 
     def _create_process_name(self, process, process_definition, configuration):
         if process.name:
@@ -88,8 +89,8 @@ class ProcessManagementService(BaseProcessManagementService):
     def cancel_process(self, process_id=''):
         process_obj = self._validate_resource_id("process_id", process_id, RT.Process)
 
-        cancel_result = self._pd_core.cancel(process_id)
-        return cancel_result
+        cmd_id = self._pd_core.cancel(process_id)
+        return cmd_id
 
     def read_process(self, process_id=''):
         process_obj = self._validate_resource_id("process_id", process_id, RT.Process)
@@ -97,4 +98,6 @@ class ProcessManagementService(BaseProcessManagementService):
         return self._pd_core.read_process(process_id)
 
     def list_processes(self):
-        return self._pd_core.list()
+        cmd_id = self._pd_core.list()
+
+        return

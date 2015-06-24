@@ -6,7 +6,7 @@ import gevent
 from gevent.event import AsyncResult
 from gevent.queue import Queue
 
-from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT
+from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, ProcessSubscriber
 
 from interface.objects import Process, ProcessStateEnum
 
@@ -21,9 +21,16 @@ class ProcessDispatcherExecutorBase(object):
         self.queue = Queue()
 
     def start(self):
-        pass
+        queue_name = "pd_command"
+        self.sub_cont = ProcessSubscriber(process=self.process, binding=queue_name, from_name=queue_name,
+                                          callback=self._receive_command)
+        self.process.add_endpoint(self.sub_cont)
 
     def stop(self):
+        pass
+
+    def _receive_command(self, msg, headers, *args):
+        print "!!! Got command", msg, headers, args
         pass
 
     def add_action(self, action_tuple):
@@ -36,6 +43,7 @@ class ProcessDispatcherExecutorBase(object):
         self.add_action(action_tuple)
         action_res = action_tuple[1]
         return action_res.get()  # Blocking on AsyncResult
+
 
 class ProcessDispatcherAgentExecutor(ProcessDispatcherExecutorBase):
     """ PD Executor using remote calls to CC Agents to manage processes """

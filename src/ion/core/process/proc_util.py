@@ -1,11 +1,88 @@
 #!/usr/bin/env python
 
 import time
-from gevent.event import Event
+from gevent import Timeout
+from gevent.event import Event, AsyncResult
 
-from pyon.public import log, NotFound, BadRequest, EventSubscriber, OT
+from pyon.ion.identifier import create_simple_unique_id
+from pyon.net.endpoint import Subscriber, Publisher
+from pyon.public import log, NotFound, BadRequest, EventSubscriber, OT, ProcessPublisher, get_ion_ts
+from pyon.util.async import spawn
 
-from interface.objects import ProcessStateEnum
+from interface.objects import ProcessStateEnum, AsyncResultMsg
+
+
+class AsyncResultWaiter(object):
+    """
+    Class that makes waiting for an async result notification easy.
+    Creates a subscriber for a generated token name, which can be handed to the async provider.
+    The provider then publishes the result to the token name when ready.
+    The caller can wait for the result or timeout.
+    """
+    def __init__(self, process=None):
+        self.process = process
+
+        self.async_res = AsyncResult()
+        self.wait_name = "asyncresult_" + create_simple_unique_id()
+        if self.process:
+            self.wait_name = self.wait_name + "_" + self.process.id
+        self.wait_sub = Subscriber(from_name=self.wait_name, callback=self._result_callback)
+        self.activated = False
+
+    def activate(self):
+        if self.activated:
+            raise BadRequest("Already active")
+        self.listen_gl = spawn(self.wait_sub.listen)    # This initializes and activates the listener
+        self.wait_sub.get_ready_event().wait(timeout=1)
+        self.activated = True
+
+        return self.wait_name
+
+    def _result_callback(self, msg, headers):
+        log.debug("AsyncResultWaiter: received message")
+        self.async_res.set(msg)
+
+    def await(self, timeout=None, request_id=None):
+        try:
+            result = self.async_res.get(timeout=timeout)
+            if request_id and isinstance(result, AsyncResultMsg) and result.request_id != request_id:
+                log.warn("Received result for different request: %s", result)
+                result = None
+
+        except Timeout:
+            result = None
+
+        self.wait_sub.deactivate()
+        self.wait_sub.close()
+        self.listen_gl.join(timeout=1)
+        self.activated = False
+
+        return result
+
+
+class AsyncResultPublisher(object):
+    """
+    Class that helps sending async results.
+    """
+    def __init__(self, process=None, wait_name=None):
+        self.process = process
+        if not wait_name.startswith("asyncresult_"):
+            raise BadRequest("Not a valid wait_name")
+        self.wait_name = wait_name
+        if self.process:
+            self.pub = ProcessPublisher(process=self.process, to_name=wait_name)
+        else:
+            self.pub = Publisher(to_name=wait_name)
+
+    def publish_result(self, request_id, result):
+        async_res = AsyncResultMsg(result=result, request_id=request_id, ts=get_ion_ts())
+        self.pub.publish(async_res)
+        self.pub.close()
+
+    def publish_error(self, request_id, error, error_code):
+        async_res = AsyncResultMsg(result=error, request_id=request_id, ts=get_ion_ts(), status=error_code)
+        self.pub.publish(async_res)
+        self.pub.close()
 
 
 class ProcessStateGate(EventSubscriber):
@@ -103,9 +180,6 @@ class ProcessStateGate(EventSubscriber):
 
     def _get_first_chance(self):
         return self.first_chance
-
-
-
 
 
 class Notifier(object):

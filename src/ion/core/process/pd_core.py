@@ -23,7 +23,8 @@ __author__ = 'Michael Meisinger'
 
 from gevent.event import AsyncResult
 
-from pyon.public import BadRequest, log
+from pyon.ion.identifier import create_simple_unique_id
+from pyon.public import BadRequest, log, ProcessPublisher, get_safe
 
 from ion.core.process.leader import LeaderManager
 from ion.core.process.pd_exec import pd_executor_factory
@@ -34,10 +35,11 @@ PD_LOCK_SCOPE = "PD"
 
 class ProcessDispatcher(object):
 
-    def __init__(self, process):
+    def __init__(self, process, config):
         self.process = process
         self.container = self.process.container
         self.CFG = self.process.CFG
+        self._pd_cfg = config or {}
         self._enabled = False
 
         # Component that determines one leader in the distributed system
@@ -54,6 +56,9 @@ class ProcessDispatcher(object):
 
         # Component that executes actions
         self.executor = pd_executor_factory("global", pd_core=self)
+
+        self._cmd_queue_name = get_safe(self._pd_cfg, "command_queue", "pd_command")
+        self.cmd_pub = ProcessPublisher(process=self, to_name=self._cmd_queue_name)
 
     def start(self):
         log.info("PD starting...")
@@ -80,28 +85,27 @@ class ProcessDispatcher(object):
     def schedule(self, process_id, process_definition, schedule, configuration, name):
         if not self._enabled:
             raise BadRequest("PD API not enabled")
-        action_res = AsyncResult()
-        action_args = dict(process_id=process_id, process_definition=process_definition,
-                           schedule=schedule, configuration=configuration, name=name)
-        action = ("schedule", action_res, action_args)
-        self.executor.add_action(action)
-        return action_res
+        command_id = create_simple_unique_id()
+        action_cmd = dict(command="schedule", command_id=command_id,
+                          process_id=process_id, process_definition=process_definition,
+                          schedule=schedule, configuration=configuration, name=name)
+
+        self.cmd_pub.publish(action_cmd)
+        return command_id
 
     def cancel(self, process_id):
         if not self._enabled:
             raise BadRequest("PD API not enabled")
-        action_res = AsyncResult()
-        action_args = dict(process_id=process_id)
-        action = ("cancel", action_res, action_args)
-        self.executor.add_action(action)
-        return action_res
-
-    def read_process(self, process_id):
-        if not self._enabled:
-            raise BadRequest("PD API not enabled")
-        return self.registry.get_process_info(process_id)
+        command_id = create_simple_unique_id()
+        action_cmd = dict(command="cancel", command_id=command_id,
+                          process_id=process_id)
+        self.cmd_pub.publish(action_cmd)
+        return command_id
 
     def list(self):
         if not self._enabled:
             raise BadRequest("PD API not enabled")
-        return self.registry.list_processes()
+        command_id = create_simple_unique_id()
+        action_cmd = dict(command="list", command_id=command_id)
+        self.cmd_pub.publish(action_cmd)
+        return command_id

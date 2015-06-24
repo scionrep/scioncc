@@ -6,6 +6,7 @@ import gevent
 from gevent.lock import RLock
 
 from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, ProcessSubscriber, ProcessEventSubscriber
+from pyon.util.containers import create_valid_identifier
 
 from interface.objects import Process, ProcessStateEnum, ContainerHeartbeat
 
@@ -55,19 +56,16 @@ class ProcessDispatcherAggregator(object):
     def start(self):
         # Create our own queue for container heartbeats and broadcasts
         topic = "bx_containers"
-        queue_name = "pd_aggregator_%s_%s" % (topic, self.process.id)
+        queue_name = "pd_aggregator_%s_%s" % (topic, create_valid_identifier(self.process.id, dot_sub="_"))
         self.sub_cont = ProcessSubscriber(process=self.process, binding=topic, from_name=queue_name,
-                                          callback=self._receive_container_info)
+                                          callback=self._receive_container_info, auto_delete=True)
         self.process.add_endpoint(self.sub_cont)
 
         self.evt_sub_c = ProcessEventSubscriber(process=self.process, event_type=OT.ContainerLifecycleEvent,
-                                                callback=self._receive_container_event)
+                                                callback=self._receive_event)
+        self.evt_sub_c.add_event_subscription(event_type=OT.ProcessLifecycleEvent, origin_type="PD",)
         self.process.add_endpoint(self.evt_sub_c)
 
-        self.evt_sub_p = ProcessEventSubscriber(process=self.process, event_type=OT.ProcessLifecycleEvent,
-                                                origin_type="PD",
-                                                callback=self._receive_process_event)
-        self.process.add_endpoint(self.evt_sub_p)
         log.info("PD Aggregator - event and heartbeat subscribers started")
 
     def stop(self):
@@ -76,10 +74,8 @@ class ProcessDispatcherAggregator(object):
     # -------------------------------------------------------------------------
 
     def _receive_container_info(self, msg, headers, *args):
-        print "!!! Got container info", msg, headers, args
+        #print "!!! Got container info", msg, headers, args
+        pass
 
-    def _receive_container_event(self, event, *args, **kwargs):
-        print "!!! Got container event", event
-
-    def _receive_process_event(self, event, *args, **kwargs):
-        print "!!! Got process event", event
+    def _receive_event(self, event, *args, **kwargs):
+        print "!!! Got  event", event

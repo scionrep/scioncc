@@ -287,6 +287,7 @@ service:
 
   process_management:
     process_dispatcher:
+      command_queue: pd_command            # Topic and queue name for singleton PD
       aggregator:
         container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
       engine:
