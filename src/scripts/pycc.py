@@ -7,7 +7,9 @@ __author__ = 'Adam R. Smith, Michael Meisinger'
 import argparse
 import ast
 from copy import deepcopy
+from multiprocessing import Process, Event, current_process
 import os
+import signal
 import sys
 import traceback
 from uuid import uuid4
@@ -29,6 +31,9 @@ description = '''
 SciON Capability Container v%s
 ''' % version
 
+child_procs = []     # List of child processes to notify on terminate
+childproc_go = None  # Event that starts child processes (so that main process can complete initialization first)
+
 # See below __main__ for STEP 1
 
 # PYCC STEP 2
@@ -48,6 +53,7 @@ def entry():
     parser.add_argument('-bc', '--broker_clean', action='store_true', help='Force clean broker of queues/exchanges belonging to sysname')
     parser.add_argument('-i', '--immediate', action='store_true', help='Exits the container if the only procs started were of immediate type')
     parser.add_argument('-l', '--logcfg', type=str, help='Logging config file or config dict content')
+    parser.add_argument('-mp', '--multiproc', type=str, help='Start n containers total in separate processes')
     parser.add_argument('-mx', '--mx', action='store_true', help='Start admin Web UI')
     parser.add_argument('-n', '--noshell', action='store_true', help="Do not start a shell")
     parser.add_argument('-o', '--nomanhole', action='store_true', help="Do not start remote-able manhole shell")
@@ -67,6 +73,20 @@ def entry():
     if opts.nomanhole:
         opts.noshell = True
 
+    if opts.multiproc:
+        num_proc = int(opts.multiproc)
+        if num_proc > 1:
+            print "pycc: Starting %s child container processes" % (num_proc-1)
+            global child_procs, childproc_go
+            childproc_go = Event()
+            for i in range(1, num_proc):
+                pinfo = dict(procnum=i)
+                pname = "Container-child-%s" % pinfo['procnum']
+                p = Process(name=pname, target=start_childproc, args=(pinfo, opts, args, kwargs))
+                p.start()
+                child_procs.append(p)
+                #print " spawned child process", p, p.pid
+
     if opts.daemon:
         # TODO: The daemonizing code may need to be moved inside the Container class (so it happens per-process)
         from daemon import DaemonContext
@@ -79,6 +99,26 @@ def entry():
             main(opts, *args, **kwargs)
     else:
         main(opts, *args, **kwargs)
+
+def start_childproc(pinfo, opts, pycc_args, pycc_kwargs):
+    """ Main entry point for spawned child processes.
+    NOTE: Signals are relayed to all child processes (SIGINT, SIGTERM etc)
+    """
+    # TODO: log file config, termination handler, set instance config
+    global child_procs
+    child_procs = []   # We are a child
+    if childproc_go:
+        childproc_go.wait()   # Wait until we get the signal that parent is ready
+    print "pycc: Starting child process", current_process().name, pinfo
+    opts.noshell = True
+    opts.mx = opts.force_clean = opts.broker_clean = False
+    main(opts, *pycc_args, **pycc_kwargs)
+
+def stop_childprocs():
+    log.info("Stopping %s child processes", len(child_procs))
+    for ch in child_procs:
+        if ch.is_alive():
+            os.kill(ch.pid, signal.SIGTERM)
 
 # PYCC STEP 3
 def main(opts, *args, **kwargs):
@@ -155,7 +195,7 @@ def main(opts, *args, **kwargs):
             config.apply_local_configuration(bootstrap_config, pyon.DEFAULT_LOCAL_CONFIG_PATHS)
             config.apply_configuration(bootstrap_config, config_override)
             config.apply_configuration(bootstrap_config, command_line_config)
-            print "pycc: config_from_directory=True. Minimal bootstrap configuration:", bootstrap_config
+            log.info("config_from_directory=True. Minimal bootstrap configuration: %s", bootstrap_config)
         else:
             # Otherwise: Set to standard set of local config files plus command line overrides
             bootstrap_config = deepcopy(pyon_config)
@@ -170,7 +210,7 @@ def main(opts, *args, **kwargs):
         # Delete sysname datastores if option "force_clean" is set
         if opts.force_clean:
             from pyon.datastore import clear_db_util
-            print "pycc: force_clean=True. DROP DATASTORES for sysname=%s" % bootstrap.get_sys_name()
+            log.info("force_clean=True. DROP DATASTORES for sysname=%s", bootstrap.get_sys_name())
             clear_db_util.clear_db(bootstrap_config, prefix=bootstrap.get_sys_name(), sysname=bootstrap.get_sys_name())
             pyon_config.container.filesystem.force_clean=True
 
@@ -180,7 +220,7 @@ def main(opts, *args, **kwargs):
         # If auto_bootstrap, load config and interfaces into directory
         # Note: this is idempotent and will not alter anything if this is not the first container to run
         if bootstrap_config.system.auto_bootstrap:
-            print "pycc: auto_bootstrap=True."
+            log.debug("auto_bootstrap=True.")
             stored_config = deepcopy(pyon_config)
             config.apply_configuration(stored_config, config_override)
             config.apply_configuration(stored_config, command_line_config)
@@ -210,7 +250,7 @@ def main(opts, *args, **kwargs):
 
         # Delete any queues/exchanges owned by sysname if option "broker_clean" is set
         if opts.broker_clean:
-            print "pycc: broker_clean=True, sysname:", bootstrap.get_sys_name()
+            log.info("broker_clean=True, sysname: %s", bootstrap.get_sys_name())
 
             # build connect str
             from pyon.util.containers import get_safe
@@ -225,12 +265,12 @@ def main(opts, *args, **kwargs):
 
             from putil.rabbithelper import clean_by_sysname
             deleted_exchanges, deleted_queues = clean_by_sysname(connect_str, bootstrap.get_sys_name())
-            print "      exchanges deleted (%s): %s" % (len(deleted_exchanges), ", ".join(deleted_exchanges))
-            print "         queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues))
+            log.info("      exchanges deleted (%s): %s" % (len(deleted_exchanges), ", ".join(deleted_exchanges)))
+            log.info("         queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues)))
 
         if opts.force_clean:
             path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/scion'), bootstrap.get_sys_name())
-            print "force_clean: Removing", path
+            log.info("force_clean: Removing", path)
             FileSystem._clean(pyon_config)
 
         # Auto-bootstrap interfaces
@@ -240,7 +280,7 @@ def main(opts, *args, **kwargs):
         iadm.close()
 
         if opts.no_container:
-            print "pycc: no_container=True. Stopping here."
+            log.info("no_container=True. Stopping here.")
             return None
 
 
@@ -265,8 +305,8 @@ def main(opts, *args, **kwargs):
         if opts.proc:
             # Run a one-off process (with the -x argument)
             mod, proc = opts.proc.rsplit('.', 1)
-            print "pycc: Starting process %s" % opts.proc
-            container.spawn_process(proc, mod, proc, config={'process':{'type':'immediate'}})
+            log.info("Starting process %s", opts.proc)
+            container.spawn_process(proc, mod, proc, config={'process': {'type': 'immediate'}})
             # And end
             return
 
@@ -282,14 +322,13 @@ def main(opts, *args, **kwargs):
             container.spawn_process("admin_ui", "ion.processes.ui.admin_ui", "AdminUI")
 
         if opts.signalparent:
-            import signal
-            print 'pycc: Signal parent pid %d that pycc pid %d service start process is complete...' % (os.getppid(), os.getpid())
+            log.info("Signal parent pid %d that pycc pid %d service start process is complete...", os.getppid(), os.getpid())
             os.kill(os.getppid(), signal.SIGUSR1)
 
             def is_parent_gone():
                 while os.getppid() != 1:
                     gevent.sleep(1)
-                print 'pycc: Now I am an orphan ... notifying serve_forever to stop'
+                log.info("Now I am an orphan ... notifying serve_forever to stop")
                 os.kill(os.getpid(), signal.SIGINT)
             import gevent
             ipg = gevent.spawn(is_parent_gone)
@@ -310,7 +349,6 @@ def main(opts, *args, **kwargs):
             container.serve_forever()
 
     def install_terminate_handler():
-        import signal
         import gevent
         from pyon.core.bootstrap import CFG
         shutdown_timeout = int(CFG.get_safe("container.timeout.shutdown") or 0)
@@ -483,6 +521,13 @@ def main(opts, *args, **kwargs):
                     import gevent
                     import random
                     gevent.sleep(random.random() * 0.5)
+                except:
+                    try:
+                        if os.path.exists(ipy_config.KernelApp.connection_file):
+                            os.remove(ipy_config.KernelApp.connection_file)
+                    except Exception:
+                        pass
+                    raise
 
         # @TODO: race condition here versus ipython, this will leave junk in tmp dir
         #try:
@@ -514,8 +559,13 @@ def main(opts, *args, **kwargs):
             sys.exit(0)
 
         start_container(container)
+
+        # Let child processes run
+        if childproc_go:
+            childproc_go.set()
     except Exception as ex:
         log.error('CONTAINER START ERROR', exc_info=True)
+        stop_childprocs()
         stop_container(container)
         sys.exit(1)
 
@@ -523,15 +573,16 @@ def main(opts, *args, **kwargs):
         do_work(container)
 
     except Exception as ex:
+        stop_childprocs()
         stop_container(container)
         log.error('CONTAINER PROCESS INTERRUPTION', exc_info=True)
-
         sys.exit(1)
 
     except (KeyboardInterrupt, SystemExit):
-        log.info("Received a kill signal, shutting down the container")
+        log.info("Received a kill signal, shutting down the container (%s)", os.getpid())
 
     # Assumption: stop is so robust, it does not fail even if it was only partially started
+    stop_childprocs()
     stop_ok = stop_container(container)
     if not stop_ok:
         sys.exit(1)

@@ -309,7 +309,7 @@ class Container(BaseContainerAgent):
 
         self._status = TERMINATED
 
-        log.info("Container stopped.")
+        log.info("Container stopped (%s).", self.id)
         if do_exit:
             os.kill(os.getpid(), signal.SIGTERM)
 
@@ -377,7 +377,7 @@ class SignalHandlerCapability(ContainerCapability):
             - Gevent has signal handling, so must use gevent version or chain
             """
             try:
-                log.info("In TERM signal handler, triggering exit")
+                log.info("In TERM signal handler, triggering exit (%s)", self.container.id)
                 self.container._cleanup_pid()      # cleanup the pidfile first
             finally:
                 # This will raise SystemExit in serve_forever and IPython cores

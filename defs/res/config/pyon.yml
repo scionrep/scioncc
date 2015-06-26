@@ -139,7 +139,7 @@ container:
       model: slots                # Possible models: slots (allow discrete maximum number of processes)
       max: 100                    # Upper bound (slots per container)
     deployment:                 # Configures properties related to logical deployment
-      region: default             # Location level 1: Region
+      region: default             # Location level 1: Region - there is no communication between regions
       availability_zone: default  # Location level 2: Logical availability zone
       sub_zone: default           # Location level 3: E.g. rack, host, VM
     heartbeat:                  # Configures this container's heartbeat broadcast
