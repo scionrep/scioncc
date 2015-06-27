@@ -26,7 +26,7 @@ log = logging.getLogger('pycc')
 # SEE: http://groups.google.com/group/gevent/browse_thread/thread/6223805ffcd5be22?pli=1
 #
 
-version = "3.0"     # TODO: extract version info from the code (tag/commit)
+version = "3.1"     # TODO: extract version info from the code (tag/commit)
 description = '''
 SciON Capability Container v%s
 ''' % version
@@ -39,7 +39,7 @@ childproc_go = None  # Event that starts child processes (so that main process c
 # PYCC STEP 2
 def entry():
     """
-    Parses arguments and deamonizes process if requested
+    Parses arguments and daemonizes process if requested
     """
 
     # NOTE: Resist the temptation to add other parameters here! Most container config options
@@ -59,6 +59,7 @@ def entry():
     parser.add_argument('-o', '--nomanhole', action='store_true', help="Do not start remote-able manhole shell")
     parser.add_argument('-p', '--pidfile', type=str, help='PID file to use when --daemon specified. Defaults to cc-<rand>.pid')
     parser.add_argument('-r', '--rel', type=str, help='Deploy file to launch')
+    parser.add_argument('-ra', '--relall', action='store_true', help='Launch deploy file on all child processes')
     parser.add_argument('-s', '--sysname', type=str, help='System name')
     parser.add_argument('-sp', '--signalparent', action='store_true', help='Signal parent process after procs started')
     parser.add_argument('-v', '--version', action='version', version='ScionCC v%s' % version)
@@ -88,11 +89,10 @@ def entry():
                 #print " spawned child process", p, p.pid
 
     if opts.daemon:
-        # TODO: The daemonizing code may need to be moved inside the Container class (so it happens per-process)
         from daemon import DaemonContext
         from lockfile import FileLock
 
-        print "pycc: Deamonize process"
+        print "pycc: Daemonize process"
         # TODO: May need to generate a pidfile based on some parameter or cc name
         pidfile = opts.pidfile or 'cc-%s.pid' % str(uuid4())[0:4]
         with DaemonContext(pidfile=FileLock(pidfile)):#, stdout=logg, stderr=slogg):
@@ -112,6 +112,8 @@ def start_childproc(pinfo, opts, pycc_args, pycc_kwargs):
     print "pycc: Starting child process", current_process().name, pinfo
     opts.noshell = True
     opts.mx = opts.force_clean = opts.broker_clean = False
+    if not opts.relall:
+        opts.rel = None
     main(opts, *pycc_args, **pycc_kwargs)
 
 def stop_childprocs():
@@ -265,12 +267,12 @@ def main(opts, *args, **kwargs):
 
             from putil.rabbithelper import clean_by_sysname
             deleted_exchanges, deleted_queues = clean_by_sysname(connect_str, bootstrap.get_sys_name())
-            log.info("      exchanges deleted (%s): %s" % (len(deleted_exchanges), ", ".join(deleted_exchanges)))
-            log.info("         queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues)))
+            log.info("Exchanges deleted (%s): %s" % (len(deleted_exchanges), ", ".join(deleted_exchanges)))
+            log.info("Queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues)))
 
         if opts.force_clean:
             path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/scion'), bootstrap.get_sys_name())
-            log.info("force_clean: Removing", path)
+            log.info("force_clean: Removing %s", path)
             FileSystem._clean(pyon_config)
 
         # Auto-bootstrap interfaces
@@ -287,6 +289,7 @@ def main(opts, *args, **kwargs):
         # Create the container instance
         from pyon.container.cc import Container
         container = Container(*args, **command_line_config)
+        container.version = version
 
         return container
 
@@ -560,8 +563,8 @@ def main(opts, *args, **kwargs):
 
         start_container(container)
 
-        # Let child processes run
-        if childproc_go:
+        # Let child processes run if we are the parent
+        if child_procs and childproc_go:
             childproc_go.set()
     except Exception as ex:
         log.error('CONTAINER START ERROR', exc_info=True)

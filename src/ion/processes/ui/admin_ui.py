@@ -253,17 +253,9 @@ def build_res_extends(restype):
         "<p><i>Extends:</i> ",
     ]
     extendslist = [parent.__name__ for parent in _get_object_class(restype).__mro__ if parent.__name__ not in ['IonObjectBase','object']]
-    for extend in extendslist:
-        if extend != restype:
-            fragments.append(build_link(extend, "/list/%s" % extend))
-            fragments.append(", ")
-
+    fragments.append(", ".join(build_link(extend, "/list/%s" % extend) for extend in extendslist if extend != restype))
     fragments.append("<br><i>Extended by:</i> ")
-    for extends in sorted(getextends(restype)):
-        if extends != restype:
-            fragments.append(build_link(extends, "/list/%s" % extends))
-            fragments.append(", ")
-
+    fragments.append(", ".join(build_link(extend, "/list/%s" % extend) for extend in sorted(getextends(restype)) if extend != restype))
     fragments.append("</p>")
 
     return "".join(fragments)

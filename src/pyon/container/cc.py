@@ -22,7 +22,7 @@ from pyon.ion.event import EventPublisher
 from pyon.ion.endpoint import ProcessRPCServer
 from pyon.net.transport import LocalRouter
 from pyon.util.config import Config
-from pyon.util.containers import get_default_container_id, DotDict, named_any, dict_merge
+from pyon.util.containers import get_default_container_id, DotDict, named_any, dict_merge, get_ion_ts
 from pyon.util.log import log
 from pyon.util.context import LocalContextMixin
 from pyon.util.greenlet_plugin import GreenletLeak
@@ -49,11 +49,13 @@ class Container(BaseContainerAgent):
     and the various forms of datastores in the systems.
     """
 
-    # Class static variables
+    # Class static variables (defaults)
     id          = None
     name        = None
     pidfile     = None
     instance    = None
+    version     = None
+    start_time  = None
 
     def __init__(self, *args, **kwargs):
         BaseContainerAgent.__init__(self, *args, **kwargs)
@@ -65,6 +67,7 @@ class Container(BaseContainerAgent):
         # set container id and cc_agent name (as they are set in base class call)
         self.id = get_default_container_id()
         self.name = "cc_agent_%s" % self.id
+        self.start_time = get_ion_ts()
 
         bootstrap.container_instance = self
         Container.instance = self

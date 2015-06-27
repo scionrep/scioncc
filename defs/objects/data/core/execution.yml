@@ -6,6 +6,10 @@ CapabilityContainer: !Extends_TaskableResource
   technology: "Python"
   # Exchange name of the agent representing the container
   cc_agent: ""
+  # Execution engine config
+  execution_engine_config: {}
+  # Additional descriptive attributes about container and container's host system
+  container_info: {}
   # Log of most recent container status snapshots
   status_log: []
 

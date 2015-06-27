@@ -133,8 +133,8 @@ container:
       receive: 30               # RPC receive timeout in seconds
 
   execution_engine:             # Configure this container's process execution engine
-    type: scioncc               # Set to scioncc for a container
-    name: services              # Name of this execution engine instance
+    type: scioncc               # Basic type class. Set to scioncc for a container
+    name: services              # Name of this execution engine instance (can have more than 1 container)
     capacity:                   # Configures the capacity model
       model: slots                # Possible models: slots (allow discrete maximum number of processes)
       max: 100                    # Upper bound (slots per container)
@@ -146,6 +146,12 @@ container:
       enabled: True               # Toggle switch
       topic: bx_containers        # Topic name for published container heartbeats
       publish_interval: 10        # Publish interval in seconds
+    child_configs:              # Config overrides for child process instances
+      Container-child-1:
+        name: core
+      Extra:
+        name_pattern: "Container-child-[234]"
+        name: extra
 
   process:
     exit_once_empty: True         # Whether the container should exit once all spawned processes have been terminated

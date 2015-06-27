@@ -21,23 +21,25 @@ Agents register in the directory. Registration is removed when the process is te
 __author__ = 'Michael Meisinger'
 
 from copy import deepcopy
+import multiprocessing
+import os
 import re
 import time
+import socket
+import sys
 from gevent.lock import RLock
 
 from pyon.agent.agent import ResourceAgent
 from pyon.core import (PROCTYPE_SERVICE, PROCTYPE_AGENT, PROCTYPE_IMMEDIATE, PROCTYPE_SIMPLE, PROCTYPE_STANDALONE,
                        PROCTYPE_STREAMPROC)
-from pyon.core.bootstrap import CFG, IonObject, get_sys_name
+from pyon.core.bootstrap import CFG
 from pyon.core.exception import ContainerConfigError, BadRequest, NotFound
 from pyon.ion.endpoint import ProcessRPCServer
 from pyon.ion.process import IonProcessThreadManager, IonProcessError
 from pyon.ion.resource import RT, PRED
 from pyon.ion.service import BaseService
 from pyon.ion.stream import StreamPublisher, StreamSubscriber
-from pyon.net.channel import RecvChannel
 from pyon.net.messaging import IDPool
-from pyon.net.transport import NameTrio, TransportError
 from pyon.util.containers import DotDict, for_name, named_any, dict_merge, get_safe, is_valid_identifier
 from pyon.util.log import log
 
@@ -62,6 +64,9 @@ class ProcManager(object):
         # mapping of greenlets we spawn to process_instances for error handling
         self._spawned_proc_to_process = {}
 
+        # Effective execution engine config (after merging in child process overrides)
+        self.ee_cfg = self._get_execution_engine_config()
+
         # The pyon worker process supervisor
         self.proc_sup = IonProcessThreadManager(heartbeat_secs=CFG.get_safe("container.timeout.heartbeat"),
                                                 failure_notify_callback=self._spawned_proc_failed)
@@ -71,16 +76,18 @@ class ProcManager(object):
 
     def start(self):
         log.debug("ProcManager starting ...")
+
         self.proc_sup.start()
 
         if self.container.has_capability(self.container.CCAP.RESOURCE_REGISTRY):
             # Register container as resource object
-            cc_obj = CapabilityContainer(name=self.container.id, cc_agent=self.container.name)
+            cc_obj = self._get_capability_container_object()
             self.cc_id, _ = self.container.resource_registry.create(cc_obj)
 
-            #Create an association to an Org object if not the rot ION org and only if found
-            if CFG.container.org_name and CFG.container.org_name != CFG.system.root_org:
-                org, _ = self.container.resource_registry.find_resources(restype=RT.Org, name=CFG.container.org_name, id_only=True)
+            # Create an association to an Org object if not the rot ION org and only if found
+            if CFG.get_safe("container.org_name") != CFG.get_safe("system.root_org"):
+                org, _ = self.container.resource_registry.find_resources(
+                        restype=RT.Org, name=CFG.get_safe("container.org_name"), id_only=True)
                 if org:
                     self.container.resource_registry.create_association(org[0], PRED.hasResource, self.cc_id)  # TODO - replace with proper association
 
@@ -114,6 +121,56 @@ class ProcManager(object):
                 pass
 
         log.debug("ProcManager stopped, OK.")
+
+    def _get_execution_engine_config(self):
+        ee_base_cfg = CFG.get_safe("container.execution_engine") or {}
+        if ee_base_cfg.get("type", None) != "scioncc":
+            raise ContainerConfigError("Execution engine config invalid: %s", ee_base_cfg)
+
+        ee_cfg = deepcopy(ee_base_cfg)
+
+        # If we are a child process, merge in child config override
+        proc_name = multiprocessing.current_process().name
+        ee_cfg["container"] = dict(child_proc_name=proc_name, is_child=False)
+        child_cfgs = ee_base_cfg.get("child_configs", None) or {}
+        if proc_name.startswith("Container-child-"):
+            ee_cfg["container"]["is_child"] = True
+            if proc_name in child_cfgs:
+                log.info("Applying execution engine config override for child: %s", proc_name)
+                dict_merge(ee_cfg, child_cfgs[proc_name], inplace=True)
+            else:
+                for cfg_name, ch_cfg in child_cfgs.iteritems():
+                    pattern = ch_cfg.get("name_pattern", None)
+                    if pattern and re.match(pattern, proc_name):
+                        log.info("Applying execution engine config override %s for child: %s", cfg_name, proc_name)
+                        dict_merge(ee_cfg, ch_cfg, inplace=True)
+                        break
+
+        ee_cfg.pop("child_configs", None)
+        return ee_cfg
+
+    def _get_capability_container_object(self):
+        container_info = dict(proc_name=multiprocessing.current_process().name,
+                              process_id=os.getpid(),
+                              parent_process_id=os.getppid(),
+                              hostname=socket.gethostname(),
+                              host=socket.gethostbyname(socket.gethostname()),
+                              platform=sys.platform,
+                              argv=sys.argv,
+                              python_version=sys.version,
+                              cwd=os.getcwd(),
+                              start_time=self.container.start_time,
+                              )
+        # Other possibilities: username, os package versions, IP address
+        host_info = {k: v for (k, v) in zip(("os_sysname", "os_nodename", "os_release", "os_version", "os_machine"), os.uname())}
+        container_info.update(host_info)
+        container_info["env"] = {k: str(v) for (k,v) in os.environ.iteritems()}
+        container_info["python_path"] = sys.path
+        cc_obj = CapabilityContainer(name=self.container.id, version=self.container.version,
+                                     cc_agent=self.container.name,
+                                     container_info=container_info,
+                                     execution_engine_config=self.ee_cfg)
+        return cc_obj
 
     # -----------------------------------------------------------------
 

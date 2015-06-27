@@ -74,7 +74,7 @@ class ProcessDispatcherAggregator(object):
     # -------------------------------------------------------------------------
 
     def _receive_container_info(self, msg, headers, *args):
-        #print "!!! Got container info", msg, headers, args
+        print "!!! Got container info", msg, headers, args
         pass
 
     def _receive_event(self, event, *args, **kwargs):
