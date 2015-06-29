@@ -40,9 +40,12 @@ class InterfaceAdmin:
         if not self._closed:
             print "WARNING: Call close() on InterfaceAdmin (and datastores)"
 
+    def set_config(self, config):
+        self.config = config
+
     def create_core_datastores(self):
         """
-        Main entry point into creating core datastores
+        Create core datastores, so that they exist when containers start concurrently.
         """
         ds = DatastoreFactory.get_datastore(config=self.config, scope=self.sysname, variant=DatastoreFactory.DS_BASE)
         datastores = [
@@ -58,15 +61,17 @@ class InterfaceAdmin:
                 ds.create_datastore(datastore_name=local_dsn, profile=profile)
                 count += 1
                 ds_created.append(local_dsn)
-        print "store_interfaces: Created %s datastores: %s" % (count, ds_created)
+        if count:
+            print "store_interfaces: Created %s datastores: %s" % (count, ds_created)
 
 
     def store_config(self, system_cfg):
         """
-        Main entry point into storing system config
+        Store system config in directory and setup basic directory structure, so that everything is
+        prepared when containers start concurrently.
         """
         # Register some default keys
-        self.dir.register_safe("/", "DIR", sys_name=self.sysname)
+        self.dir.register_safe("/", "DIR", description="Directory root", sys_name=self.sysname)
         self.dir.register_safe("/", "Agents", description="Running agents", create_only=True)
         self.dir.register_safe("/", "Config", description="System configuration", create_only=True)
         self.dir.register_safe("/", "System", description="System management information", create_only=True)
@@ -79,10 +84,10 @@ class InterfaceAdmin:
             print "store_interfaces: Storing system config in directory..."
         self.dir.register(self.DIR_CONFIG_PATH, "CFG", **deepcopy(system_cfg))
 
-    def store_interfaces(self, object_definition_file=None,
-                         service_definition_file=None, idempotent=True):
+    def store_interfaces(self, object_definition_file=None, service_definition_file=None, idempotent=True):
         """
-        Main entry point into storing interfaces
+        Store system interfaces (services, objects, config files), so that everything is
+        prepared when containers start concurrently.
         """
         self.idempotent = idempotent
         self.bulk_entries = {}
@@ -90,10 +95,13 @@ class InterfaceAdmin:
         self.serial_num = 1
 
         if object_definition_file:
+            # Update single object definition
             self.store_object_interfaces(file=object_definition_file)
         elif service_definition_file:
+            # Update single service definition
             self.store_service_interfaces(file=service_definition_file)
         else:
+            # Update all interfaces
             if self.idempotent:
                 de = self.rr.find_by_type("ServiceDefinition", id_only=True)
                 if de:
@@ -204,3 +212,25 @@ class InterfaceAdmin:
         self.bulk_resources = []
 
         print "store_interfaces: Storing interfaces successful"
+
+    def declare_core_exchange_resources(self):
+        """
+        Create important messaging resources (queues, bindings, etc), so that they are ready before
+        the first containers start and processes get spawned concurrently.
+        """
+        from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+        rabbit_util = RabbitManagementUtil(self.config, sysname=self.sysname)
+
+        # Event persister queue
+        rabbit_util.declare_exchange("events")
+        rabbit_util.declare_queue("events", "event_persister")
+        rabbit_util.bind_queue("events", "event_persister", "#")
+
+        # Container broadcast boot queue
+        # This is so that the first PD will immediately learn about the existence of containers,
+        # and does not have to query datastore or wait for EEs to broadcast
+        heartbeat_topic = self.config.get_safe("service.process_management.process_dispatcher.aggregator.container_topic", "bx_containers")
+        heartbeat_topic_queue = heartbeat_topic + "_boot"
+        rabbit_util.declare_exchange("")
+        rabbit_util.declare_queue("", heartbeat_topic_queue)
+        rabbit_util.bind_queue("", heartbeat_topic_queue, heartbeat_topic)

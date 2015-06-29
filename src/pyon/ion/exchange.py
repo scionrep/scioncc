@@ -809,10 +809,8 @@ class ExchangeManager(object):
         node = self._priv_nodes.get(ION_DEFAULT_BROKER, self.default_node)
         host = node.client.parameters.host
 
-        mgmt_cfg_key = CFG.get_safe("container.messaging.management.server", "rabbit_manage")
-        mgmt_cfg = CFG.get_safe("server." + mgmt_cfg_key)
-        mgmt_port = get_safe(mgmt_cfg, "port") or "15672"
-        url = "http://%s:%s/api/%s" % (host, mgmt_port, "/".join(feats))
+        from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+        url = RabbitManagementUtil.get_mgmt_url(CFG, feats)
 
         return url
 
@@ -845,13 +843,11 @@ class ExchangeManager(object):
         meth = getattr(requests, method)
 
         try:
-            mgmt_cfg_key = CFG.get_safe("container.messaging.management.server", "rabbit_manage")
-            mgmt_cfg = CFG.get_safe("server." + mgmt_cfg_key)
-            username = get_safe(mgmt_cfg, "username") or "guest"
-            password = get_safe(mgmt_cfg, "password") or "guest"
+            from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+            mgmt_cfg = RabbitManagementUtil.get_mgmt_config(CFG)
 
             with gevent.timeout.Timeout(10):
-                r = meth(url, auth=(username, password), data=data)
+                r = meth(url, auth=(mgmt_cfg["username"], mgmt_cfg["password"]), data=data)
             r.raise_for_status()
 
             if not r.content == "":

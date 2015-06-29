@@ -241,11 +241,12 @@ def main(opts, *args, **kwargs):
         # - Last apply any separate command line config overrides
         config.apply_configuration(pyon_config, config_override)
         config.apply_configuration(pyon_config, command_line_config)
+        iadm.set_config(pyon_config)
 
         # Also set the immediate flag, but only if specified - it is an override
         if opts.immediate:
             from pyon.util.containers import dict_merge
-            dict_merge(pyon_config, {'system':{'immediate':True}}, True)
+            dict_merge(pyon_config, {'system': {'immediate': True}}, inplace=True)
 
         # Bootstrap pyon's core. Load configuration etc.
         bootstrap.bootstrap_pyon(pyon_cfg=pyon_config)
@@ -254,19 +255,9 @@ def main(opts, *args, **kwargs):
         if opts.broker_clean:
             log.info("broker_clean=True, sysname: %s", bootstrap.get_sys_name())
 
-            # build connect str
-            from pyon.util.containers import get_safe
-            mgmt_cfg_key = pyon_config.get_safe("container.messaging.management.server", "rabbit_manage")
-            mgmt_cfg = pyon_config.get_safe("server." + mgmt_cfg_key)
-            mgmt_port = get_safe(mgmt_cfg, "port") or "15672"
-            username = get_safe(mgmt_cfg, "username") or "guest"
-            password = get_safe(mgmt_cfg, "password") or "guest"
-
-            connect_str = "-q -H %s -P %s -u %s -p %s -V %s" % (pyon_config.get_safe('server.amqp_priv.host', pyon_config.get_safe('server.amqp.host', 'localhost')),
-                                                                mgmt_port, username, password, '/')
-
-            from putil.rabbithelper import clean_by_sysname
-            deleted_exchanges, deleted_queues = clean_by_sysname(connect_str, bootstrap.get_sys_name())
+            from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+            rabbit_util = RabbitManagementUtil(pyon_config, sysname=bootstrap.get_sys_name())
+            deleted_exchanges, deleted_queues = rabbit_util.clean_by_sysname()
             log.info("Exchanges deleted (%s): %s" % (len(deleted_exchanges), ", ".join(deleted_exchanges)))
             log.info("Queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues)))
 
@@ -278,6 +269,7 @@ def main(opts, *args, **kwargs):
         # Auto-bootstrap interfaces
         if bootstrap_config.system.auto_bootstrap:
             iadm.store_interfaces(idempotent=True)
+            iadm.declare_core_exchange_resources()
 
         iadm.close()
 

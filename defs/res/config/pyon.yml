@@ -76,6 +76,7 @@ server:
     port: 15672
     username: guest
     password: guest
+    vhost: /
 
   postgresql:
     type: postgresql
@@ -298,6 +299,11 @@ service:
         container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
       engine:
         type: default        # PD decision engine
+        await_preconditions: # Preconditions for start of decision engine. Blocks until true.
+          min_engines: 1
+          engines_exist:
+          - default
+          - core
       executor:
         type: global         # global (schedule via agent commands) or local (to local container only)
         retry: tbd

@@ -901,18 +901,9 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
     def setUp(self):
         self._start_container()
         def cleanup_broker():
-            mgmt_cfg_key = CFG.get_safe("container.messaging.management.server", "rabbit_manage")
-            mgmt_cfg = CFG.get_safe("server." + mgmt_cfg_key)
-            mgmt_port = get_safe(mgmt_cfg, "port") or "15672"
-            username = get_safe(mgmt_cfg, "username") or "guest"
-            password = get_safe(mgmt_cfg, "password") or "guest"
-
-            # @Dave: This is maybe too brute force and there is maybe a better pattern...
-            connect_str = "-q -H %s -P %s -u %s -p %s -V %s" % (CFG.get_safe('server.amqp_priv.host', CFG.get_safe('server.amqp.host', 'localhost')),
-                                                                   mgmt_port, username, password, '/')
-
-            from putil.rabbithelper import clean_by_sysname
-            clean_by_sysname(connect_str, get_sys_name())
+            from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+            rabbit_util = RabbitManagementUtil(CFG, sysname=get_sys_name())
+            rabbit_util.clean_by_sysname()
         self.addCleanup(cleanup_broker)
 
     @patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({'container':{'messaging':{'names':{'durable':False}}}}))
@@ -982,13 +973,12 @@ class TestExchangeObjectsDurableFlag(IonIntegrationTestCase):
 
 @attr('UNIT', group='exchange')
 @patch.dict('pyon.ion.exchange.CFG', PyonTestCase._get_alt_cfg({
-    'server':{'rabbit_manage':{'username':'user', 'password':'pass', 'port':'port'}},
-    'container':{'messaging':{'auto_register': False}}}))
+        'server': {'rabbit_manage': {'username': 'user', 'password': 'pass', 'host': 'testhost', 'port': 'port'}},
+        'container': {'messaging': {'auto_register': False}}}))
 class TestManagementAPI(PyonTestCase):
     def setUp(self):
         self.ex_manager = ExchangeManager(Mock())
         self.ex_manager._priv_nodes = MagicMock()
-        self.ex_manager._priv_nodes.get.return_value.client.parameters.host = "testhost" # stringifies so don't use sentinel
 
     def test__get_management_url(self):
         url = self.ex_manager._get_management_url()
@@ -1054,7 +1044,8 @@ class TestManagementAPI(PyonTestCase):
 
 
 @attr('INT', group='exchange')
-@patch.dict('pyon.ion.exchange.CFG', IonIntegrationTestCase._get_alt_cfg({'container':{'messaging':{'auto_register': False}}}))
+@patch.dict('pyon.ion.exchange.CFG', IonIntegrationTestCase._get_alt_cfg(
+        {'container': {'messaging': {'auto_register': False}}}))
 class TestManagementAPIInt(IonIntegrationTestCase):
 
     def setUp(self):

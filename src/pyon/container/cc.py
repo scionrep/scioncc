@@ -524,7 +524,8 @@ class ContainerHeartbeater(object):
     def publish_heartbeat(self):
         try:
             hb_msg = self.get_heartbeat_message()
-            self.heartbeat_pub.publish(hb_msg)
+            headers = dict(expiration=60000)
+            self.heartbeat_pub.publish(hb_msg, headers=headers)
         except Exception:
             log.exception("Error publishing heatbeat")
 
