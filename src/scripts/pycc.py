@@ -14,17 +14,15 @@ import sys
 import traceback
 from uuid import uuid4
 
-from putil.script_util import parse_args
-from pyon.util.file_sys import FileSystem
-from pyon.core import log as logutil
 import logging
 log = logging.getLogger('pycc')
-#
-# WARNING - DO NOT IMPORT GEVENT OR PYON HERE. IMPORTS **MUST** BE DONE IN THE MAIN()
+
+from putil.script_util import parse_args
+
+# WARNING - DO NOT IMPORT GEVENT OR PYON HERE. IMPORTS **MUST** BE DONE IN THE main()
 # DUE TO DAEMONIZATION.
 #
 # SEE: http://groups.google.com/group/gevent/browse_thread/thread/6223805ffcd5be22?pli=1
-#
 
 version = "3.1"     # TODO: extract version info from the code (tag/commit)
 description = '''
@@ -86,7 +84,6 @@ def entry():
                 p = Process(name=pname, target=start_childproc, args=(pinfo, opts, args, kwargs))
                 p.start()
                 child_procs.append(p)
-                #print " spawned child process", p, p.pid
 
     if opts.daemon:
         from daemon import DaemonContext
@@ -109,7 +106,7 @@ def start_childproc(pinfo, opts, pycc_args, pycc_kwargs):
     child_procs = []   # We are a child
     if childproc_go:
         childproc_go.wait()   # Wait until we get the signal that parent is ready
-    print "pycc: Starting child process", current_process().name, pinfo
+    #print "pycc: Starting child process", current_process().name, pinfo
     opts.noshell = True
     opts.mx = opts.force_clean = opts.broker_clean = False
     if not opts.relall:
@@ -129,6 +126,7 @@ def main(opts, *args, **kwargs):
     """
     def prepare_logging():
         # Load logging override config if provided. Supports variants literal and path.
+        from pyon.core import log as logutil
         logging_config_override = None
         if opts.logcfg:
             if '{' in opts.logcfg:
@@ -264,6 +262,7 @@ def main(opts, *args, **kwargs):
         if opts.force_clean:
             path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/scion'), bootstrap.get_sys_name())
             log.info("force_clean: Removing %s", path)
+            from pyon.util.file_sys import FileSystem
             FileSystem._clean(pyon_config)
 
         # Auto-bootstrap interfaces

@@ -103,7 +103,7 @@ def set_sys_name(sysname=None):
     global sys_name
     old_sys_name = sys_name
     sys_name = sysname
-    log.info("pyon: sys_name changed from '%s' to '%s'", old_sys_name, sys_name)
+    log.info("sys_name changed from '%s' to '%s'", old_sys_name, sys_name)
 
 
 def get_sys_name():
@@ -146,12 +146,12 @@ def bootstrap_pyon(logging_config_override=None, pyon_cfg=None):
     @param logging_config_override  A dict to initialize the Python logging subsystem (None loads default files)
     @param pyon_cfg   A DotDict with the fully loaded pyon configuration to merge into CFG (None loads default files)
     """
-    print "pyon: pyon.bootstrap (bootstrap_pyon) executing..."
+    log.info("pyon.bootstrap (bootstrap_pyon) executing...")
 
     # Make sure Pyon is only initialized only once
     global pyon_initialized
     if pyon_initialized:
-        print "pyon: WARNING -- bootstrap_pyon() called again!"
+        log.warn("WARNING -- bootstrap_pyon() called again!")
         return
 
     # ENVIRONMENT. Check we are called in an expected environment (files, directories, etc)
@@ -167,7 +167,7 @@ def bootstrap_pyon(logging_config_override=None, pyon_cfg=None):
 
     # CONFIG. Initialize pyon global configuration from local files
     set_config(pyon_cfg)
-    log.debug("pyon: CFG set to %s", CFG)
+    log.debug("CFG set to %s", CFG)
 
     # OBJECTS. Object and message definitions.
     from pyon.core.registry import IonObjectRegistry
@@ -192,4 +192,4 @@ def bootstrap_pyon(logging_config_override=None, pyon_cfg=None):
 
     # Set initialized flag
     pyon_initialized = True
-    log.debug("pyon: initialized OK")
+    log.debug("Pyon initialized OK")

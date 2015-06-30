@@ -32,7 +32,8 @@ data streaming and signal processing.
 SciON provides a message-driven, service-oriented scalable application
 deployment platform that can be extended to meet custom needs.
 
-Based on the Ocean Observatories Initiative Cyberinfrastructure.
+Based on the Ocean Observatories Initiative Cyberinfrastructure, see
+https://github.com/ooici/pyon and https://github.com/ooici/coi-services
 
 
 PROJECT STRUCTURE
