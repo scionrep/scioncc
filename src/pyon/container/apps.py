@@ -8,6 +8,7 @@ from copy import deepcopy
 
 from pyon.core.bootstrap import CFG
 from pyon.core.exception import ContainerAppError, ConfigNotFound
+from pyon.core.object import walk
 from pyon.util.config import Config
 from pyon.util.containers import DotDict, named_any, dict_merge
 from pyon.util.log import log
@@ -20,16 +21,23 @@ class AppManager(object):
     def __init__(self, container):
         self.container = container
         self.apps = []
+        self.use_pd = CFG.get_safe("container.app_manager.use_pd") is True
+        self.pd_client = None
 
     def start(self):
         log.debug("AppManager starting ...")
         self.max_proc_replicas = int(CFG.get_safe("container.process.max_replicas", 0))
+        if self.use_pd:
+            from ion.core.process.pd_core import ProcessDispatcherClient
+            self.pd_client = ProcessDispatcherClient(self.container, CFG.get_safe("container.process_dispatcher") or {})
 
     def stop(self):
         log.debug("AppManager stopping ...")
         # Stop apps in reverse order of startup
         for appdef in reversed(self.apps):
             self.stop_app(appdef)
+
+        self.pd_client = None
         log.debug("AppManager stopped, OK.")
 
     def start_rel_from_url(self, rel_url="", config=None):
@@ -63,7 +71,14 @@ class AppManager(object):
         log.debug("AppManager.start_rel(rel=%s) ...", rel)
 
         if rel is None:
-            rel = {}
+            return
+
+        if self.use_pd:
+            log.info("Sending rel file to PD")
+            import json
+            rel_def = json.loads(json.dumps(rel))     # HACK to get rid of OrderedDict (not serializable)
+            cmd_res = self.pd_client.start_rel_blocking(rel_def, timeout=10)
+            return cmd_res
 
         for rel_app_cfg in rel.apps:
             name = rel_app_cfg.name

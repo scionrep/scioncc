@@ -54,6 +54,9 @@ __all__ += ['StreamPublisher', 'StreamSubscriber']
 from pyon.net import messaging, channel, endpoint
 __all__ += ['messaging', 'channel', 'endpoint']
 
+from pyon.net.endpoint import Publisher, Subscriber
+__all__ += ['Publisher', 'Subscriber']
+
 from pyon.util.async import spawn, switch
 __all__ += ['spawn', 'switch']
 

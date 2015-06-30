@@ -1,5 +1,10 @@
 from interface.objects import ProcessStateEnum, Process
 
+EE_STATE_RUNNING = "500-RUNNING"
+EE_STATE_TERMINATED = "700-TERMINATED"
+EE_STATE_UNKNOWN = "900-UNKNOWN"
+
+
 _PD_PROCESS_STATE_MAP = {
     "100-UNSCHEDULED": ProcessStateEnum.REQUESTED,
     "150-UNSCHEDULED_PENDING": ProcessStateEnum.REQUESTED,

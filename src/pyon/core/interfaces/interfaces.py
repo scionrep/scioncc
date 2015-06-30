@@ -229,8 +229,8 @@ class InterfaceAdmin:
         # Container broadcast boot queue
         # This is so that the first PD will immediately learn about the existence of containers,
         # and does not have to query datastore or wait for EEs to broadcast
-        heartbeat_topic = self.config.get_safe("service.process_management.process_dispatcher.aggregator.container_topic", "bx_containers")
-        heartbeat_topic_queue = heartbeat_topic + "_boot"
-        rabbit_util.declare_exchange("")
-        rabbit_util.declare_queue("", heartbeat_topic_queue)
-        rabbit_util.bind_queue("", heartbeat_topic_queue, heartbeat_topic)
+        # heartbeat_topic = self.config.get_safe("service.process_management.process_dispatcher.aggregator.container_topic", "bx_containers")
+        # heartbeat_topic_queue = heartbeat_topic + "_boot"
+        # rabbit_util.declare_exchange("")
+        # rabbit_util.declare_queue("", heartbeat_topic_queue)
+        # rabbit_util.bind_queue("", heartbeat_topic_queue, heartbeat_topic)

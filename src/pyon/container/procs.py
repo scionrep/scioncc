@@ -67,6 +67,11 @@ class ProcManager(object):
         # Effective execution engine config (after merging in child process overrides)
         self.ee_cfg = self._get_execution_engine_config()
 
+        # Process dispatcher (if configured/enabled and not a child container process)
+        self.pd_cfg = CFG.get_safe("container.process_dispatcher") or {}
+        self.pd_enabled = self.pd_cfg.get("enabled", False) is True and not self.ee_cfg["container"]["is_child"]
+        self.pd_core = None
+
         # The pyon worker process supervisor
         self.proc_sup = IonProcessThreadManager(heartbeat_secs=CFG.get_safe("container.timeout.heartbeat"),
                                                 failure_notify_callback=self._spawned_proc_failed)
@@ -76,6 +81,9 @@ class ProcManager(object):
 
     def start(self):
         log.debug("ProcManager starting ...")
+
+        if self.pd_enabled:
+            self._start_process_dispatcher()
 
         self.proc_sup.start()
 
@@ -119,6 +127,9 @@ class ProcManager(object):
             except NotFound:
                 # already gone, this is ok
                 pass
+
+        if self.pd_enabled:
+            self._stop_process_dispatcher()
 
         log.debug("ProcManager stopped, OK.")
 
@@ -992,3 +1003,14 @@ class ProcManager(object):
             del self.procs_by_name[process_instance._proc_name]
         else:
             log.warn("Process name %s not in local registry", process_instance.name)
+
+    # -----------------------------------------------------------------
+
+    def _start_process_dispatcher(self):
+        from ion.core.process.pd_core import ProcessDispatcher
+        self.pd_core = ProcessDispatcher(container=self.container, config=self.pd_cfg)
+        self.pd_core.start()
+
+    def _stop_process_dispatcher(self):
+        if self.pd_core:
+            self.pd_core.stop()

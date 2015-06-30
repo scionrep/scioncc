@@ -531,5 +531,5 @@ class ContainerHeartbeater(object):
 
     def get_heartbeat_message(self):
         from interface.objects import ContainerHeartbeat
-        hb_msg = ContainerHeartbeat(container_id=self.container.id)
+        hb_msg = ContainerHeartbeat(container_id=self.container.id, ts=get_ion_ts())
         return hb_msg

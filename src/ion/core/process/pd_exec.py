@@ -6,7 +6,8 @@ import gevent
 from gevent.event import AsyncResult
 from gevent.queue import Queue
 
-from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, ProcessSubscriber
+from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, Subscriber
+from pyon.util.async import spawn
 
 from interface.objects import Process, ProcessStateEnum
 
@@ -17,20 +18,12 @@ class ProcessDispatcherExecutorBase(object):
     def __init__(self, pd_core):
         self._pd_core = pd_core
         self.container = self._pd_core.container
-        self.process = self._pd_core.process
         self.queue = Queue()
 
     def start(self):
-        queue_name = "pd_command"
-        self.sub_cont = ProcessSubscriber(process=self.process, binding=queue_name, from_name=queue_name,
-                                          callback=self._receive_command)
-        self.process.add_endpoint(self.sub_cont)
-
-    def stop(self):
         pass
 
-    def _receive_command(self, msg, headers, *args):
-        print "!!! Got command", msg, headers, args
+    def stop(self):
         pass
 
     def add_action(self, action_tuple):
@@ -47,6 +40,11 @@ class ProcessDispatcherExecutorBase(object):
 
 class ProcessDispatcherAgentExecutor(ProcessDispatcherExecutorBase):
     """ PD Executor using remote calls to CC Agents to manage processes """
+
+    def _action_start_rel(self, command):
+        pass
+
+
 
 
 class ProcessDispatcherLocalExecutor(ProcessDispatcherExecutorBase):

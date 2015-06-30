@@ -154,6 +154,26 @@ container:
         name_pattern: "Container-child-[234]"
         name: extra
 
+  process_dispatcher:             # Configures an active global process dispatcher component
+    enabled: True                 # Main toggle switch. If False, container does not start PD.
+    command_queue: pd_command     # Topic and queue name for singleton PD
+    aggregator:
+      container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
+    engine:
+      type: default               # PD decision engine
+      await_preconditions:        # Preconditions for start of decision engine. Blocks until true.
+        min_engines: 1
+        engines_exist:
+        - services
+        - core
+    executor:
+      type: global                # global (schedule via agent commands) or local (to local container only)
+      pool_size: 1                # Number of concurrent threads spawning processes
+      retry: tbd
+
+  app_manager:                    # Configures the container's app manager (starting rel files)
+    use_pd: True                  # If True, sends deploy files to PD. If False, contains spawns all locally
+
   process:
     exit_once_empty: True         # Whether the container should exit once all spawned processes have been terminated
     log_exceptions: False         # Whether all RPC call invocation exceptions should be logged
@@ -291,22 +311,6 @@ service:
 
   directory:
     publish_events: False
-
-  process_management:
-    process_dispatcher:
-      command_queue: pd_command            # Topic and queue name for singleton PD
-      aggregator:
-        container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
-      engine:
-        type: default        # PD decision engine
-        await_preconditions: # Preconditions for start of decision engine. Blocks until true.
-          min_engines: 1
-          engines_exist:
-          - default
-          - core
-      executor:
-        type: global         # global (schedule via agent commands) or local (to local container only)
-        retry: tbd
 
   service_gateway:
     trusted_originators: []  # Optional list of trusted addresses; an empty list means open system

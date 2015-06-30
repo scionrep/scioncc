@@ -14,14 +14,7 @@ class ProcessManagementService(BaseProcessManagementService):
 
     def on_init(self):
         self.rr = self.clients.resource_registry
-        pd_cfg = self.CFG.get_safe("service.process_management.process_dispatcher") or {}
-        self._pd_core = ProcessDispatcher(process=self, config=pd_cfg)
-
-    def on_start(self):
-        self._pd_core.start()
-
-    def on_quit(self):
-        self._pd_core.stop()
+        self._pd_core = self.container.proc_manager.pd_core
 
     # -------------------------------------------------------------------------
 
