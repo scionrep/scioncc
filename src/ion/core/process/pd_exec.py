@@ -3,13 +3,15 @@
 __author__ = 'Michael Meisinger'
 
 import gevent
-from gevent.event import AsyncResult
+from gevent.event import AsyncResult, Event
+from gevent.pool import Pool
 from gevent.queue import Queue
 
-from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, Subscriber
+from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, get_safe
 from pyon.util.async import spawn
 
 from interface.objects import Process, ProcessStateEnum
+from interface.services.icontainer_agent import ContainerAgentClient
 
 
 class ProcessDispatcherExecutorBase(object):
@@ -19,12 +21,19 @@ class ProcessDispatcherExecutorBase(object):
         self._pd_core = pd_core
         self.container = self._pd_core.container
         self.queue = Queue()
+        self.quit_event = Event()
+        self.exec_pool_size = min(int(get_safe(self._pd_core.pd_cfg, "executor.pool_size") or 1), 10)
+        self.exec_pool = Pool(size=self.exec_pool_size)
 
     def start(self):
-        pass
+        self._pool_gl = spawn(self._action_loop)
 
     def stop(self):
-        pass
+        self.quit_event.set()
+        self.queue.put("__QUIT__", None, None)
+        self.exec_pool.kill()
+        self.exec_pool.join(timeout=2)
+        self._pool_gl.join(timeout=2)
 
     def add_action(self, action_tuple):
         if not action_tuple or len(action_tuple) != 3 or not isinstance(action_tuple[0], basestring) or \
@@ -37,13 +46,48 @@ class ProcessDispatcherExecutorBase(object):
         action_res = action_tuple[1]
         return action_res.get()  # Blocking on AsyncResult
 
+    def _action_loop(self):
+        for action in self.queue:
+            if self.quit_event.is_set():
+                break
+            try:
+                gl = self.exec_pool.spawn(self._process_action, action)
+            except Exception as ex:
+                log.exception("Error in PD Executor action")
+
+    def _process_action(self, action):
+        log.debug("PD execute action %s", action)
+        action_name, action_asyncres, action_kwargs = action
+
+        action_funcname = "_action_%s" % action_name
+        action_func = getattr(self, action_funcname, None)
+        if not action_func:
+            log.warn("Action function not found")
+            return
+        try:
+            action_res = action_func(action_kwargs)
+            action_asyncres.set(action_res)
+        except Exception as ex:
+            log.exception("Error executing action")
+            action_asyncres.set_exception(ex)
+
 
 class ProcessDispatcherAgentExecutor(ProcessDispatcherExecutorBase):
     """ PD Executor using remote calls to CC Agents to manage processes """
 
-    def _action_start_rel(self, command):
-        pass
+    def _action_spawn_process(self, action_kwargs):
+        cc_agent_name = action_kwargs["cc_agent"]
+        proc_name = action_kwargs["proc_name"]
+        module = action_kwargs["module"]
+        cls = action_kwargs["cls"]
+        config = action_kwargs["config"]
 
+        target_cc_agent = ContainerAgentClient(to_name=cc_agent_name)
+        proc_id = target_cc_agent.spawn_process(proc_name, module, cls, config)
+        return proc_id
+
+    def _action_terminate_process(self):
+        pass
 
 
 

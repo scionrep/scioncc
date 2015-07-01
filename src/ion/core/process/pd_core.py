@@ -1,10 +1,8 @@
 """
 Process dispatcher core logic.
 
-Based in parts on OOI process dispatcher, https://github.com/scion-network/epu
-(C) University of Chicago, 2013. Open source under Apache 2.0.
-Simplified to work without IaaS resource management (EPUM) and directly
-integrated with ScionCC.
+Reimplementation of the OOI process dispatcher, see https://github.com/scion-network/epu
+Can be started as part of a capability container and integrates directly with the container.
 
 The process dispatcher is a background process that manages executing processes in the
 system. It provides a command set to launch and terminate processes, and monitors
@@ -32,18 +30,18 @@ from ion.core.process.pd_exec import pd_executor_factory
 from ion.core.process.pd_registry import ProcessDispatcherRegistry, ProcessDispatcherAggregator
 from ion.core.process.proc_util import AsyncResultWaiter
 
-PD_LOCK_SCOPE = "PD"
-
 
 class ProcessDispatcher(object):
 
     def __init__(self, container, config):
         self.container = container
-        self._pd_cfg = config or {}
+        self.pd_cfg = config or {}
         self._enabled = False
+        self.pd_region = get_safe(self.pd_cfg, "container.execution_engine.deployment.region") or "default"
+        self.pd_scope = "PD_{}".format(self.pd_region)
 
         # Component that determines one leader in the distributed system
-        self.leader_manager = LeaderManager(PD_LOCK_SCOPE, container=self.container)
+        self.leader_manager = LeaderManager(self.pd_scope, container=self.container)
 
         # The authoritative process registry
         self.registry = ProcessDispatcherRegistry(pd_core=self)
@@ -57,7 +55,7 @@ class ProcessDispatcher(object):
         # The decision engine
         self.engine = ProcessDispatcherDecisionEngine(pd_core=self)
 
-        self.pd_client = ProcessDispatcherClient(self.container, self._pd_cfg)
+        self.pd_client = ProcessDispatcherClient(self.container, self.pd_cfg)
 
     def start(self):
         log.info("PD starting...")
@@ -84,9 +82,9 @@ class ProcessDispatcher(object):
 class ProcessDispatcherClient(object):
     def __init__(self, container, config):
         self.container = container
-        self._pd_cfg = config or {}
+        self.pd_cfg = config or {}
 
-        self._cmd_queue_name = get_safe(self._pd_cfg, "command_queue", "pd_command")
+        self._cmd_queue_name = get_safe(self.pd_cfg, "command_queue", "pd_command")
         self.cmd_pub = Publisher(to_name=self._cmd_queue_name)
 
     # -------------------------------------------------------------------------

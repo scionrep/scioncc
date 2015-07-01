@@ -135,7 +135,7 @@ container:
 
   execution_engine:             # Configure this container's process execution engine
     type: scioncc               # Basic type class. Set to scioncc for a container
-    name: services              # Name of this execution engine instance (can have more than 1 container)
+    name: default               # Name of this execution engine instance (can have more than 1 container)
     capacity:                   # Configures the capacity model
       model: slots                # Possible models: slots (allow discrete maximum number of processes)
       max: 100                    # Upper bound (slots per container)
@@ -149,10 +149,14 @@ container:
       publish_interval: 10        # Publish interval in seconds
     child_configs:              # Config overrides for child process instances
       Container-child-1:
-        name: core
-      Extra:
-        name_pattern: "Container-child-[234]"
-        name: extra
+        name: ui
+      Container-child-2:
+        name: default
+      Container-child-3:
+        name: default
+      App:
+        name_pattern: "Container-child-[4567]"
+        name: app
 
   process_dispatcher:             # Configures an active global process dispatcher component
     enabled: True                 # Main toggle switch. If False, container does not start PD.
@@ -164,12 +168,19 @@ container:
       await_preconditions:        # Preconditions for start of decision engine. Blocks until true.
         min_engines: 1
         engines_exist:
-        - services
-        - core
+        - default
+        - ui
+      default_engine: default
+      dispatch_rules:
+      - appname_pattern: "ui_server"
+        engine: ui
+      dispatch_spread: round_robin
     executor:
       type: global                # global (schedule via agent commands) or local (to local container only)
       pool_size: 1                # Number of concurrent threads spawning processes
       retry: tbd
+      spawn_timeout: 600
+      terminate_timeout: 5
 
   app_manager:                    # Configures the container's app manager (starting rel files)
     use_pd: True                  # If True, sends deploy files to PD. If False, contains spawns all locally
@@ -285,20 +296,22 @@ process:
 
   ui_server:
     server:
-      enabled: true
+      enabled: True
       hostname: ""
       port: 4000
-      socket_io: false
-      log_access: true
-      log_errors: true
+      socket_io: False
+      log_access: True
+      log_errors: True
+      develop_mode: True
+      set_cors: True
     security:
       secret: ""             # Server secret for cookie encryption
       session_timeout: 900   # Timeout in seconds
     oauth:
-      enabled: true
+      enabled: True
       default_scope: scioncc
     service_gateway:
-      enabled: true
+      enabled: True
       url_prefix: /service
     extensions: []   # A list of fully qualified class names implementing the UIExtension interface
 

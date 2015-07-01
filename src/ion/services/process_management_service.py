@@ -2,9 +2,9 @@
 
 import gevent
 
-from pyon.public import log, RT, OT, PRED, NotFound, BadRequest
+from pyon.public import log, RT, OT, PRED, NotFound, BadRequest, CFG
 
-from ion.core.process.pd_core import ProcessDispatcher
+from ion.core.process.pd_core import ProcessDispatcherClient
 
 from interface.services.core.iprocess_management_service import BaseProcessManagementService
 from interface.objects import ProcessStateEnum, Process
@@ -14,7 +14,7 @@ class ProcessManagementService(BaseProcessManagementService):
 
     def on_init(self):
         self.rr = self.clients.resource_registry
-        self._pd_core = self.container.proc_manager.pd_core
+        self.pd_client = ProcessDispatcherClient(self.container, CFG.get_safe("container.process_dispatcher", {}))
 
     # -------------------------------------------------------------------------
 

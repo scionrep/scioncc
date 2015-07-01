@@ -1,6 +1,18 @@
 #!/usr/bin/env python
 
-"""Capability Container"""
+"""Capability Container.
+
+A container is an environment for spawning ION processes. The container provides capabilities
+such as messaging (exchange), datastore access via resource_registry and directory,
+event subscription/publication and others. It rests on the Pyon framework for configuration,
+logging and ION object access.
+
+A container runs in the current Python interpreter (UNIX process) and can be stopped
+(e.g. in test running). There can only by one container at a time per Python interpreter.
+The typical way to start a container is via the bin/pycc program. It also supports a
+variety of arguments, including starting multiple UNIX processes with a container each,
+joining the same system (sysname).
+"""
 
 __author__ = 'Adam R. Smith, Michael Meisinger, Dave Foster <dfoster@asascience.com>'
 
@@ -19,7 +31,7 @@ from pyon.core import bootstrap
 from pyon.core.bootstrap import CFG
 from pyon.core.exception import ContainerError, BadRequest
 from pyon.ion.event import EventPublisher
-from pyon.ion.endpoint import ProcessRPCServer
+from pyon.net.endpoint import RPCServer
 from pyon.net.transport import LocalRouter
 from pyon.util.config import Config
 from pyon.util.containers import get_default_container_id, DotDict, named_any, dict_merge, get_ion_ts
@@ -466,7 +478,7 @@ class ContainerAgentCapability(ContainerCapability):
     def start(self):
         # Start the CC-Agent API
         listen_name = self.container.create_process_xn(self.container.name, auto_delete=True)
-        rsvc = ProcessRPCServer(from_name=listen_name, service=self.container, process=self.container)
+        rsvc = RPCServer(from_name=listen_name, service=self.container)
 
         # Start an ION process with the right kind of endpoint factory
         proc = self.container.proc_manager.proc_sup.spawn(name=self.container.name, listeners=[rsvc], service=self.container)

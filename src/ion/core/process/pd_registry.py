@@ -53,6 +53,7 @@ class ProcessDispatcherRegistry(object):
                     cc_obj = cc_objs[0]
             except Exception:
                 log.exception("Could not retrieve CapabilityContainer resource for %s", container_id)
+                return
 
         with self._lock:
             if container_id not in self._containers:
@@ -62,16 +63,32 @@ class ProcessDispatcherRegistry(object):
                 container_entry["ts_update"] = get_ion_ts_millis()
                 container_entry["ts_event"] = ts_event
                 container_entry["state"] = state
-                container_entry["ee_info"] = container_entry["cc_obj"].execution_engine_config if container_entry["cc_obj"] else {}
+                container_entry["ee_info"] = container_entry["cc_obj"].execution_engine_config
+                container_entry["ts_created"] = int(container_entry["cc_obj"].ts_created)
 
         if not self.preconditions_true.is_set():
             self.check_preconditions()
+
+    def get_running_containers(self):
+        cont_infos = [c for c in self._containers.values() if c["state"] == EE_STATE_RUNNING]
+        return cont_infos
+
+    def get_engine_containers(self):
+        """ Returns a dict of engine name to sorted list of container info dicts for running containers """
+        cont_list = self.get_running_containers()
+        ee_infos = {}
+        for c in cont_list:
+            cname = c["ee_info"].get("name", "")
+            ee_infos.setdefault(cname, []).append(c)
+        for eng_cont_list in ee_infos.values():
+            eng_cont_list.sort(key=lambda ci: ci["ts_created"])
+        return ee_infos
 
     def check_preconditions(self):
         if self.preconditions_true.is_set():
             return
 
-        preconds = get_safe(self._pd_core._pd_cfg, "engine.await_preconditions") or {}
+        preconds = get_safe(self._pd_core.pd_cfg, "engine.await_preconditions") or {}
         precond_ok = True
         ee_infos = [c for c in self._containers.values() if c["state"] == EE_STATE_RUNNING]
         min_ees = preconds.get("min_engines", 0)
@@ -98,7 +115,7 @@ class ProcessDispatcherAggregator(object):
 
     def start(self):
         # Create our own queue for container heartbeats and broadcasts
-        topic = get_safe(self._pd_core._pd_cfg, "aggregator.container_topic") or "bx_containers"
+        topic = get_safe(self._pd_core.pd_cfg, "aggregator.container_topic") or "bx_containers"
         queue_name = "pd_aggregator_%s_%s" % (topic, create_valid_identifier(self.container.id, dot_sub="_"))
         self.sub_cont = Subscriber(binding=topic, from_name=queue_name, auto_delete=True,
                                    callback=self._receive_container_info)

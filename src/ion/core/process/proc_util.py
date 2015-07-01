@@ -26,7 +26,8 @@ class AsyncResultWaiter(object):
         self.wait_name = "asyncresult_" + create_simple_unique_id()
         if self.process:
             self.wait_name = self.wait_name + "_" + self.process.id
-        self.wait_sub = Subscriber(from_name=self.wait_name, callback=self._result_callback)
+        # TODO: Use same mechanism as pooled RPC response endpoint (without the request)
+        self.wait_sub = Subscriber(from_name=self.wait_name, callback=self._result_callback, auto_delete=True)
         self.activated = False
 
     def activate(self):
