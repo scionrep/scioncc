@@ -1,11 +1,11 @@
 # -------------------------------------------------------------------------
-# SciON capability container (pyon)
-# Initial package static initialization
+# Pyon framework and SciON capability container
+# Static initialization
 # -------------------------------------------------------------------------
 
 # @WARN: GLOBAL STATE, STATIC CODE
 
-#print "pyon: pyon/__init__ static initialization..."
+#print "pyon static initialization (in pyon/__init__), gevent monkey-patching ..."
 
 # -------------------------------------------------------------------------
 # Always monkey-patch as the very first thing (see gevent)
@@ -13,6 +13,7 @@
 # Make monkey-patching work with debuggers and unittests by detecting already-imported modules
 # TODO: Move this into a module that third parties can use
 import sys
+
 if 'pydevd' in sys.modules:
     # The order matters
     monkey_list = ['os', 'time', 'thread', 'socket', 'select', 'ssl', 'httplib']
@@ -33,11 +34,16 @@ if 'pydevd' in sys.modules:
 
     from gevent import monkey; monkey.patch_all()
     
-    for modname,feats_backup in unmonkey_backup.iteritems():
+    for modname, feats_backup in unmonkey_backup.iteritems():
         mod = __import__(modname)
         for name,impl in feats_backup.iteritems():
             setattr(mod, name, impl)
 else:
+    if 'threading' in sys.modules:
+        # Fix for KeyError in <module 'threading' when process stops
+        # http://stackoverflow.com/questions/8774958/keyerror-in-module-threading-after-a-successful-py-test-run
+        del sys.modules['threading']
+
     from gevent import monkey; monkey.patch_all()
 
 # Fix AttributeError("'_DummyThread' object has no attribute '_Thread__block'",) issue
@@ -47,6 +53,7 @@ try:
     threading._DummyThread._Thread__stop = lambda x: 42
 except Exception as ex:
     pass
+
 
 # -------------------------------------------------------------------------
 # CONSTANTS FOR PYON CODE

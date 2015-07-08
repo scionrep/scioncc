@@ -107,11 +107,11 @@ def main(opts, *args, **kwargs):
         In particular make sure configuration is loaded in correct order and
         pycc startup arguments are considered.
         """
-        import threading
-        threading.current_thread().name = "CC-Main"
-
         # SIDE EFFECT: The import triggers static initializers: Monkey patching, setting pyon defaults
         import pyon
+
+        import threading
+        threading.current_thread().name = "CC-Main"
 
         from pyon.core import bootstrap, config
 
