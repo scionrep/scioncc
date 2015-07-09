@@ -120,9 +120,19 @@ methods:
       BadRequest: for invalid arguments
       NotFound: if Credentials  do not exist
 
+  is_user_existing:
+    docstring: |
+      Returns True of a user exists for given username
+    in:
+      username: ""
+    out:
+      user_exists: False
+    throws:
+      BadRequest: for invalid arguments
+
   find_actor_identity_by_username:
     docstring: |
-      Returns actor_id for actor with given credentials
+      Returns actor_id for actor with given username
     in:
       username: ""
     out:

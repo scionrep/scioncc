@@ -107,6 +107,12 @@ class IdentityManagementService(BaseIdentityManagementService):
             raise NotFound("No actor found with username")
         return res_ids[0]
 
+    def is_user_existing(self, username=''):
+        if not username:
+            raise BadRequest("Invalid username")
+        res_ids, _ = self.rr.find_resources_ext(alt_id_ns="UNAME", alt_id=username, id_only=True)
+        return bool(res_ids)
+
     def set_actor_credentials(self, actor_id='', username='', password=''):
         if not username:
             raise BadRequest("Invalid username")
