@@ -11,8 +11,9 @@ import os
 from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_VALID
 from pyon.core.bootstrap import get_service_registry
 from pyon.core.governance import get_system_actor
+from pyon.ion.identifier import create_unique_resource_id, create_unique_association_id
 from pyon.ion.resource import get_restype_lcsm
-from pyon.public import CFG, log, BadRequest, Inconsistent, NotFound, IonObject, RT, OT, AS, LCS, named_any, get_safe
+from pyon.public import CFG, log, BadRequest, Inconsistent, NotFound, IonObject, RT, OT, AS, LCS, named_any, get_safe, get_ion_ts, PRED
 from ion.util.parse_utils import get_typed_value
 
 # Well known action config keys
@@ -35,9 +36,11 @@ class Preloader(object):
         log.info("Initialize preloader")
 
         self.process = process
-        self.preload_cfg = preload_cfg
+        self.preload_cfg = preload_cfg or {}
         self._init_preload()
         self.rr = self.process.container.resource_registry
+
+        self.bulk = self.preload_cfg.get("bulk", False) is True
 
         # Loads internal bootstrapped resource ids that will be referenced during preload
         self._load_system_ids()
@@ -50,6 +53,10 @@ class Preloader(object):
         self.resource_ids = {}          # Holds a mapping of preload IDs to internal resource ids
         self.resource_objs = {}         # Holds a mapping of preload IDs to the actual resource objects
         self.resource_assocs = {}       # Holds a mapping of existing associations list by predicate
+
+        self.bulk_resources = {}        # Keeps resource objects to be bulk inserted/updated
+        self.bulk_associations = {}     # Keeps association objects to be bulk inserted/updated
+        self.bulk_existing = set()      # This keeps the ids of the bulk objects to update instead of delete
 
     def preload_master(self, filename, skip_steps=None):
         """Executes a preload master file"""
@@ -79,7 +86,9 @@ class Preloader(object):
             try:
                 self._execute_action(action)
             except Exception as ex:
-                log.warn("Action failed: " + str(ex))
+                log.warn("Action failed: " + str(ex), exc_info=True)
+
+        self.commit_bulk()
 
     def _execute_action(self, action):
         """Executes a preload action"""
@@ -187,7 +196,6 @@ class Preloader(object):
                     nested_obj = self.create_object_from_cfg(cfg, nested_obj_type, key, nested_prefix)
 
                     if list_idx >= 0:
-                        #print "#####1", prefix, parent_field, nested_obj_field, nested_obj_type, list_idx
                         my_list = obj_fields.setdefault(nested_obj_field, [])
                         if list_idx >= len(my_list):
                             my_list[len(my_list):list_idx] = [None]*(list_idx-len(my_list)+1)
@@ -283,7 +291,9 @@ class Preloader(object):
 
     def _get_resource_obj(self, res_id, silent=False):
         """Returns a resource object from one of the memory locations for given preload or internal ID"""
-        if res_id in self.resource_objs:
+        if self.bulk and res_id in self.bulk_resources:
+            return self.bulk_resources[res_id]
+        elif res_id in self.resource_objs:
             return self.resource_objs[res_id]
         else:
             # Real ID not alias - reverse lookup
@@ -338,7 +348,7 @@ class Preloader(object):
                 MSG_HEADER_VALID: '0'}
 
     def basic_resource_create(self, cfg, restype, svcname, svcop, key="resource",
-                              set_attributes=None, **kwargs):
+                              set_attributes=None, support_bulk=False, **kwargs):
         """
         Orchestration method doing the following:
         - create an object from a row,
@@ -372,18 +382,44 @@ class Preloader(object):
 
         if existing_obj:
             res_id = self.resource_ids[res_id_alias]
-            # TODO: Use the appropriate service call here
-            self.rr.update(res_obj)
+
+            if self.bulk and support_bulk:
+                self.bulk_resources[res_id] = res_obj
+                self.bulk_existing.add(res_id)  # Make sure to remember which objects are existing
+            else:
+                # TODO: Use the appropriate service call here
+                self.rr.update(res_obj)
         else:
-            svc_client = self._get_service_client(svcname)
-            headers = self._get_op_headers(cfg.get(KEY_OWNER, None), force_user=True)
-            res_id = getattr(svc_client, svcop)(res_obj, headers=headers, **kwargs)
-            if res_id:
-                if svcname == "resource_registry" and svcop == "create":
-                    res_id = res_id[0]
-                res_obj._id = res_id
-            self._register_id(res_id_alias, res_id, res_obj)
+            if self.bulk and support_bulk:
+                res_id = self._create_bulk_resource(res_obj, res_id_alias)
+                headers = self._get_op_headers(cfg.get(KEY_OWNER, None))
+                self._resource_assign_owner(headers, res_obj)
+                self._resource_advance_lcs(cfg, res_id)
+            else:
+                svc_client = self._get_service_client(svcname)
+                headers = self._get_op_headers(cfg.get(KEY_OWNER, None), force_user=True)
+                res_id = getattr(svc_client, svcop)(res_obj, headers=headers, **kwargs)
+                if res_id:
+                    if svcname == "resource_registry" and svcop == "create":
+                        res_id = res_id[0]
+                    res_obj._id = res_id
+                self._register_id(res_id_alias, res_id, res_obj)
             self._resource_assign_org(cfg, res_id)
+        return res_id
+
+    def _create_bulk_resource(self, res_obj, res_alias=None):
+        if not hasattr(res_obj, "_id"):
+            res_obj._id = create_unique_resource_id()
+        ts = get_ion_ts()
+        if hasattr(res_obj, "ts_created") and not res_obj.ts_created:
+            res_obj.ts_created = ts
+        if hasattr(res_obj, "ts_updated") and not res_obj.ts_updated:
+            res_obj.ts_updated = ts
+
+        res_id = res_obj._id
+        self.bulk_resources[res_id] = res_obj
+        if res_alias:
+            self._register_id(res_alias, res_id, res_obj)
         return res_id
 
     def _resource_advance_lcs(self, cfg, res_id):
@@ -399,10 +435,18 @@ class Preloader(object):
         lcstate = cfg.get(KEY_LCSTATE, None)
         if lcstate:
             row_lcmat, row_lcav = lcstate.split("_", 1)
-            if row_lcmat != initial_lcmat:    # Vertical transition
-                self.rr.set_lifecycle_state(res_id, row_lcmat)
-            if row_lcav != initial_lcav:      # Horizontal transition
-                self.rr.set_lifecycle_state(res_id, row_lcav)
+            if self.bulk and res_id in self.bulk_resources:
+                self.bulk_resources[res_id].lcstate = row_lcmat
+                self.bulk_resources[res_id].availability = row_lcav
+            else:
+                if row_lcmat != initial_lcmat:    # Vertical transition
+                    self.rr.set_lifecycle_state(res_id, row_lcmat)
+                if row_lcav != initial_lcav:      # Horizontal transition
+                    self.rr.set_lifecycle_state(res_id, row_lcav)
+        elif self.bulk and res_id in self.bulk_resources:
+            # Set the lcs to resource type appropriate initial values
+            self.bulk_resources[res_id].lcstate = initial_lcmat
+            self.bulk_resources[res_id].availability = initial_lcav
 
     def _resource_assign_org(self, cfg, res_id):
         """
@@ -413,17 +457,85 @@ class Preloader(object):
             org_ids = get_typed_value(org_ids, targettype="simplelist")
             for org_id in org_ids:
                 org_res_id = self.resource_ids[org_id]
-                svc_client = self._get_service_client("org_management")
-                svc_client.share_resource(org_res_id, res_id, headers=self._get_system_actor_headers())
+                if self.bulk and res_id in self.bulk_resources:
+                    # Note: org_id is alias, res_id is internal ID
+                    org_obj = self._get_resource_obj(org_id)
+                    res_obj = self._get_resource_obj(res_id)
+                    # Create association to given Org
+                    assoc_obj = self._create_association(org_obj, PRED.hasResource, res_obj, support_bulk=True)
+                else:
+                    svc_client = self._get_service_client("org_management")
+                    svc_client.share_resource(org_res_id, res_id, headers=self._get_system_actor_headers())
 
-    def basic_associations_create(self, cfg, res_alias):
+    def _resource_assign_owner(self, headers, res_obj):
+        if self.bulk and 'ion-actor-id' in headers:
+            owner_id = headers['ion-actor-id']
+            user_obj = self._get_resource_obj(owner_id)
+            if owner_id and owner_id != 'anonymous':
+                self._create_association(res_obj, PRED.hasOwner, user_obj, support_bulk=True)
+
+    def basic_associations_create(self, cfg, res_alias, support_bulk=False):
         for assoc in cfg.get("associations", []):
             direction, other_id, predicate = assoc.split(",")
             res_id = self.resource_ids[res_alias]
             other_res_id = self.resource_ids[other_id]
             if direction == "TO":
-                self.rr.create_association(res_id, predicate, other_res_id)
+                self._create_association(res_id, predicate, other_res_id, support_bulk=support_bulk)
             elif direction == "FROM":
-                self.rr.create_association(other_res_id, predicate, res_id)
+                self._create_association(other_res_id, predicate, res_id, support_bulk=support_bulk)
 
+    def _create_association(self, subject=None, predicate=None, obj=None, support_bulk=False):
+        """
+        Create an association between two IonObjects with a given predicate.
+        Supports bulk mode
+        """
+        if self.bulk and support_bulk:
+            if not subject or not predicate or not obj:
+                raise BadRequest("Association must have all elements set: %s/%s/%s" % (subject, predicate, obj))
+            if isinstance(subject, basestring):
+                subject = self._get_resource_obj(subject)
+            if "_id" not in subject:
+                raise BadRequest("Subject id not available")
+            subject_id = subject._id
+            st = subject.type_
 
+            if isinstance(obj, basestring):
+                obj = self._get_resource_obj(obj)
+            if "_id" not in obj:
+                raise BadRequest("Object id not available")
+            object_id = obj._id
+            ot = obj.type_
+
+            assoc_id = create_unique_association_id()
+            assoc_obj = IonObject("Association",
+                s=subject_id, st=st,
+                p=predicate,
+                o=object_id, ot=ot,
+                ts=get_ion_ts())
+            assoc_obj._id = assoc_id
+            self.bulk_associations[assoc_id] = assoc_obj
+            return assoc_id, '1-norev'
+        else:
+            return self.rr.create_association(subject, predicate, obj)
+
+    def commit_bulk(self):
+        if not self.bulk_resources and not self.bulk_associations:
+            return
+
+        # Perform the create for resources
+        res_new = [obj for obj in self.bulk_resources.values() if obj["_id"] not in self.bulk_existing]
+        res = self.rr.rr_store.create_mult(res_new, allow_ids=True)
+
+        # Perform the update for resources
+        res_upd = [obj for obj in self.bulk_resources.values() if obj["_id"] in self.bulk_existing]
+        res = self.rr.rr_store.update_mult(res_upd)
+
+        # Perform the create for associations
+        assoc_new = [obj for obj in self.bulk_associations.values()]
+        res = self.rr.rr_store.create_mult(assoc_new, allow_ids=True)
+
+        log.info("Bulk stored {} resource objects ({} updates) and {} associations".format(len(res_new), len(res_upd), len(assoc_new)))
+
+        self.bulk_resources.clear()
+        self.bulk_associations.clear()
+        self.bulk_existing.clear()
