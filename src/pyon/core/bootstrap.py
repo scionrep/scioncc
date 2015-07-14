@@ -188,6 +188,9 @@ def bootstrap_pyon(logging_config_override=None, pyon_cfg=None):
     from pyon.ion import resource
     resource.load_definitions()
 
+    # Fix a weird bug on Ubuntu that resets time.sleep to un-monkey patched version on import threading
+    from gevent import monkey; monkey.patch_time()
+
     # Set initialized flag
     pyon_initialized = True
     log.debug("pyon: initialized OK")
