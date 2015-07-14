@@ -828,18 +828,18 @@ class TestChannelInt(IonIntegrationTestCase):
             p._send_name = NameTrio(bootstrap.get_sys_name(), 'routed.5')
             counter = 0
 
-            while not self.publish_five.wait(timeout=5):
+            while not self.publish_five.wait(timeout=1):
                 p.send('5,' + str(counter))
-                counter+=1
+                counter += 1
 
         def every_three():
             p = self.container.node.channel(PublisherChannel)
             p._send_name = NameTrio(bootstrap.get_sys_name(), 'routed.3')
             counter = 0
 
-            while not self.publish_three.wait(timeout=3):
+            while not self.publish_three.wait(timeout=0.6):
                 p.send('3,' + str(counter))
-                counter+=1
+                counter += 1
 
         self.publish_five = Event()
         self.publish_three = Event()
@@ -919,7 +919,7 @@ class TestChannelInt(IonIntegrationTestCase):
         ch._bind('routed.5')
 
         # wait for one message
-        self.five_events.get(timeout=10)
+        self.five_events.get(timeout=2)
 
         # ensure 1 message, 0 consumer
         self.assertTupleEqual((1, 0), ch.get_stats())
@@ -941,7 +941,8 @@ class TestChannelInt(IonIntegrationTestCase):
         ch.stop_consume()
 
         # wait until next 5 publish event
-        self.five_events.get(timeout=10)
+        num = self.five_events.get(timeout=2)
+        self.assertEquals(num, 1)
 
         # start consumer again, empty queue
         ch.start_consume()
@@ -956,7 +957,8 @@ class TestChannelInt(IonIntegrationTestCase):
                 break
 
         # wait for new message
-        self.five_events.get(timeout=10)
+        num = self.five_events.get(timeout=2)
+        self.assertEquals(num, 2)
 
         # consume and requeue
         ch.start_consume()
@@ -967,7 +969,7 @@ class TestChannelInt(IonIntegrationTestCase):
 
         # rabbit appears to deliver this later on, only when we've got another message in it
         # wait for another message publish
-        num = self.five_events.get(timeout=10)
+        num = self.five_events.get(timeout=2)
         self.assertEquals(num, 3)
         time.sleep(0.1)
 
@@ -998,7 +1000,7 @@ class TestChannelInt(IonIntegrationTestCase):
         ch2._destroy_queue()
         ch2.close()
 
-        self.three_events.get(timeout=10)
+        self.three_events.get(timeout=1)
         ch.start_consume()
         time.sleep(0.1)
         self.assertEquals(ch._recv_queue.qsize(), 1)
