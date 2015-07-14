@@ -100,8 +100,11 @@ class IonObjectBase(object):
             field_val_type = type(field_val).__name__
             #log.debug("Validating %s: %s: %s: %s" % (key, schema_val_type, schema_val_decos, field_val))
 
-            # This happens when TBD
-            if field_val_type != schema_val_type:
+            if field_val_type == "long" and schema_val_type == "int":
+                # Accept a long for an int
+                pass
+
+            elif field_val_type != schema_val_type:
 
                 # If the schema type is None, all types are allowed
                 if schema_val_type == 'NoneType':
@@ -130,7 +133,7 @@ class IonObjectBase(object):
                 # Check enum types
                 from pyon.core.registry import enum_classes
                 if isinstance(field_val, int) and schema_val_type in enum_classes:
-                    if field_val in enum_classes(schema_val_type)._str_map:
+                    if field_val in enum_classes[schema_val_type]._str_map:
                         continue
                     raise AttributeError("Invalid enum value '%d' for field '%s.%s', should be between 1 and %d" %
                             (fields[key], type(self).__name__, key, len(enum_classes(schema_val_type)._str_map)))

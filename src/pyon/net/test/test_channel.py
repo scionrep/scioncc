@@ -926,7 +926,7 @@ class TestChannelInt(IonIntegrationTestCase):
 
         # start a consumer
         ch.start_consume()
-        time.sleep(0.1)
+        time.sleep(0.2)
         self.assertEquals(ch._recv_queue.qsize(), 1)       # should have been delivered to the channel, waiting for us now
 
         # receive one message with instant timeout
