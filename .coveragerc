@@ -5,14 +5,27 @@ source =
 omit =
     */__init__*
     */test/*
-    */util/*_plugin*
-    */insulate*
-    */util/nose_gevent_profiler*
-    */util/unit_test*
-    */util/lru_cache*
+    */pyon/insulate*
+    */pyon/util/*_plugin*
+    */pyon/util/nose_gevent_profiler*
+    */pyon/util/unit_test*
+    */pyon/util/lru_cache*
+    */pyon/util/breakpoint*
+    */pyon/util/sflow*
+    */pyon/util/tracer*
+    */ion/util/package*
+    */ion/util/path*
+    */ion/util/preload*
+    */ion/util/resources*
+    */ion/util/xlsparser*
     */interceptor/sample*
-    */shell_api*
-    */datastore_admin*
-    */breakpoint*
+    */container/shell_api*
+    */datastore/datastore_admin*
+    */datastore/filestore/*
+    */ui/admin_ui*
+    */bootstrap/datastore_loader*
+    */examples/hello_client*
+    */services/utility/*
+    */scripts/*
 [html]
 directory = coverage_results
