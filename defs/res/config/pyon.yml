@@ -133,7 +133,7 @@ container:
       start_listener: 30.0
       receive: 30               # RPC receive timeout in seconds
 
-  execution_engine:             # Configure this container's process execution engine
+  execution_engine:             # Configure this container as a process execution engine
     type: scioncc               # Basic type class. Set to scioncc for a container
     name: default               # Name of this execution engine instance (can have more than 1 container)
     capacity:                   # Configures the capacity model
@@ -159,12 +159,12 @@ container:
         name: app
 
   process_dispatcher:             # Configures an active global process dispatcher component
-    enabled: True                 # Main toggle switch. If False, container does not start PD.
+    enabled: False                # Main toggle switch. If False, container does not start PD.
     command_queue: pd_command     # Topic and queue name for singleton PD
     aggregator:
       container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
-    engine:
-      type: default               # PD decision engine
+    engine:                       # PD decision engine
+      type: default
       await_preconditions:        # Preconditions for start of decision engine. Blocks until true.
         min_engines: 1
         engines_exist:
@@ -178,17 +178,15 @@ container:
     executor:
       type: global                # global (schedule via agent commands) or local (to local container only)
       pool_size: 1                # Number of concurrent threads spawning processes
-      retry: tbd
       spawn_timeout: 600
       terminate_timeout: 5
-
-  app_manager:                    # Configures the container's app manager (starting rel files)
-    use_pd: True                  # If True, sends deploy files to PD. If False, contains spawns all locally
 
   process:
     exit_once_empty: True         # Whether the container should exit once all spawned processes have been terminated
     log_exceptions: False         # Whether all RPC call invocation exceptions should be logged
     max_replicas: 0               # Limit the number of process replicas to start per container (0 is unlimited)
+    use_process_dispatcher: False # If True, sends deploy files to PD. If False, container spawns all locally
+    pd_command_queue: pd_command
 
   objects:
     validate:
@@ -213,6 +211,10 @@ container:
   tracer:                         # Configures the tracer development tool (records messages and db access)
     enabled: False                # Toggle switch
     max_entries: 10000            # Length of trace buffer
+    log_trace: False
+    log_filter: DB
+    log_stack: False
+    log_color: True
 
 
 # TODO: Move into container and split into process and messaging

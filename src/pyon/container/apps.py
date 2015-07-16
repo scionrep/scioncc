@@ -21,7 +21,7 @@ class AppManager(object):
     def __init__(self, container):
         self.container = container
         self.apps = []
-        self.use_pd = CFG.get_safe("container.app_manager.use_pd") is True
+        self.use_pd = CFG.get_safe("container.process.use_process_dispatcher") is True
         self.pd_client = None
 
     def start(self):
@@ -29,7 +29,7 @@ class AppManager(object):
         self.max_proc_replicas = int(CFG.get_safe("container.process.max_replicas", 0))
         if self.use_pd:
             from ion.core.process.pd_core import ProcessDispatcherClient
-            self.pd_client = ProcessDispatcherClient(self.container, CFG.get_safe("container.process_dispatcher") or {})
+            self.pd_client = ProcessDispatcherClient(self.container)
 
     def stop(self):
         log.debug("AppManager stopping ...")

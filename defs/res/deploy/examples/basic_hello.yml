@@ -1,7 +1,7 @@
 type: release
-name: pd_hello
+name: basic_hello
 version: 0.1
-description: Basic services with hello
+description: Basic services with one hello
 ion: 2.0
 apps:
 

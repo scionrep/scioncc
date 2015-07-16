@@ -114,7 +114,8 @@ def start_childproc(pinfo, opts, pycc_args, pycc_kwargs):
     main(opts, *pycc_args, **pycc_kwargs)
 
 def stop_childprocs():
-    log.info("Stopping %s child processes", len(child_procs))
+    if child_procs:
+        log.info("Stopping %s child processes", len(child_procs))
     for ch in child_procs:
         if ch.is_alive():
             os.kill(ch.pid, signal.SIGTERM)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import time
-from gevent import Timeout
+import gevent
 from gevent.event import Event, AsyncResult
 
 from pyon.ion.identifier import create_simple_unique_id
 from pyon.net.endpoint import Subscriber, Publisher
-from pyon.public import log, NotFound, BadRequest, EventSubscriber, OT, ProcessPublisher, get_ion_ts
+from pyon.public import log, NotFound, BadRequest, EventSubscriber, OT, ProcessPublisher, get_ion_ts, Timeout
 from pyon.util.async import spawn
 
 from interface.objects import ProcessStateEnum, AsyncResultMsg
@@ -50,13 +50,13 @@ class AsyncResultWaiter(object):
                 log.warn("Received result for different request: %s", result)
                 result = None
 
-        except Timeout:
-            result = None
-
-        self.wait_sub.deactivate()
-        self.wait_sub.close()
-        self.listen_gl.join(timeout=1)
-        self.activated = False
+        except gevent.Timeout:
+            raise Timeout("Timeout in AsyncResultWaiter name={}".format(self.wait_name))
+        finally:
+            self.wait_sub.deactivate()
+            self.wait_sub.close()
+            self.listen_gl.join(timeout=1)
+            self.activated = False
 
         return result
 

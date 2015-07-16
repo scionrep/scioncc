@@ -22,7 +22,7 @@ __author__ = 'Michael Meisinger'
 from gevent.event import AsyncResult
 
 from pyon.ion.identifier import create_simple_unique_id
-from pyon.public import BadRequest, log, get_safe, Publisher
+from pyon.public import BadRequest, log, get_safe, Publisher, CFG
 
 from ion.core.process.leader import LeaderManager
 from ion.core.process.pd_engine import ProcessDispatcherDecisionEngine
@@ -55,7 +55,7 @@ class ProcessDispatcher(object):
         # The decision engine
         self.engine = ProcessDispatcherDecisionEngine(pd_core=self)
 
-        self.pd_client = ProcessDispatcherClient(self.container, self.pd_cfg)
+        self.pd_client = ProcessDispatcherClient(self.container)
 
     def start(self):
         log.info("PD starting...")
@@ -78,13 +78,15 @@ class ProcessDispatcher(object):
         self.leader_manager.stop()
         log.info("PD stopped.")
 
+    def is_leader(self):
+        return self.leader_manager.is_leader()
+
 
 class ProcessDispatcherClient(object):
-    def __init__(self, container, config):
+    def __init__(self, container, to_name=None):
         self.container = container
-        self.pd_cfg = config or {}
+        self._cmd_queue_name = to_name or CFG.get_safe("container.process.pd_command_queue", "pd_command")
 
-        self._cmd_queue_name = get_safe(self.pd_cfg, "command_queue", "pd_command")
         self.cmd_pub = Publisher(to_name=self._cmd_queue_name)
 
     # -------------------------------------------------------------------------

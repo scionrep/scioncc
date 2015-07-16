@@ -24,31 +24,54 @@ class ProcessDispatcherDecisionEngine(object):
         self.registry = self._pd_core.registry
         self.executor = self._pd_core.executor
 
+        self.sub_cont = None
+        self.sub_cont_gl = None
+        self.sub_active = False
+
+        self._pd_core.leader_manager.add_leader_callback(self._leader_callback)
+
         self._load_rules()
 
     def start(self):
         queue_name = get_safe(self._pd_core.pd_cfg, "command_queue") or "pd_command"
         self.sub_cont = Subscriber(binding=queue_name, from_name=queue_name, callback=self._receive_command)
-        self.sub_cont_gl = spawn(self.sub_cont.listen, activate=True)
+        self.sub_cont_gl = spawn(self.sub_cont.listen, activate=False)
         self.sub_cont.get_ready_event().wait()
-        #self.sub_cont.activate()
-        # TODO: Only activate if we are leader and preconditions true
 
         self.pub_result = Publisher()
 
     def stop(self):
-        self.sub_cont.close()
-        self.sub_cont_gl.join(timeout=2)
-        self.sub_cont_gl.kill()
-        self.sub_cont_gl = None
+        if self.sub_cont:
+            self.sub_cont.close()
+            self.sub_cont_gl.join(timeout=2)
+            self.sub_cont_gl.kill()
+            self.sub_cont_gl = None
+            self.sub_cont = None
+
+    def _leader_callback(self, leader_info):
+        if leader_info["action"] == "acquire_leader":
+            def start_sub():
+                if not self.registry.preconditions_true.is_set():
+                    log.info("PD is leader - awaiting PD preconditions")
+                    # Await preconditions
+                    self.registry.preconditions_true.wait()
+
+                if self._pd_core.is_leader() and self.sub_cont is not None and not self.sub_active:
+                    # Are we still leader? Not activated?
+                    num_msg, num_cons = self.sub_cont.get_stats()
+                    log.info("PD is leader - starting to consume (%s pending commands, %s consumers)", num_msg, num_cons)
+                    self.sub_cont.activate()
+                    self.sub_active = True
+            start_sub_gl = spawn(start_sub)
+        elif leader_info["action"] == "release_leader":
+            if self.sub_cont is not None and self.sub_active:
+                self.sub_cont.deactivate()
+                self.sub_active = False
 
     def _receive_command(self, command, headers, *args):
-        # Await preconditions - this is a big ugly given that we receive and then wait
-        self.registry.preconditions_true.wait()
+        log.info("PD execute command %s", command["command"])
 
-        log.debug("PD execute command %s", command["command"])
-
-        cmd_funcname = "_cmd_%s" % command["command"]
+        cmd_funcname = "_cmd_{}".format(command["command"])
         cmd_func = getattr(self, cmd_funcname, None)
         cmd_res, cmd_complete = None, False
         if not cmd_func:
@@ -144,9 +167,9 @@ class ProcessDispatcherDecisionEngine(object):
         ee_containers = self.registry.get_engine_containers()
         ee_conts = ee_containers.get(target_engine, None) or ee_containers.get(self.default_engine, None) or ee_containers.get("", None)
         if ee_conts is None:
-            raise BadRequest("Could not determine engine for app %s", app_name)
+            raise BadRequest("Could not determine engine for app {}".format(app_name))
         elif not ee_conts:
-            raise BadRequest("No running containers for app %s", app_name)
+            raise BadRequest("No running containers for app {}".format(app_name))
         cont_info = ee_conts[0]
         container_name = cont_info["cc_obj"].cc_agent
         return container_name
