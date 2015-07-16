@@ -2,6 +2,7 @@
 
 """AMQP messaging with Pika."""
 
+from collections import defaultdict
 import gevent
 from gevent import event
 from gevent.lock import RLock
@@ -14,17 +15,16 @@ from pika.exceptions import NoFreeChannels
 
 from pyon.core.bootstrap import CFG, get_sys_name
 from pyon.net import channel
+from pyon.net.transport import LocalTransport, LocalRouter, AMQPTransport, ComposableTransport
 from pyon.util.async import blocking_cb
 from pyon.util.containers import for_name
 from pyon.util.log import log
 from pyon.util.pool import IDPool
-from pyon.net.transport import LocalTransport, LocalRouter, AMQPTransport, ComposableTransport
 
-from collections import defaultdict
-import traceback
 
 class BaseNode(object):
     """
+    Basic behavior for a None, encapsulating the connection to a message broker.
     """
 
     def __init__(self):
@@ -121,7 +121,7 @@ class BaseNode(object):
                     classinst           = for_name(modpath, classname)
 
                     # Call configure
-                    classinst.configure(config = interceptor_def["config"] if "config" in interceptor_def else None)
+                    classinst.configure(config=interceptor_def["config"] if "config" in interceptor_def else None)
 
                     # Put in by_name_dict for possible re-use
                     by_name_dict[name] = classinst
@@ -129,6 +129,7 @@ class BaseNode(object):
                 interceptors[type_and_direction].append(classinst)
 
         self.interceptors = dict(interceptors)
+
 
 class NodeB(BaseNode):
     """
@@ -153,7 +154,7 @@ class NodeB(BaseNode):
         """
         Closes the connection to the broker, cleans up resources held by this node.
         """
-        log.debug("NodeB.stop_node (running: %s)", self.running)
+        log.info("Closing broker connection with %s pooled channels", len(self._bidir_pool))
 
         if self.running:
             # clean up pooling before we shut connection
@@ -213,6 +214,8 @@ class NodeB(BaseNode):
     def channel(self, ch_type, transport=None):
         """
         Creates a Channel object with an underlying transport callback and returns it.
+        This function uses a channel pool, such that in certain conditions, channels can be
+        reused. Currently BidirClientChannel that is not auto-delete.
 
         @type ch_type   BaseChannel
         """
@@ -265,6 +268,7 @@ class NodeB(BaseNode):
                     raise StandardError("Could not get a valid channel")
 
             else:
+                # Create a different type channel
                 ch = self._new_channel(ch_type, transport=transport)
             assert ch
 
@@ -295,8 +299,13 @@ class NodeB(BaseNode):
                 self._bidir_pool.pop(chid)
                 self._pool._ids_free.remove(chid)
 
+
 def ioloop(connection, name=None):
-    # Loop until CTRL-C
+    """
+    Main entry point for message broker connection interactions.
+    Spawn in a greenlet with a configured Connection and name.
+    Exit on CTRL-C
+    """
     if name:
         name = "NODE-%s" % name
 
@@ -318,6 +327,7 @@ def ioloop(connection, name=None):
         # Loop until the connection is closed
         connection.ioloop.start()
 
+
 class PyonSelectConnection(SelectConnection):
     """
     Custom-derived Pika SelectConnection to allow us to get around re-using failed channels.
@@ -326,9 +336,9 @@ class PyonSelectConnection(SelectConnection):
     choke. This class overrides the _next_channel_number method in Pika, to hand out channel
     numbers that we deem safe.
     """
-    def __init__(self, parameters=None, on_open_callback=None,
-                 reconnection_strategy=None):
-        SelectConnection.__init__(self, parameters=parameters, on_open_callback=on_open_callback, reconnection_strategy=reconnection_strategy)
+    def __init__(self, parameters=None, on_open_callback=None, reconnection_strategy=None):
+        SelectConnection.__init__(self, parameters=parameters, on_open_callback=on_open_callback,
+                                  reconnection_strategy=reconnection_strategy)
         self._bad_channel_numbers = set()
         self._pending = set()
 
@@ -373,26 +383,34 @@ class PyonSelectConnection(SelectConnection):
         log.debug("Marking %d as a bad channel", ch_number)
         self._bad_channel_numbers.add(ch_number)
 
+
 def make_node(connection_params=None, name=None, timeout=None):
     """
     Blocking construction and connection of node.
 
     @param connection_params  AMQP connection parameters. By default, uses CFG.server.amqp (most common use).
+    @return tuple of node and ioloop greenlet
     """
     log.debug("In make_node")
     node = NodeB()
-    connection_params = connection_params or CFG.server.amqp
+    connection_params = connection_params or CFG.get_safe("server.amqp")
     credentials = PlainCredentials(connection_params["username"], connection_params["password"])
-    conn_parameters = ConnectionParameters(host=connection_params["host"], virtual_host=connection_params["vhost"], port=connection_params["port"], credentials=credentials)
-    connection = PyonSelectConnection(conn_parameters , node.on_connection_open)
-    ioloop_process = gevent.spawn(ioloop, connection, name=name)
-    ioloop_process._glname = "pyon.net AMQP ioloop proc"
-    #ioloop_process = gevent.spawn(connection.ioloop.start)
+    conn_parameters = ConnectionParameters(host=connection_params["host"],
+                                           virtual_host=connection_params["vhost"],
+                                           port=connection_params["port"],
+                                           credentials=credentials)
+    connection = PyonSelectConnection(conn_parameters, node.on_connection_open)
+
+    ioloop_gl = gevent.spawn(ioloop, connection, name=name)
+    ioloop_gl._glname = "ScionCC AMQP ioloop"
     node.ready.wait(timeout=timeout)
-    return node, ioloop_process
-    #return node, ioloop, connection
+
+    return node, ioloop_gl
 
 
+# -----------------------------------------------------------------------------
+# LOCAL ROUTER
+#
 
 class LocalNode(BaseNode):
     def __init__(self, router=None):
@@ -429,8 +447,9 @@ class LocalNode(BaseNode):
         return ch
 
     def _on_channel_close(self, ch, code, text):
-        log.debug("ZeroMQNode._on_channel_close (%s)", ch.channel_number)
+        log.debug("LocalNode._on_channel_close (%s)", ch.channel_number)
         self._channel_id_pool.release_id(ch.channel_number)
+
 
 class LocalClient(object):
     def __init__(self):
@@ -438,6 +457,7 @@ class LocalClient(object):
 
     def add_on_close_callback(self, cb):
         log.debug("ignoring close callback")
+
 
 def make_local_node(timeout=None, router=None):
 

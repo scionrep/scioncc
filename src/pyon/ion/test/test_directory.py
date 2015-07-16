@@ -181,7 +181,7 @@ class TestDirectory(IonUnitTestCase):
         directory.release_lock("LOCK5")
 
         # TEST: Timeout
-        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc1", timeout=100)
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc1", timeout=0.1)
         self.assertEquals(lock5, True)
 
         lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2")
@@ -195,13 +195,13 @@ class TestDirectory(IonUnitTestCase):
         res = directory.is_locked("LOCK5")
         self.assertEquals(res, False)
 
-        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2", timeout=100)
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2", timeout=0.1)
         self.assertEquals(lock5, True)
 
         gevent.sleep(0.15)
 
         # TEST: Holder self renew
-        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2", timeout=100)
+        lock5 = directory.acquire_lock("LOCK5", lock_holder="proc2", timeout=0.1)
         self.assertEquals(lock5, True)
 
         directory.stop()

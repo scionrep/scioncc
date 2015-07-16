@@ -78,3 +78,15 @@ Granule:
   connection_index: ""
 
 
+# Object containing information related to a remote callback's completion that can be waited on
+AsyncResultMsg:
+  # Original request ID
+  request_id: ""
+  # Timestamp of successful execution
+  ts: ""
+  # Result to be delivered, or error
+  result: {}
+  # Status code
+  status: 200
+  # Additional attributes
+  attributes: {}

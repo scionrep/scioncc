@@ -6,8 +6,18 @@ CapabilityContainer: !Extends_TaskableResource
   technology: "Python"
   # Exchange name of the agent representing the container
   cc_agent: ""
+  # Execution engine config
+  execution_engine_config: {}
+  # Additional descriptive attributes about container and container's host system
+  container_info: {}
   # Log of most recent container status snapshots
   status_log: []
+
+
+ContainerHeartbeat:
+  container_id: ""
+  ts: ""
+  attributes: {}
 ---
 
 # Defines one argument that a process can receive on startup. This does not set an instance value.
@@ -59,14 +69,14 @@ ProcessDefinition: !Extends_ExecutableResource
 Process: !Extends_TaskableResource
   # Human legible label
   label: ""
+  # RPC interface type, e.g. service name
+  service_name: ""
   # Indicates a specialized type of CC process
-  proctype: ""
-  #
+  process_type: ""
+  # Last known state
   process_state: !ProcessStateEnum
-  #
+  # Config override for process
   process_configuration: {}
-  #
-  process_id: ""
   # instance specific information
   detail: !AbstractProcessDetailType
 

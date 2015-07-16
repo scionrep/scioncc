@@ -1,26 +1,20 @@
 #!/usr/bin/env python
 
-"""Capability Container"""
+"""Capability Container.
+
+A container is an environment for spawning ION processes. The container provides capabilities
+such as messaging (exchange), datastore access via resource_registry and directory,
+event subscription/publication and others. It rests on the Pyon framework for configuration,
+logging and ION object access.
+
+A container runs in the current Python interpreter (UNIX process) and can be stopped
+(e.g. in test running). There can only by one container at a time per Python interpreter.
+The typical way to start a container is via the bin/pycc program. It also supports a
+variety of arguments, including starting multiple UNIX processes with a container each,
+joining the same system (sysname).
+"""
 
 __author__ = 'Adam R. Smith, Michael Meisinger, Dave Foster <dfoster@asascience.com>'
-
-from pyon.container import ContainerCapability
-from pyon.core import bootstrap
-from pyon.core.bootstrap import CFG
-from pyon.core.exception import ContainerError, BadRequest
-from pyon.datastore.datastore import DataStore
-from pyon.ion.event import EventPublisher
-from pyon.ion.endpoint import ProcessRPCServer
-from pyon.net.transport import LocalRouter
-from pyon.util.config import Config
-from pyon.util.containers import get_default_container_id, DotDict, named_any, dict_merge
-from pyon.util.log import log
-from pyon.util.context import LocalContextMixin
-from pyon.util.greenlet_plugin import GreenletLeak
-from pyon.util.file_sys import FileSystem
-
-from interface.objects import ContainerStateEnum
-from interface.services.icontainer_agent import BaseContainerAgent
 
 import atexit
 import msgpack
@@ -29,7 +23,25 @@ import signal
 import traceback
 import sys
 import gevent
+from gevent.event import Event
 from contextlib import contextmanager
+
+from pyon.container import ContainerCapability
+from pyon.core import bootstrap
+from pyon.core.bootstrap import CFG
+from pyon.core.exception import ContainerError, BadRequest
+from pyon.ion.event import EventPublisher
+from pyon.net.endpoint import RPCServer
+from pyon.net.transport import LocalRouter
+from pyon.util.config import Config
+from pyon.util.containers import get_default_container_id, DotDict, named_any, dict_merge, get_ion_ts
+from pyon.util.log import log
+from pyon.util.context import LocalContextMixin
+from pyon.util.greenlet_plugin import GreenletLeak
+from pyon.util.file_sys import FileSystem
+
+from interface.objects import ContainerStateEnum
+from interface.services.icontainer_agent import BaseContainerAgent
 
 # Capability constants for use in:
 # if self.container.has_capability(CCAP.RESOURCE_REGISTRY):
@@ -41,6 +53,7 @@ RUNNING = "RUNNING"
 TERMINATING = "TERMINATING"
 TERMINATED = "TERMINATED"
 
+
 class Container(BaseContainerAgent):
     """
     The Capability Container. Its purpose is to spawn/monitor processes and services
@@ -48,12 +61,13 @@ class Container(BaseContainerAgent):
     and the various forms of datastores in the systems.
     """
 
-    # Singleton static variables
-    #node        = None
+    # Class static variables (defaults)
     id          = None
     name        = None
     pidfile     = None
     instance    = None
+    version     = None
+    start_time  = None
 
     def __init__(self, *args, **kwargs):
         BaseContainerAgent.__init__(self, *args, **kwargs)
@@ -65,6 +79,7 @@ class Container(BaseContainerAgent):
         # set container id and cc_agent name (as they are set in base class call)
         self.id = get_default_container_id()
         self.name = "cc_agent_%s" % self.id
+        self.start_time = get_ion_ts()
 
         bootstrap.container_instance = self
         Container.instance = self
@@ -273,7 +288,11 @@ class Container(BaseContainerAgent):
                 log.warn("Pidfile could not be deleted: %s" % str(e))
             self.pidfile = None
 
-    def stop(self):
+    def stop_container(self):
+        log.info("Received request to stop container")
+        gl = gevent.spawn_later(0.5, self.stop)
+
+    def stop(self, do_exit=True):
         log.info("=============== Container stopping... ===============")
 
         self._status = TERMINATING
@@ -305,7 +324,9 @@ class Container(BaseContainerAgent):
 
         self._status = TERMINATED
 
-        log.info("Container stopped.")
+        log.info("Container stopped (%s).", self.id)
+        if do_exit:
+            os.kill(os.getpid(), signal.SIGTERM)
 
     def start_app(self, appdef=None, config=None):
         with self._push_status("START_APP"):
@@ -371,7 +392,7 @@ class SignalHandlerCapability(ContainerCapability):
             - Gevent has signal handling, so must use gevent version or chain
             """
             try:
-                log.info("In TERM signal handler, triggering exit")
+                log.info("In TERM signal handler, triggering exit (%s)", self.container.id)
                 self.container._cleanup_pid()      # cleanup the pidfile first
             finally:
                 # This will raise SystemExit in serve_forever and IPython cores
@@ -456,18 +477,71 @@ class LocalRouterCapability(ContainerCapability):
 class ContainerAgentCapability(ContainerCapability):
     def start(self):
         # Start the CC-Agent API
-        listen_name = self.container.create_xn_process(self.container.name)
-        rsvc = ProcessRPCServer(from_name=listen_name, service=self.container, process=self.container)
+        listen_name = self.container.create_process_xn(self.container.name, auto_delete=True)
+        rsvc = RPCServer(from_name=listen_name, service=self.container)
 
         # Start an ION process with the right kind of endpoint factory
         proc = self.container.proc_manager.proc_sup.spawn(name=self.container.name, listeners=[rsvc], service=self.container)
         self.container.proc_manager.proc_sup.ensure_ready(proc)
         proc.start_listeners()
+
+        # Start a heartbeat
+        self.heartbeat_cfg = CFG.get_safe("container.execution_engine.heartbeat") or {}
+        self.heartbeat_enabled = self.heartbeat_cfg.get("enabled", False) is True
+        if self.heartbeat_enabled:
+            self.heartbeater = ContainerHeartbeater(self.container, self.heartbeat_cfg)
+            self.heartbeater.start()
     def stop(self):
-        pass
+        if self.heartbeat_enabled:
+            self.heartbeater.stop()
 
 
 class FileSystemCapability(ContainerCapability):
     def __init__(self, container):
         ContainerCapability.__init__(self, container)
         self.container.file_system = FileSystem(CFG)
+
+
+class ContainerHeartbeater(object):
+    """ Utility class that implements the container heartbeat publishing mechanism """
+    def __init__(self, container, cfg):
+        self.container = container
+        self.heartbeat_cfg = cfg
+        self.started = False
+
+    def start(self):
+        from pyon.net.endpoint import Publisher
+        from pyon.util.async import spawn
+        self.heartbeat_quit = Event()
+        self.heartbeat_interval = float(self.heartbeat_cfg.get("publish_interval", 60))
+        self.heartbeat_topic = self.heartbeat_cfg.get("topic", "heartbeat")
+        self.heartbeat_pub = Publisher(to_name=self.heartbeat_topic)
+
+        # Directly spawn a greenlet - we don't want this to be a supervised IonProcessThread
+        self.heartbeat_gl = spawn(self.heartbeat_loop)
+        self.started = True
+        log.info("Started container heartbeat (interval=%s, topic=%s)", self.heartbeat_interval, self.heartbeat_topic)
+
+    def stop(self):
+        if self.started:
+            self.heartbeat_quit.set()
+            self.heartbeat_gl.join(timeout=1)
+            self.started = False
+
+    def heartbeat_loop(self):
+        self.publish_heartbeat()
+        while not self.heartbeat_quit.wait(timeout=self.heartbeat_interval):
+            self.publish_heartbeat()
+
+    def publish_heartbeat(self):
+        try:
+            hb_msg = self.get_heartbeat_message()
+            headers = dict(expiration=60000)
+            self.heartbeat_pub.publish(hb_msg, headers=headers)
+        except Exception:
+            log.exception("Error publishing heatbeat")
+
+    def get_heartbeat_message(self):
+        from interface.objects import ContainerHeartbeat
+        hb_msg = ContainerHeartbeat(container_id=self.container.id, ts=get_ion_ts())
+        return hb_msg

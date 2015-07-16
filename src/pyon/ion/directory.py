@@ -301,7 +301,7 @@ class Directory(object):
         Attempts to atomically acquire a lock with the given key and namespace.
         If holder is given and holder already has the lock, renew.
         Checks for expired locks.
-        @param timeout  Int value of millis until lock expiration or 0 for no expiration
+        @param timeout  Secs until lock expiration or 0 for no expiration
         @param lock_holder  Str value identifying lock holder for subsequent exclusive access
         @param lock_info  Dict value for additional attributes describing lock
         @retval  bool - could lock be acquired?
@@ -311,7 +311,7 @@ class Directory(object):
         if "/" in key:
             raise BadRequest("Invalid argument value: key")
 
-        lock_attrs = {LOCK_EXPIRES_ATTR: get_ion_ts_millis() + timeout if timeout else 0,
+        lock_attrs = {LOCK_EXPIRES_ATTR: get_ion_ts_millis() + int(1000*timeout) if timeout else 0,
                       LOCK_HOLDER_ATTR: lock_holder or ""}
         if lock_info:
             lock_attrs.update(lock_info)
@@ -339,11 +339,14 @@ class Directory(object):
                             # Try recreate - may fail again due to concurrency
                             self.dir_store.create(direntry, create_unique_directory_id())
                             lock_result = True
+                        except BadRequest as ex:
+                            if not ex.message.startswith("DirEntry already exists"):
+                                log.exception("Error releasing/reacquiring expired lock %s", de_old.key)
                         except Exception:
                             log.exception("Error releasing/reacquiring expired lock %s", de_old.key)
                     elif lock_holder and de_old.attributes[LOCK_HOLDER_ATTR] == lock_holder:
                         # Holder currently holds the lock: renew
-                        log.info("Renewing lock %s/%s for holder %s", de_old.parent, de_old.key, lock_holder)
+                        log.debug("Renewing lock %s/%s for holder %s", de_old.parent, de_old.key, lock_holder)
                         de_old.attributes = lock_attrs
                         try:
                             self.dir_store.update(de_old)
@@ -367,7 +370,7 @@ class Directory(object):
         lock_entry = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
         return lock_entry and not self._is_lock_expired(lock_entry)
 
-    def release_lock(self, key):
+    def release_lock(self, key, lock_holder=None):
         """
         Releases lock identified by key.
         Raises NotFound if lock does not exist.
@@ -381,6 +384,8 @@ class Directory(object):
 
         dir_entry = self.lookup(LOCK_DIR_PATH, key, return_entry=True)
         if dir_entry:
+            if lock_holder and dir_entry.attributes[LOCK_HOLDER_ATTR] != lock_holder:
+                raise BadRequest("Cannot release lock - not currently lock holder")
             self._delete_lock(dir_entry)
         else:
             raise NotFound("Lock %s not found" % key)

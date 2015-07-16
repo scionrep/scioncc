@@ -208,6 +208,8 @@ class BaseEventSubscriberMixin(object):
     them sharing a base class, so this mixin is preferred.
     """
 
+    ALL_EVENTS = "#"
+
     @staticmethod
     def _topic(event_type, origin, sub_type=None, origin_type=None):
         """
@@ -228,14 +230,18 @@ class BaseEventSubscriberMixin(object):
         return "%s.%s.%s.%s" % (event_type, sub_type, origin_type, origin)
 
     def __init__(self, xp_name=None, event_type=None, origin=None, queue_name=None,
-                 sub_type=None, origin_type=None, pattern=None):
+                 sub_type=None, origin_type=None, pattern=None, auto_delete=None):
         self._events_xp = CFG.get_safe("exchange.core.events", DEFAULT_EVENTS_XP)
         self.event_type = event_type
         self.sub_type = sub_type
         self.origin_type = origin_type
         self.origin = origin
 
-        # establish names for xp, binding/pattern/topic, queue_name
+        # Default for auto_delete is True for events, unless otherwise specified
+        if auto_delete is None:
+            auto_delete = True
+        self._auto_delete = auto_delete
+
         xp_name = xp_name or self._events_xp
         if pattern:
             binding = pattern
@@ -254,33 +260,47 @@ class BaseEventSubscriberMixin(object):
         container = (hasattr(self, '_process') and hasattr(self._process, 'container') and self._process.container) or BaseEndpoint._get_container_instance()
         if container:
             xp = container.create_xp(xp_name)
-            xne = container.create_xn_event(queue_name,
+            xne = container.create_event_xn(queue_name,
                                             pattern=binding,
-                                            xp=xp)
+                                            xp=xp,
+                                            auto_delete=auto_delete)
 
             self._ev_recv_name = xne
             self.binding = None
 
         else:
+            # Remove this case. No container??
             self.binding = binding
 
-            # TODO: Provide a case where we can have multiple bindings (e.g. different event_types)
-
             # prefix the queue_name, if specified, with the sysname
-            queue_name = "%s.%s" % (bootstrap.get_sys_name(), queue_name)
+            queue_name = "%s.system.%s" % (bootstrap.get_sys_name(), queue_name)
 
             # set this name to be picked up by inherited folks
             self._ev_recv_name = (xp_name, queue_name)
 
         local_event_queues.append(queue_name)
 
+    def add_event_subscription(self, event_type=None, origin=None, sub_type=None, origin_type=None):
+        """ An another event subscription based on given characteristics. """
+        binding = self._topic(event_type, origin, sub_type, origin_type)
+        if isinstance(self._ev_recv_name, XOTransport):
+            self._ev_recv_name.bind(binding)
+        else:
+            raise BadRequest("Non XO event subscriber not supported")
+
+    def remove_event_subscription(self, event_type=None, origin=None, sub_type=None, origin_type=None):
+        """ Remove an event subscription based on given characteristics. """
+        binding = self._topic(event_type, origin, sub_type, origin_type)
+        if isinstance(self._ev_recv_name, XOTransport):
+            self._ev_recv_name.unbind(binding)
+        else:
+            raise BadRequest("Non XO event subscriber not supported")
+
 
 class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
     """Manages a subscription to an event queue for a select set of event types or
     event origins or other specialized binding.
     """
-
-    ALL_EVENTS = "#"
 
     def __init__(self, xp_name=None, event_type=None, origin=None, queue_name=None, callback=None,
                  sub_type=None, origin_type=None, pattern=None, auto_delete=None, *args, **kwargs):
@@ -294,18 +314,19 @@ class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
         Note: an EventSubscriber needs to be closed to free broker resources
         """
         self._cbthread = None
-        self._auto_delete = auto_delete
 
         # sets self._ev_recv_name, self.binding
         BaseEventSubscriberMixin.__init__(self, xp_name=xp_name, event_type=event_type, origin=origin,
-                                          queue_name=queue_name, sub_type=sub_type, origin_type=origin_type, pattern=pattern)
+                                          queue_name=queue_name, sub_type=sub_type, origin_type=origin_type,
+                                          pattern=pattern, auto_delete=auto_delete)
 
         log.debug("EventPublisher events pattern %s", self.binding)
 
         from_name = self._get_from_name()
         binding   = self._get_binding()
 
-        Subscriber.__init__(self, from_name=from_name, binding=binding, callback=callback, **kwargs)
+        Subscriber.__init__(self, from_name=from_name, binding=binding, callback=callback,
+                            auto_delete=self._auto_delete, **kwargs)
 
     def _get_from_name(self):
         """
@@ -343,16 +364,6 @@ class EventSubscriber(Subscriber, BaseEventSubscriberMixin):
 
     def __str__(self):
         return "EventSubscriber at %s:\n\trecv_name: %s\n\tcb: %s" % (hex(id(self)), str(self._recv_name), str(self._callback))
-
-    def _create_channel(self, **kwargs):
-        """
-        Override to set the channel's queue_auto_delete property.
-        """
-        ch = Subscriber._create_channel(self, **kwargs)
-        if self._auto_delete is not None:
-            ch.queue_auto_delete = self._auto_delete
-
-        return ch
 
 
 class EventRepository(object):

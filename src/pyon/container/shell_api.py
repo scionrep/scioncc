@@ -98,25 +98,38 @@ def procs(ret=False):
     if ret:
         return container.proc_manager.proc_sup.children
 
+def procmap():
+    from pyon.ion.resource import RT, PRED
+    from interface.objects import ProcessStateEnum
+    # Get Process resources
+    proc_objs, _ = container.resource_registry.find_resources(RT.Process, id_only=False)
+    # Get CapabilityContainer resources
+    cc_objs, _ = container.resource_registry.find_resources(RT.CapabilityContainer, id_only=False)
+    # Get associations
+    assocs = container.resource_registry.find_associations(predicate=PRED.hasProcess, id_only=False)
+
+    proc_by_id = {o._id: o for o in proc_objs}
+    cc_by_id = {o._id: o for o in cc_objs}
+    procs_by_cc = {}
+    for assoc in assocs:
+        if assoc.st == RT.CapabilityContainer and assoc.ot == RT.Process:
+            if assoc.s in cc_by_id and assoc.o in proc_by_id:
+                procs_by_cc.setdefault(assoc.s, []).append(assoc.o)
+
+    print "Map of system processes"
+    print "-----------------------"
+
+    for cc in sorted(cc_objs, key=lambda o: o.name):
+        print "CC {} @ {} ({})".format(cc.name, cc.container_info["host"], cc.container_info["hostname"])
+        for pid in sorted(procs_by_cc.get(cc._id, []), key=lambda o: proc_by_id[o].name):
+            proc = proc_by_id[pid]
+            if proc.process_state == ProcessStateEnum.RUNNING:
+                print "   {} ({}) - {} '{}'".format(proc.name, proc.label, proc.process_type, proc.service_name)
+
 def ms():
     print "List of messaging endpoints"
     print "---------------------------"
-    #print "Servers (listeners):"
-    from pyon.net.endpoint import BaseEndpoint
-    from collections import defaultdict
-    endpoint_by_group = defaultdict(list)
-    for elist in BaseEndpoint.endpoint_by_name.values():
-        for ep in elist:
-            if hasattr(ep, "_process"):
-                endpoint_by_group[ep._process.id].append(ep)
-            else:
-                endpoint_by_group["none"].append(ep)
-
-    proclist = container.proc_manager.procs
-    for name in sorted(endpoint_by_group.keys()):
-        print "%s (%s)" % (name, proclist[name]._proc_name if name in proclist else "")
-        print "\n".join(("  %s, %s" % (ed.name if hasattr(ed, 'name') else '', ed) for ed in sorted(endpoint_by_group[name],
-                                        key=lambda ep: (ep.__class__.__name__, getattr(ep, 'name')))))
+    print "(TBD)"
 
 def apps():
     print "List of active pyon apps"
@@ -239,7 +252,7 @@ def ionhelp():
     print "Available variables: %s" % ", ".join(sorted(public_vars.keys()))
 
 # This defines the public API of functions
-public_api = [ionhelp, ps, procs, ms, apps, svc_defs, obj_defs, type_defs, lsdir, spawn, start_mx]
+public_api = [ionhelp, ps, procs, procmap, ms, apps, svc_defs, obj_defs, type_defs, lsdir, spawn, start_mx]
 public_vars = None
 
 

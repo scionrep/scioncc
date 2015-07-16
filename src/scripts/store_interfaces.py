@@ -1,19 +1,23 @@
 #!/usr/bin/env python
 
-"""Script to store configuration and interfaces into the directory"""
+"""Script to perform system initialization, e.g store interfaces in datastore."""
 
 __author__ = 'Seman Said, Michael Meisinger'
 
 import argparse
 import ast
 
+import logging
+log = logging.getLogger('store_interfaces')
+
 import pyon
 from pyon.core import bootstrap, config
 from pyon.core.interfaces.interfaces import InterfaceAdmin
 from putil.script_util import parse_args
 
+
 def main():
-    '''
+    """
     Store configuration and interfaces into the datastore
     How to run this from command line:
         bin/store_interfaces  -s system name [ -of filename | -sf filename | -fc true|false]
@@ -33,7 +37,7 @@ def main():
 
         Load service definition from a file
         bin/python bin/store_interfaces  -s mysysname -sf obj/services/core/datastore_service.yml
-    '''
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', type=str, help='Additional config files to load or dict config content.', default=[])
@@ -45,7 +49,10 @@ def main():
     options, extra = parser.parse_known_args()
     args, command_line_config = parse_args(extra)
 
-    print "store_interfaces: Storing SciON config and interfaces, with options:" , str(options)
+    log.info("Storing SciON config and interfaces, with options: %s", str(options))
+
+    from pyon.core import log as logutil
+    logutil.configure_logging(logutil.DEFAULT_LOGGING_PATHS)
 
     # -------------------------------------------------------------------------
     # Store config and interfaces
@@ -88,7 +95,7 @@ def main():
     if options.force_clean:
         from pyon.datastore import clear_db_util
         from pyon.util.file_sys import FileSystem
-        print "store_interfaces: force_clean=True. DROP DATASTORES for sysname=%s" % bootstrap.get_sys_name()
+        log.info("force_clean=True. DROP DATASTORES for sysname=%s" % bootstrap.get_sys_name())
         pyon_config = config.read_standard_configuration()      # Initial pyon.yml + pyon.local.yml
         clear_db_util.clear_db(bootstrap_config, prefix=bootstrap.get_sys_name(), sysname=bootstrap.get_sys_name())
         FileSystem._clean(pyon_config)

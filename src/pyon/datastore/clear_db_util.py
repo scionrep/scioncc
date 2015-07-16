@@ -2,10 +2,12 @@
 
 """Admin tool to clear databases"""
 
-import sys
 from optparse import OptionParser
+import sys
 
-from putil.logging import log
+import logging
+log = logging.getLogger('clear_db')
+
 from pyon.datastore.datastore_common import DatastoreFactory
 
 
@@ -29,35 +31,38 @@ def main():
 
     (options, args) = parser.parse_args()
 
+    from pyon.core import log as logutil
+    logutil.configure_logging(logutil.DEFAULT_LOGGING_PATHS)
+
     if options.dump_path:
         config = create_config(options.db_host, options.db_port, options.db_uname, options.db_pword)
-        sysname = options.sysname or "mine"
-        print "clear_db: dumping", sysname, "datastores to", options.dump_path
+        sysname = options.sysname or "scion"
+        log.info("dumping %s datastores to %s", sysname, options.dump_path)
         from pyon.datastore.datastore_admin import DatastoreAdmin
         datastore_admin = DatastoreAdmin(config=config, sysname=sysname)
         datastore_admin.dump_datastore(path=options.dump_path)
     elif options.load_path:
         config = create_config(options.db_host, options.db_port, options.db_uname, options.db_pword)
-        sysname = options.sysname or "mine"
-        print "clear_db: loading", sysname, "datastores from dumped content in", options.dump_path
+        sysname = options.sysname or "scion"
+        log.info("loading %s datastores from dumped content in %ss", sysname, options.dump_path)
         from pyon.datastore.datastore_admin import DatastoreAdmin
         datastore_admin = DatastoreAdmin(config=config, sysname=sysname)
         datastore_admin.load_datastore(path=options.load_path)
     else:
         if len(args) == 0:
-            print 'clear_db: Error: no prefix argument specified'
+            log.error("Error: no prefix argument specified")
             parser.print_help()
             sys.exit()
 
         if len(args) != 1:
-            print 'clear_db: Error: You can not specify multiple prefixes. Received args: %s' % str(args)
+            log.error("Error: You can not specify multiple prefixes. Received args: %s", str(args))
             parser.print_help()
             sys.exit()
 
         prefix = args[0]
 
-        if prefix is '':
-            print 'clear_db: Error: You can not give the empty string as a prefix!'
+        if prefix == "":
+            log.error("Error: You can not give the empty string as a prefix!")
             parser.print_help()
             sys.exit()
 
@@ -75,7 +80,6 @@ def clear_db(config, prefix, sysname=None):
               sysname=sysname)
 
 def _clear_db(config, prefix, sysname=None, verbose=False):
-    #print "CLEAR", config, prefix
     server_type = config.get("type", "postgresql")
     if server_type == "postgresql":
         _clear_postgres(
@@ -93,7 +97,7 @@ def _clear_postgres(config, prefix, verbose=False, sysname=None):
         cfg_copy["password"] = "***"
     if "admin_password" in cfg_copy:
         cfg_copy["admin_password"] = "***"
-    print 'clear_db: Clearing PostgreSQL databases using config=', cfg_copy
+    log.info("Clearing PostgreSQL databases using config=%s", cfg_copy)
 
     import getpass
     db_name = prefix if not sysname else sysname + "_" + config.get('database', 'ion')
@@ -109,7 +113,7 @@ def _clear_postgres(config, prefix, verbose=False, sysname=None):
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
     dsn = "host=%s port=%s dbname=%s user=%s password=%s" % (host, port, default_database, username, password)
     with psycopg2.connect(dsn) as conn:
-        print "clear_db: Connected to PostgreSQL as:", dsn.rsplit("=", 1)[0] + "=***"
+        log.info("Connected to PostgreSQL as: %s", dsn.rsplit("=", 1)[0] + "=***")
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         with conn.cursor() as cur:
 
@@ -119,7 +123,7 @@ def _clear_postgres(config, prefix, verbose=False, sysname=None):
             for row in rows:
                 conn_id, dbn = row[0], row[1]
                 conn_by_db.setdefault(dbn, []).append(conn_id)
-            print "clear_db: Found %s open connections" % len(rows)
+            log.info("Found %s open connections", len(rows))
 
             cur.execute("SELECT datname FROM pg_database")
             rows = cur.fetchall()
@@ -128,19 +132,18 @@ def _clear_postgres(config, prefix, verbose=False, sysname=None):
                 try:
                     db_name = row[0]
                     if (prefix == '*' and not db_name.startswith('_')) or db_name.lower().startswith(prefix.lower()):
-                        print "clear_db: (PostgreSQL) DROP DATABASE", db_name
+                        log.info("(PostgreSQL) DROP DATABASE %s", db_name)
                         if conn_by_db.get(db_name, None):
                             for conn_id in conn_by_db[db_name]:
                                 cur.execute("SELECT pg_terminate_backend(%s)", (conn_id, ))
-                            print "clear_db: Dropped %s open connections to database '%s'" % (len(conn_by_db[db_name]), db_name)
+                            log.info("Dropped %s open connections to database '%s'", len(conn_by_db[db_name]), db_name)
                         cur.execute("DROP DATABASE %s" % db_name)
                     else:
                         ignored_num += 1
                 except Exception as ex:
-                    log.exception("")
-                    print "Could not drop database '%s'" % db_name
+                    log.exception("Could not drop database '%s'", db_name)
 
-            print 'clear_db: Ignored %s existing databases' % ignored_num
+            log.info("There are %s databases not matching prefix", ignored_num)
 
 if __name__ == '__main__':
     main()

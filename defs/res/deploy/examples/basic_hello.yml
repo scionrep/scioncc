@@ -1,13 +1,9 @@
 type: release
-name: basic
+name: basic_hello
 version: 0.1
-description: SciON basic services
+description: Basic services with one hello
 ion: 2.0
 apps:
-  ##################################
-  # CORE SERVICES
-  # Bootstrap processes perform initializations
-  ##################################
 
   - name: event_persister
     processapp: [event_persister, ion.processes.event.event_persister, EventPersister]
@@ -24,10 +20,6 @@ apps:
     processapp: [resource_registry, ion.services.resource_registry_service, ResourceRegistryService]
     bootlevel: 5
     replicas: 1
-
-  - name: system_management
-    processapp: [system_management, ion.services.system_management_service, SystemManagementService]
-    bootlevel: 5
 
   - name: directory
     processapp: [directory, ion.services.directory_service, DirectoryService]
@@ -57,30 +49,10 @@ apps:
         - plugin: [ion.processes.bootstrap.plugins.bootstrap_org, BootstrapOrg]
         - plugin: [ion.processes.bootstrap.plugins.bootstrap_exchange, BootstrapExchange]
 
-  ##################################
-  # HIGHER LEVEL SERVICES
-  ##################################
-
-  - name: resource_management
-    processapp: [resource_management, ion.services.resource_management_service, ResourceManagementService]
+  - name: process_management
+    processapp: [process_management, ion.services.process_management_service, ProcessManagementService]
     bootlevel: 10
 
-#  - name: process_management
-#    processapp: [process_management, ion.services.process_management_service, ProcessManagementService]
-#    bootlevel: 10
-
-  # The bootstrap for loading policy should be the final bootstrap process.
-  - name: policy_bootstrap
-    processapp: [policy_bootstrap, ion.processes.bootstrap.bootstrapper, Bootstrapper]
-    bootlevel: 29
-    config:
-      bootstrap_plugins:
-        - plugin: [ion.processes.bootstrap.plugins.bootstrap_policy, BootstrapPolicy]
-
-  ##################################
-  # UI SERVER AND SERVICE GATEWAY
-  ##################################
-
-  - name: ui_server
-    processapp: [ui_server, ion.processes.ui.server, UIServer]
-    bootlevel: 30
+  - name: hello
+    processapp: [hello, ion.services.examples.hello_service, HelloService]
+    bootlevel: 15

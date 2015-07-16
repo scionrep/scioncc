@@ -225,8 +225,10 @@ class BaseService(LocalContextMixin):
 
         self._process.remove_endpoint(endpoint)
 
+
 # -----------------------------------------------------------------------------------------------
 # Service management infrastructure
+
 class IonServiceDefinition(object):
     """
     Provides a walkable structure for ION service metadata and object definitions.

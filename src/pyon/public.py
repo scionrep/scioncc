@@ -30,11 +30,11 @@ __all__ += ['DataStore']
 from pyon.datastore.datastore_query import DatastoreQueryBuilder, DQ
 __all__ += ['DatastoreQueryBuilder', 'DQ']
 
-from pyon.ion.process import IonProcessThreadManager, SimpleProcess, StandaloneProcess, ImmediateProcess, get_ion_actor_id
-__all__ += ['IonProcessThreadManager', 'SimpleProcess', 'StandaloneProcess', 'ImmediateProcess', 'get_ion_actor_id']
+from pyon.ion.process import IonProcessThreadManager, ImmediateProcess, SimpleProcess, StandaloneProcess, StreamProcess, get_ion_actor_id
+__all__ += ['IonProcessThreadManager', 'ImmediateProcess', 'SimpleProcess', 'StandaloneProcess', 'StreamProcess', 'get_ion_actor_id']
 
-from pyon.ion.endpoint import ProcessRPCClient, ProcessRPCServer, ProcessSubscriber, ProcessPublisher
-__all__ += ['ProcessRPCClient', 'ProcessRPCServer', 'ProcessSubscriber', 'ProcessPublisher']
+from pyon.ion.endpoint import ProcessRPCClient, ProcessRPCServer, ProcessSubscriber, ProcessPublisher, ProcessEventSubscriber
+__all__ += ['ProcessRPCClient', 'ProcessRPCServer', 'ProcessSubscriber', 'ProcessPublisher', 'ProcessEventSubscriber']
 
 from pyon.ion.event import EventPublisher, EventSubscriber, EventQuery
 __all__ += ['EventPublisher', 'EventSubscriber', 'EventQuery']
@@ -51,11 +51,11 @@ __all__ += ['BaseService']
 from pyon.ion.stream import StreamPublisher, StreamSubscriber
 __all__ += ['StreamPublisher', 'StreamSubscriber']
 
-from pyon.ion.streamproc import StreamProcess
-__all__ += ['StreamProcess']
-
 from pyon.net import messaging, channel, endpoint
 __all__ += ['messaging', 'channel', 'endpoint']
+
+from pyon.net.endpoint import Publisher, Subscriber
+__all__ += ['Publisher', 'Subscriber']
 
 from pyon.util.async import spawn, switch
 __all__ += ['spawn', 'switch']

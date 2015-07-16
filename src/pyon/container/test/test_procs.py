@@ -80,29 +80,6 @@ class TestProcManager(PyonTestCase):
 
         self.container.resource_registry.create_association.assert_called_once_with(sentinel.oid, PRED.hasResource, sentinel.rid)
 
-
-    def test__cleanup_method(self):
-        ep = Mock()
-        ep._chan._queue_auto_delete = False
-
-        self.pm._cleanup_method(sentinel.queue, ep)
-
-        ch = self.container.node.channel.return_value
-        ch._destroy_queue.assert_called_once_with()
-        self.assertIsInstance(ch._recv_name, NameTrio)
-        self.assertIn(str(sentinel.queue), str(ch._recv_name))
-
-    @patch('pyon.container.procs.log')
-    def test__cleanup_method_raises_error(self, mocklog):
-        ep = Mock()
-        ep._chan._queue_auto_delete = False
-        ch = self.container.node.channel.return_value
-        ch._destroy_queue.side_effect = TransportError
-
-        self.pm._cleanup_method(sentinel.queue, ep)
-
-        self.assertEquals(mocklog.warn.call_count, 1)
-
     @patch('pyon.container.procs.log')
     def test_stop_with_error(self, mocklog):
         self.pm.start()

@@ -12,6 +12,7 @@ from pyon.core.path import list_files_recursive
 from pyon.datastore.datastore_common import DatastoreFactory
 from pyon.ion.directory_standalone import DirectoryStandalone
 from pyon.ion.resregistry_standalone import ResourceRegistryStandalone
+from pyon.util.log import log
 
 
 class InterfaceAdmin:
@@ -38,11 +39,14 @@ class InterfaceAdmin:
 
     def __del__(self):
         if not self._closed:
-            print "WARNING: Call close() on InterfaceAdmin (and datastores)"
+            log.warn("WARNING: Call close() on InterfaceAdmin (and datastores)")
+
+    def set_config(self, config):
+        self.config = config
 
     def create_core_datastores(self):
         """
-        Main entry point into creating core datastores
+        Create core datastores, so that they exist when containers start concurrently.
         """
         ds = DatastoreFactory.get_datastore(config=self.config, scope=self.sysname, variant=DatastoreFactory.DS_BASE)
         datastores = [
@@ -58,15 +62,17 @@ class InterfaceAdmin:
                 ds.create_datastore(datastore_name=local_dsn, profile=profile)
                 count += 1
                 ds_created.append(local_dsn)
-        print "store_interfaces: Created %s datastores: %s" % (count, ds_created)
+        if count:
+            log.info("store_interfaces: Created %s datastores: %s" % (count, ds_created))
 
 
     def store_config(self, system_cfg):
         """
-        Main entry point into storing system config
+        Store system config in directory and setup basic directory structure, so that everything is
+        prepared when containers start concurrently.
         """
         # Register some default keys
-        self.dir.register_safe("/", "DIR", sys_name=self.sysname)
+        self.dir.register_safe("/", "DIR", description="Directory root", sys_name=self.sysname)
         self.dir.register_safe("/", "Agents", description="Running agents", create_only=True)
         self.dir.register_safe("/", "Config", description="System configuration", create_only=True)
         self.dir.register_safe("/", "System", description="System management information", create_only=True)
@@ -74,15 +80,15 @@ class InterfaceAdmin:
 
         de = self.dir.lookup(self.DIR_CONFIG_PATH + "/CFG")
         if de:
-            print "store_interfaces: Updating system config in directory..."
+            log.debug("store_interfaces: Updating system config in directory...")
         else:
-            print "store_interfaces: Storing system config in directory..."
+            log.info("store_interfaces: Storing system config in directory...")
         self.dir.register(self.DIR_CONFIG_PATH, "CFG", **deepcopy(system_cfg))
 
-    def store_interfaces(self, object_definition_file=None,
-                         service_definition_file=None, idempotent=True):
+    def store_interfaces(self, object_definition_file=None, service_definition_file=None, idempotent=True):
         """
-        Main entry point into storing interfaces
+        Store system interfaces (services, objects, config files), so that everything is
+        prepared when containers start concurrently.
         """
         self.idempotent = idempotent
         self.bulk_entries = {}
@@ -90,14 +96,17 @@ class InterfaceAdmin:
         self.serial_num = 1
 
         if object_definition_file:
+            # Update single object definition
             self.store_object_interfaces(file=object_definition_file)
         elif service_definition_file:
+            # Update single service definition
             self.store_service_interfaces(file=service_definition_file)
         else:
+            # Update all interfaces
             if self.idempotent:
                 de = self.rr.find_by_type("ServiceDefinition", id_only=True)
                 if de:
-                    print "store_interfaces: Interfaces already stored. Not updating."
+                    log.debug("store_interfaces: Interfaces already stored. Not updating.")
                     return
             # load all files
             self.store_object_interfaces()
@@ -107,11 +116,11 @@ class InterfaceAdmin:
         self._register_bulk()
 
     def store_object_interfaces(self, file=None):
-        #print "\nStoring object interfaces in datastore..."
+        # log.info("Storing object interfaces in datastore...")
         if file and os.path.exists(file):
             self._load_object_files([file])
         elif file:
-            print "store_interfaces: Error couldn't find the file path\n"
+            log.warn("store_interfaces: Error couldn't find the file path")
         else:
             data_yaml_filenames = list_files_recursive('obj/data', '*.yml', ['ion.yml', 'resource.yml', 'shared.yml'])
             self._load_object_files(data_yaml_filenames)
@@ -146,11 +155,11 @@ class InterfaceAdmin:
                 serial_num += 1
 
     def store_service_interfaces(self, file=None):
-        #print "\nStoring service interfaces in datastore..."
+        # log.info("Storing service interfaces in datastore...")
         if file and os.path.exists(file):
             self._load_service_files([file])
         elif file:
-            print "store_interfaces: Error couldn't find the file path\n"
+            log.warn("store_interfaces: Error couldn't find the file path")
         else:
             service_yaml_filenames = list_files_recursive('obj/services', '*.yml')
             self._load_service_files(service_yaml_filenames)
@@ -166,14 +175,14 @@ class InterfaceAdmin:
                     objs[key] = file_content_str
 
             if not objs:
-                print "\n\n=====ERROR===== Can't find object name for: ", file_path
+                log.error("=====ERROR===== Can't find object name for: %s", file_path)
 
             for key in objs.keys():
                 svc_def = self._create_service_definition(key, objs[key], file_path)
                 self.bulk_resources.append(svc_def)
 
     def store_config_files(self):
-        #print "\nStoring system res files in datastore..."
+        # log.info("Storing system res files in datastore...")
         resource_filenames = list_files_recursive('res/config', '*.yml')
         self._load_config_files(resource_filenames)
 
@@ -194,13 +203,37 @@ class InterfaceAdmin:
         return dict(type_="ServiceDefinition", name=name, definition=definition, namespace=namespace)
 
     def _register_bulk(self):
-        print "store_interfaces: Storing %s entries in directory..." % len(self.bulk_entries)
-        entries = [(path, key, attrs) for ((path, key), attrs) in self.bulk_entries.iteritems()]
-        res = self.dir.register_mult(entries)
-        self.bulk_entries = {}
+        if self.bulk_entries:
+            log.info("store_interfaces: Storing %s entries in directory..." % len(self.bulk_entries))
+            entries = [(path, key, attrs) for ((path, key), attrs) in self.bulk_entries.iteritems()]
+            res = self.dir.register_mult(entries)
+            self.bulk_entries = {}
 
-        print "store_interfaces: Storing %s resources in registry..." % len(self.bulk_resources)
-        res = self.rr.create_mult(self.bulk_resources)
-        self.bulk_resources = []
+        if self.bulk_resources:
+            log.info("store_interfaces: Storing %s resources in registry..." % len(self.bulk_resources))
+            res = self.rr.create_mult(self.bulk_resources)
+            self.bulk_resources = []
 
-        print "store_interfaces: Storing interfaces successful"
+        log.debug("store_interfaces: Storing interfaces successful")
+
+    def declare_core_exchange_resources(self):
+        """
+        Create important messaging resources (queues, bindings, etc), so that they are ready before
+        the first containers start and processes get spawned concurrently.
+        """
+        from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+        rabbit_util = RabbitManagementUtil(self.config, sysname=self.sysname)
+
+        # Event persister queue
+        rabbit_util.declare_exchange("events")
+        rabbit_util.declare_queue("events", "event_persister")
+        rabbit_util.bind_queue("events", "event_persister", "#")
+
+        # Container broadcast boot queue
+        # This is so that the first PD will immediately learn about the existence of containers,
+        # and does not have to query datastore or wait for EEs to broadcast
+        # heartbeat_topic = self.config.get_safe("service.process_management.process_dispatcher.aggregator.container_topic", "bx_containers")
+        # heartbeat_topic_queue = heartbeat_topic + "_boot"
+        # rabbit_util.declare_exchange("")
+        # rabbit_util.declare_queue("", heartbeat_topic_queue)
+        # rabbit_util.bind_queue("", heartbeat_topic_queue, heartbeat_topic)

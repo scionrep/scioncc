@@ -1,52 +1,54 @@
-name: process_dispatcher
+name: process_management
 
 docstring: |
   Service to create, read, update and delete process definitions and processes,
   and manage process execution.  Process definitions represent executables.
   Processes represent the executing code within the system.
 
-spec: https://confluence.oceanobservatories.org/display/syseng/CIAD+CEI+OV+Process+Dispatcher+Service
-
-dependencies: []
+dependencies: [resource_registry]
 
 methods:
   create_process_definition:
-    docstring: Creates a Process Definition based on given object.
+    docstring: Creates a ProcessDefinition based on given object.
     in:
       process_definition: !ProcessDefinition
-      process_definition_id: ""
     out:
       process_definition_id: ""
     throws:
-      BadRequest: if object passed has _id or _rev attribute
+      BadRequest: arguments invalid or incomplete
 
   read_process_definition:
-    docstring: Returns a Process Definition as object.
+    docstring: Returns a ProcessDefinition as object.
     in:
       process_definition_id: ""
     out:
       process_definition: !ProcessDefinition
     throws:
+      BadRequest: arguments invalid or incomplete
       NotFound: object with specified id does not exist
 
   delete_process_definition:
-    docstring: Deletes/retires a Process Definition.
+    docstring: Deletes/retires a ProcessDefinition.
     in:
       process_definition_id: ""
     out:
     throws:
+      BadRequest: arguments invalid or incomplete
       NotFound: object with specified id does not exist
-
 
   # -----------------
 
   create_process:
-    docstring: Create a process resource and process id. Does not yet start the process
+    docstring: |
+      Create a process resource and process id. Does not yet start the process.
+      Argument process is optional and may contain attributes for the Process resource
     in:
       process_definition_id: ""
+      process: !Process
     out:
       process_id: ""
     throws:
+      BadRequest: arguments invalid or incomplete
       NotFound: object with specified id does not exist
 
   schedule_process:
@@ -54,15 +56,15 @@ methods:
       Schedule a process definition for execution on an Execution Engine. If no process id is given,
       a new unique ID is generated.
     in:
+      process_id: ""
       process_definition_id: ""
       schedule: !ProcessSchedule
       configuration: {}
-      process_id: ""
       name: ""
     out:
       process_id: ""
     throws:
-      BadRequest: if object passed has _id or _rev attribute
+      BadRequest: arguments invalid or incomplete
       NotFound: object with specified id does not exist
 
   cancel_process:
@@ -72,6 +74,7 @@ methods:
     out:
       success: True
     throws:
+      BadRequest: arguments invalid or incomplete
       NotFound: object with specified id does not exist
 
   read_process:
@@ -81,6 +84,7 @@ methods:
     out:
       process: !Process
     throws:
+      BadRequest: arguments invalid or incomplete
       NotFound: object with specified id does not exist
 
   list_processes:
@@ -88,3 +92,5 @@ methods:
     in:
     out:
       processes: []
+    throws:
+      BadRequest: arguments invalid or incomplete

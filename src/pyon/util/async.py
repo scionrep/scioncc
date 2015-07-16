@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
-__author__ = 'Adam R. Smith,Luke'
+__author__ = 'Adam R. Smith'
 
-import gevent
-import os
-import fcntl
-from gevent.event import Event
 from collections import Iterable
 from functools import wraps
-import time
-from pyon.util.threading import Queue, get_pythread, get_pytime
+import gevent
+from gevent.event import Event
 
 
 spawn = gevent.spawn
@@ -21,6 +17,7 @@ def spawnf(f):
         return gevent.spawn(f, *args, **kwargs)
     return wrapper
 
+
 def asyncf(f):
     """ Decorator to spawn this function in a greenlet and return the result inline. """
     @wraps(f)
@@ -29,9 +26,11 @@ def asyncf(f):
         return g.get()
     return wrapper
 
+
 def switch():
     """ Shortcut to give control from the current greenlet back to the gevent hub. """
     gevent.getcurrent().switch()
+
 
 def join(green_stuff):
     """ Universal way to join on either a single greenlet or a list of them. """
@@ -39,12 +38,14 @@ def join(green_stuff):
         return gevent.joinall(green_stuff)
     return gevent.join(green_stuff)
 
+
 def wait(green_stuff):
     """ Universal way to join on either a single greenlet or a list of them and get return value inline. """
     if isinstance(green_stuff, Iterable):
         gevent.joinall(green_stuff)
         return [g.get() for g in green_stuff]
     return green_stuff.get()
+
 
 def blocking_cb(func, cb_arg, *args, **kwargs):
     """
@@ -66,3 +67,7 @@ def blocking_cb(func, cb_arg, *args, **kwargs):
     elif len(ret_vals) == 1:
         return ret_vals[0]
     return tuple(ret_vals)
+
+
+# See https://github.com/gevent/gevent/blob/master/gevent/_threading.py for a non-monkeypatched
+# clone of Python threading using real threads (useful for executing long running code outside of gevent)

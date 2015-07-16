@@ -168,28 +168,22 @@ ${methods}
     'obj_arg_no_def': "'${name}': ${name}",
     'rpcclient':
 '''class ${name}Client(RPCClient, ${name}ClientMixin):
-    def __init__(self, to_name=None, name=None, node=None, **kwargs):
-        if name is not None:
-            log.warn("${name}Client: 'name' parameter is deprecated, please use to_name")
-        to_name = to_name or name or '${targetname}'
+    def __init__(self, to_name=None, node=None, **kwargs):
+        to_name = to_name or '${targetname}'
         RPCClient.__init__(self, to_name=to_name, node=node, **kwargs)
         ${name}ClientMixin.__init__(self)
 ''',
     'processrpcclient':
 '''class ${name}ProcessClient(ProcessRPCClient, ${name}ClientMixin):
-    def __init__(self, process=None, to_name=None, name=None, node=None, **kwargs):
-        if name is not None:
-            log.warn("${name}Client: 'name' parameter is deprecated, please use to_name")
-        to_name = to_name or name or '${targetname}'
+    def __init__(self, process=None, to_name=None, node=None, **kwargs):
+        to_name = to_name or '${targetname}'
         ProcessRPCClient.__init__(self, process=process, to_name=to_name, node=node, **kwargs)
         ${name}ClientMixin.__init__(self)
 ''',
     'conversationrpcclient':
 '''class ${name}ProcessClient(ConversationRPCClient, ${name}ClientMixin):
-    def __init__(self, process=None, to_name=None, name=None, node=None, **kwargs):
-        if name is not None:
-            log.warn("${name}Client: 'name' parameter is deprecated, please use to_name")
-        to_name = to_name or name or '${targetname}'
+    def __init__(self, process=None, to_name=None, node=None, **kwargs):
+        to_name = to_name or '${targetname}'
         ConversationRPCClient.__init__(self, process=process, to_name=to_name, node=node, **kwargs)
         ${name}ClientMixin.__init__(self)
 '''
@@ -844,7 +838,7 @@ class ServiceObjectGenerator:
                         all_client_obj_args.append(client_templates['obj_arg'].substitute(name=k, default=d))
                     else:
                         all_client_obj_args.append(client_templates['obj_arg_no_def'].substitute(name=k))
-                clientobjargs = ",".join(all_client_obj_args)
+                clientobjargs = ", ".join(all_client_obj_args)
 
             # determine object in name: follows <ServiceName>_<MethodName>_in
             req_in_obj_name = "%s_%s_in" % (service_name, op_name)

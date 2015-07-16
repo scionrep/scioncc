@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-'''
-@author Luke Campbell <LCampbell@ASAScience.com>
-@date Mon Jul 16 14:07:06 EDT 2012
-@file pyon/ion/test/test_stream_pubsub.py
-'''
+
+__author__ = 'Luke Campbell <LCampbell@ASAScience.com>'
+
+from gevent.event import Event
+from nose.plugins.attrib import attr
 
 from pyon.util.int_test import IonIntegrationTestCase
+
 from pyon.ion.stream import StreamSubscriber, StreamPublisher
 from pyon.ion.process import SimpleProcess
-from interface.objects import StreamRoute
-from gevent.event import Event
 
-from nose.plugins.attrib import attr
+from interface.objects import StreamRoute
+
+
 @attr('INT')
 class StreamPubsubTest(IonIntegrationTestCase):
     def setUp(self):
@@ -22,7 +23,7 @@ class StreamPubsubTest(IonIntegrationTestCase):
 
     def tearDown(self):
         for queue in self.queue_cleanup:
-            xn = self.container.ex_manager.create_xn_queue(queue)
+            xn = self.container.ex_manager.create_queue_xn(queue)
             xn.delete()
         for exchange in self.exchange_cleanup:
             xp = self.container.ex_manager.create_xp(exchange)
@@ -53,5 +54,4 @@ class StreamPubsubTest(IonIntegrationTestCase):
         pub1.publish('test')
 
         self.assertTrue(self.verified.wait(2))
-
 
