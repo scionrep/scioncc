@@ -325,6 +325,8 @@ class TestProcManagerInt(IonIntegrationTestCase):
         fakecc = FakeContainer()
         fakecc.resource_registry = Mock()
         fakecc.resource_registry.create.return_value=["ID","rev"]
+        fakecc.start_time = Mock()
+        fakecc.version = Mock()
 
         pm = ProcManager(fakecc)
         self.assertTrue(hasattr(fakecc, "spawn_process"))
@@ -463,13 +465,15 @@ class TestProcManagerInt(IonIntegrationTestCase):
         fakecc.resource_registry = Mock()
         fakecc.resource_registry.create.return_value=["ID","rev"]
 
-        pm = ProcManager(fakecc)
+        with patch('pyon.container.procs.ProcManager._get_execution_engine_config', Mock(return_value={})):
+            pm = ProcManager(fakecc)
+            pm._get_execution_engine_config = Mock()
 
-        ep = pm._create_listening_endpoint(node=sentinel.node,
-                                           service=sentinel.service,
-                                           process=sentinel.process)
+            ep = pm._create_listening_endpoint(node=sentinel.node,
+                                               service=sentinel.service,
+                                               process=sentinel.process)
 
-        self.assertIsInstance(ep, TestRPCServer)
+            self.assertIsInstance(ep, TestRPCServer)
 
     def test_error_on_start_listeners_of_proc(self):
         self._start_container()

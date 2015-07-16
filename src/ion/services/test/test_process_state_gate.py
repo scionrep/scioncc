@@ -9,9 +9,8 @@ from pyon.util.int_test import IonIntegrationTestCase
 from pyon.net.endpoint import RPCClient
 from pyon.public import IonObject, OT, EventSubscriber, BaseService
 
-from ion.services.process_dispatcher_service import ProcessStateGate
+from ion.core.process.proc_util import ProcessStateGate
 
-from interface.services.core.iprocess_dispatcher_service import ProcessDispatcherServiceClient
 from interface.objects import ProcessStateEnum, ProcessQueueingMode
 
 
