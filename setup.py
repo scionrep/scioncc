@@ -53,6 +53,11 @@ setup(  name='scioncc',
             '': ['*.yml', '*.txt'] + get_data_dirs("defs", ["*.yml", "*.sql", "*.xml"]) + get_data_dirs("src/ion/processes/ui", ["*.css", "*.js"]),
         },
         entry_points={
+             'nose.plugins.0.10': [
+                 'timer_plugin=pyon.util.timer_plugin:TestTimer',
+                 'greenletleak=pyon.util.greenlet_plugin:GreenletLeak',
+                 'gevent_profiler=pyon.util.testing.nose_gevent_profiler:TestGeventProfiler',
+             ],
             'console_scripts': [
                 'pycc=scripts.pycc:entry',
                 'control_cc=scripts.control_cc:main',
