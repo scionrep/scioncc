@@ -878,13 +878,14 @@ class ProcManager(object):
         self.procs[process_instance.id] = process_instance
 
         # Add Process to resource registry
-        # Note: In general the Process resource should be created by the CEI PD, but not all processes are CEI
-        # processes. How to deal with this?
         process_instance.errcause = "registering"
 
         if process_instance._proc_type != PROCTYPE_IMMEDIATE:
             if self.container.has_capability(self.container.CCAP.RESOURCE_REGISTRY):
-                proc_obj = Process(name=process_instance.id, label=name, proctype=process_instance._proc_type)
+                proc_obj = Process(name=process_instance.id, label=name,
+                                   process_type=process_instance._proc_type,
+                                   service_name=getattr(process_instance, "name", None) or "",
+                                   process_state=ProcessStateEnum.RUNNING)
                 proc_id, _ = self.container.resource_registry.create(proc_obj)
                 process_instance._proc_res_id = proc_id
 
