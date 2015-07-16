@@ -482,6 +482,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
                 self._recv_name.queue_auto_delete = auto_delete
 
         self._ready_event = event.Event()
+        self._active_event = event.Event()
         self._binding = binding
         self._chan = None
 
@@ -527,7 +528,10 @@ class ListeningBaseEndpoint(BaseEndpoint):
         # Notify any listeners of our readiness
         self._ready_event.set()
 
+        # Wait for actual consumer activation (note that get_one_msg calls ch.accept, which starts consuming)
+
         while True:
+            self._active_event.wait()
             m = None
             try:
                 m = self.get_one_msg()
@@ -546,6 +550,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
         self.initialize(binding=binding)
         if activate:
             self.activate()
+
 
     def initialize(self, binding=None):
         """
@@ -569,6 +574,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
         """
         assert self._chan
         self._chan.start_consume()
+        self._active_event.set()
 
     def deactivate(self):
         """
@@ -576,6 +582,7 @@ class ListeningBaseEndpoint(BaseEndpoint):
         """
         assert self._chan
         self._chan.stop_consume()       # channel will yell at you if this is invalid
+        self._active_event = event.Event()
 
     def _get_n_msgs(self, num=1, timeout=None):
         """
