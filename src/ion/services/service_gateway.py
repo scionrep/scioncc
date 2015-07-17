@@ -35,7 +35,7 @@ from interface.services.core.idirectory_service import DirectoryServiceProcessCl
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 from interface.services.core.iidentity_management_service import IdentityManagementServiceProcessClient
 from interface.services.core.iorg_management_service import OrgManagementServiceProcessClient
-from interface.objects import Attachment, ProcessDefinition, MediaResponse
+from interface.objects import Attachment, ProcessDefinition, MediaResponse, UserRoleModifiedEvent, UserRoleCacheResetEvent
 from interface import objects
 
 CFG_PREFIX = "service.service_gateway"
@@ -123,39 +123,36 @@ class ServiceGateway(object):
 
     def start(self):
         # Configure  subscriptions for user_cache events
-        self.user_role_event_subscriber = EventSubscriber(event_type=OT.UserRoleModifiedEvent, origin_type="Org",
-                                                          callback=self._user_role_event_callback)
-        self.process.add_endpoint(self.user_role_event_subscriber)
-
-        self.user_role_reset_subscriber = EventSubscriber(event_type=OT.UserRoleCacheResetEvent,
-                                                          callback=self._user_role_reset_callback)
-        self.process.add_endpoint(self.user_role_reset_subscriber)
+        self.event_subscriber = EventSubscriber(event_type=OT.UserRoleModifiedEvent, origin_type="Org",
+                                                          callback=self._event_callback)
+        self.event_subscriber.add_event_subscription(event_type=OT.UserRoleCacheResetEvent)
+        self.process.add_endpoint(self.event_subscriber)
 
     def stop(self):
         pass
         # Stop event subscribers - TODO: This hangs
-        #self.process.remove_endpoint(self.user_role_event_subscriber)
-        #self.process.remove_endpoint(self.user_role_reset_subscriber)
+        #self.process.remove_endpoint(self.event_subscriber)
 
     # -------------------------------------------------------------------------
     # Event subscriber callbacks
 
-    def _user_role_event_callback(self, *args, **kwargs):
-        """Callback function for receiving Events when User Roles are modified."""
-        user_role_event = args[0]
-        org_id = user_role_event.origin
-        actor_id = user_role_event.actor_id
-        role_name = user_role_event.role_name
-        log.debug("User Role modified: %s %s %s" % (org_id, actor_id, role_name))
+    def _event_callback(self, event, *args, **kwargs):
+        """ Callback function for receiving Events """
+        if isinstance(event, UserRoleModifiedEvent):
+            # Event when User Roles are modified
+            user_role_event = event
+            org_id = user_role_event.origin
+            actor_id = user_role_event.actor_id
+            role_name = user_role_event.role_name
+            log.debug("User Role modified: %s %s %s" % (org_id, actor_id, role_name))
 
-        # Evict the user and their roles from the cache so that it gets updated with the next call.
-        if self.user_role_cache and self.user_role_cache.has_key(actor_id):
-            log.debug("Evicting user from the user_role_cache: %s" % actor_id)
-            self.user_role_cache.evict(actor_id)
-
-    def _user_role_reset_callback(self, *args, **kwargs):
-        """Callback function for when an event is received to clear the user data cache"""
-        self.user_role_cache.clear()
+            # Evict the user and their roles from the cache so that it gets updated with the next call.
+            if self.user_role_cache and self.user_role_cache.has_key(actor_id):
+                log.debug("Evicting user from the user_role_cache: %s" % actor_id)
+                self.user_role_cache.evict(actor_id)
+        elif isinstance(event, UserRoleCacheResetEvent):
+            # An event is received to clear the user data cache
+            self.user_role_cache.clear()
 
     # -------------------------------------------------------------------------
     # Routes
