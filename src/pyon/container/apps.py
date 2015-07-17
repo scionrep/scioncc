@@ -77,7 +77,7 @@ class AppManager(object):
             log.info("Sending rel file to PD")
             import json
             rel_def = json.loads(json.dumps(rel))     # HACK to get rid of OrderedDict (not serializable)
-            cmd_res = self.pd_client.start_rel_blocking(rel_def, timeout=10)
+            cmd_res = self.pd_client.start_rel_blocking(rel_def, timeout=None)
             return cmd_res
 
         for rel_app_cfg in rel.apps:

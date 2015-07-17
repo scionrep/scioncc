@@ -12,7 +12,7 @@ import json
 
 from pyon.core.object import IonObjectBase
 from pyon.core.registry import getextends, model_classes
-from pyon.public import Container, StandaloneProcess, log, PRED, RT, IonObject, CFG, NotFound, Inconsistent, BadRequest, Unauthorized, named_any
+from pyon.public import Container, SimpleProcess, log, PRED, RT, IonObject, CFG, NotFound, Inconsistent, BadRequest, Unauthorized, named_any
 
 from interface import objects
 
@@ -35,7 +35,7 @@ date_fieldnames = ['ts_created', 'ts_updated']
 CFG_PREFIX = "process.admin_ui"
 
 
-class AdminUI(StandaloneProcess):
+class AdminUI(SimpleProcess):
     """
     A simple Web UI to introspect the container and the ION datastores.
     """

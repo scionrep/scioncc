@@ -158,34 +158,12 @@ container:
         name_pattern: "Container-child-[4567]"
         name: app
 
-  process_dispatcher:             # Configures an active global process dispatcher component
-    enabled: False                # Main toggle switch. If False, container does not start PD.
-    command_queue: pd_command     # Topic and queue name for singleton PD
-    aggregator:
-      container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
-    engine:                       # PD decision engine
-      type: default
-      await_preconditions:        # Preconditions for start of decision engine. Blocks until true.
-        min_engines: 1
-        engines_exist:
-        - default
-        - ui
-      default_engine: default
-      dispatch_rules:
-      - appname_pattern: "ui_server"
-        engine: ui
-      dispatch_spread: round_robin
-    executor:
-      type: global                # global (schedule via agent commands) or local (to local container only)
-      pool_size: 1                # Number of concurrent threads spawning processes
-      spawn_timeout: 600
-      terminate_timeout: 5
-
   process:
-    exit_once_empty: True         # Whether the container should exit once all spawned processes have been terminated
-    log_exceptions: False         # Whether all RPC call invocation exceptions should be logged
+    publish_events: True          # Should the container publish ProcessLifecycleEvents?
+    exit_once_empty: True         # Should the container exit once all spawned processes have been terminated?
+    log_exceptions: False         # Should all RPC call invocation exceptions be logged?
     max_replicas: 0               # Limit the number of process replicas to start per container (0 is unlimited)
-    use_process_dispatcher: False # If True, sends deploy files to PD. If False, container spawns all locally
+    use_process_dispatcher: False # Should deploy files be sent to PD, or processed in local container?
     pd_command_queue: pd_command
 
   objects:
@@ -321,6 +299,30 @@ process:
 # ----------------------------------------------------------------------------------
 # The "service" root entry
 service:
+  process_dispatcher:             # Configures an active global process dispatcher component (not ION service)
+    enabled: False                # Main toggle switch. Should container start PD service?
+    command_queue: pd_command     # Topic and queue name for singleton PD
+    aggregator:
+      container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
+    engine:                       # PD decision engine
+      type: default
+      await_preconditions:        # Preconditions for start of decision engine. Blocks until true.
+        await_timeout: 10         # Maximum wait in sec to wait for preconditions
+        min_engines: 1
+        engines_exist:
+        - default
+        - ui
+      default_engine: default
+      dispatch_rules:
+      - appname_pattern: "ui_server"
+        engine: ui
+      dispatch_spread: round_robin  # One of round_robin, fill_up, random
+    executor:
+      type: global                # global (schedule via agent commands) or local (to local container only)
+      pool_size: 1                # Number of concurrent threads spawning processes
+      spawn_timeout: 600
+      terminate_timeout: 5
+
   resource_management:
     max_search_results: 250
 

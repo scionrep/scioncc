@@ -3,6 +3,7 @@
 __author__ = 'Michael Meisinger'
 
 from copy import deepcopy
+import random
 import re
 import gevent
 from gevent.event import AsyncResult
@@ -54,7 +55,10 @@ class ProcessDispatcherDecisionEngine(object):
                 if not self.registry.preconditions_true.is_set():
                     log.info("PD is leader - awaiting PD preconditions")
                     # Await preconditions
-                    self.registry.preconditions_true.wait()
+                    await_timeout = get_safe(self._pd_core.pd_cfg, "engine.await_preconditions.await_timeout")
+                    precond_true = self.registry.preconditions_true.wait(timeout=await_timeout)
+                    if not precond_true:
+                        log.warn("PD preconditions not satisfied after timeout - continuing")
 
                 if self._pd_core.is_leader() and self.sub_cont is not None and not self.sub_active:
                     # Are we still leader? Not activated?
@@ -108,8 +112,8 @@ class ProcessDispatcherDecisionEngine(object):
             log.debug("app definition in rel: %s", str(rel_app_cfg))
 
             # Decide where process should go
-            container_name = self._determine_target_container(rel_app_cfg)
-            log.debug("Dispatch app %s to container %s", app_name, container_name)
+            target_engine = self._determine_target_engine(rel_app_cfg)
+            log.debug("Dispatch app %s to engine %s", app_name, target_engine)
 
             if 'processapp' in rel_app_cfg:
                 name, module, cls = rel_app_cfg["processapp"]
@@ -128,14 +132,20 @@ class ProcessDispatcherDecisionEngine(object):
                         log.warn("Invalid number of process replicas: %s", proc_replicas)
                         proc_replicas = 1
                     for i in xrange(proc_replicas):
+                        cont_info = self._determine_target_container(rel_app_cfg, target_engine)
+                        container_name = self._get_cc_agent_name(cont_info)
                         proc_name = "%s.%s" % (name, i) if i else name
                         action_res = self._add_spawn_process_action(cc_agent=container_name, proc_name=proc_name,
-                                             module=module, cls=cls, config=rel_cfg)
+                                                                    module=module, cls=cls, config=rel_cfg)
                         proc_id = action_res.wait()
+                        self._slot_process(cont_info, proc_id, dict(proc_name=proc_name, state=ProcessStateEnum.RUNNING))
                 else:
+                    cont_info = self._determine_target_container(rel_app_cfg, target_engine)
+                    container_name = self._get_cc_agent_name(cont_info)
                     action_res = self._add_spawn_process_action(cc_agent=container_name, proc_name=name,
-                                         module=module, cls=cls, config=rel_cfg)
+                                                                module=module, cls=cls, config=rel_cfg)
                     proc_id = action_res.wait()
+                    self._slot_process(cont_info, proc_id, dict(proc_name=name, state=ProcessStateEnum.RUNNING))
 
             else:
                 log.warn("App file not supported")
@@ -153,23 +163,66 @@ class ProcessDispatcherDecisionEngine(object):
         self.rules_cfg = get_safe(self._pd_core.pd_cfg, "engine.dispatch_rules") or []
         self.default_engine = get_safe(self._pd_core.pd_cfg, "engine.default_engine") or "default"
 
-    def _determine_target_container(self, app_cfg):
-        # Determine engine
+    def _determine_target_engine(self, app_cfg):
+
+        # Determine nominal engine
         target_engine = self.default_engine
         app_name = app_cfg["name"]
         for rule in self.rules_cfg:
             if "appname_pattern" in rule:
                 if re.match(rule["appname_pattern"], app_name):
                     target_engine = rule["engine"]
-                    break
 
-        # Determine container
+        # For check if engine has actual containers
         ee_containers = self.registry.get_engine_containers()
-        ee_conts = ee_containers.get(target_engine, None) or ee_containers.get(self.default_engine, None) or ee_containers.get("", None)
-        if ee_conts is None:
-            raise BadRequest("Could not determine engine for app {}".format(app_name))
-        elif not ee_conts:
+        if not ee_containers.get(target_engine, None):
+            target_engine = self.default_engine
+
+        return target_engine
+
+    def _determine_target_container(self, app_cfg, target_engine):
+        app_name = app_cfg["name"]
+        if target_engine is None:
+            target_engine = self._determine_target_engine(app_cfg)
+
+        # Determine available containers
+        ee_containers = self.registry.get_engine_containers()
+        ee_conts = ee_containers.get(target_engine, None)
+        if not ee_conts:
             raise BadRequest("No running containers for app {}".format(app_name))
-        cont_info = ee_conts[0]
+        ee_conts_sorted = sorted(ee_conts, key=lambda c: c["ts_created"])
+
+        # Load balance across containers
+        dispatch_spread = get_safe(self._pd_core.pd_cfg, "engine.dispatch_spread") or "round_robin"
+        if dispatch_spread == "round_robin":
+            cont_info, current_min_alloc = None, 9999999
+            for cont in ee_conts_sorted:
+                if len(cont["allocation"]) < current_min_alloc:
+                    max_capacity = int(get_safe(cont["ee_info"], "capacity.max", 0))
+                    if max_capacity and len(cont["allocation"]) < max_capacity:
+                        cont_info = cont
+                        current_min_alloc = len(cont["allocation"])
+            if not cont_info:
+                raise BadRequest("Could not find open slot")
+        elif dispatch_spread == "fill_up":
+            cont_info, current_min_alloc = None, 9999999
+            for cont in ee_conts_sorted:
+                if len(cont["allocation"]) < int(get_safe(cont["ee_info"], "capacity.max", 0)):
+                    cont_info = cont
+                    break
+            if not cont_info:
+                raise BadRequest("Could not find open slot")
+        elif dispatch_spread == "random":
+            cont_num = random.randint(0, len(ee_conts_sorted)-1)
+            cont_info = ee_conts_sorted[cont_num]
+        else:
+            raise BadRequest("Unknown dispatch_spread {}".format(dispatch_spread))
+
+        return cont_info
+
+    def _get_cc_agent_name(self, cont_info):
         container_name = cont_info["cc_obj"].cc_agent
         return container_name
+
+    def _slot_process(self, cont_info, proc_id, proc_info):
+        self.registry.register_process(cont_info["container_id"], proc_id, proc_info, update=False)

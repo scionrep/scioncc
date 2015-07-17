@@ -338,6 +338,8 @@ ProcessLifecycleEvent: !Extends_Event
   container_id: ""
   process_type: ""
   process_name: ""
+  process_resource_id: ""
+  service_name: ""
 
 # Event for the scheduler's timer functionality
 TimerEvent: !Extends_Event

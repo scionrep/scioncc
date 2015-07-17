@@ -20,14 +20,14 @@ try:
 except ImportError as ie:
     print "psutil or memory_profiler not available"
 
-from pyon.public import log, iex, StandaloneProcess, RT
+from pyon.public import log, iex, SimpleProcess, RT
 
 from putil.timer import Timer,Accumulator
 
 stats = Accumulator(persist=True)
 
 
-class ContainerProfiler(StandaloneProcess):
+class ContainerProfiler(SimpleProcess):
 
     def on_init(self):
         self.profile_interval = float(self.CFG.get_safe("process.containerprofiler.profile_interval", 60.0))

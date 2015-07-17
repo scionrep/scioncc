@@ -13,7 +13,7 @@ import gevent
 from gevent.wsgi import WSGIServer
 from datetime import datetime, timedelta
 
-from pyon.public import StandaloneProcess, log, BadRequest, NotFound, OT, get_ion_ts_millis
+from pyon.public import SimpleProcess, log, BadRequest, NotFound, OT, get_ion_ts_millis
 from pyon.util.containers import named_any, current_time_millis
 from ion.util.ui_utils import build_json_response, build_json_error, get_arg, get_auth, set_auth, clear_auth, OAuthClientObj, OAuthTokenObj
 
@@ -34,7 +34,7 @@ ui_instance = None
 client_cache = {}
 
 
-class UIServer(StandaloneProcess):
+class UIServer(SimpleProcess):
     """
     Process to start a generic UI server that can be extended with content and service gateway
     """

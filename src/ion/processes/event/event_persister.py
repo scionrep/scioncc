@@ -28,14 +28,14 @@ class EventPersister(SimpleProcess):
         if self._complex_blacklist:
             log.warn("EventPersister does not yet support complex blacklist expressions: %s", self._complex_blacklist)
 
-        # Holds received events FIFO in syncronized queue
+        # Holds received events FIFO in synchronized queue
         self.event_queue = Queue()
 
         # Temporarily holds list of events to persist while datastore operation are not yet completed
         # This is where events to persist will remain if datastore operation fails occasionally.
         self.events_to_persist = None
 
-        # Number of unsuccessful attempts to persist in a row
+        # Number of unsuccessful consecutive attempts to persist during loop
         self.failure_count = 0
 
         # bookkeeping for greenlet
@@ -78,6 +78,17 @@ class EventPersister(SimpleProcess):
 
         # wait on the greenlets to finish cleanly
         self._persist_greenlet.join(timeout=5)
+
+        # Check if there are still unsaved events in the queue and persist them
+        leftover_events = self.event_queue.qsize()
+        if leftover_events:
+            log.info("Storing {} events during event_persister shutdown".format(leftover_events))
+            events_to_process = [self.event_queue.get() for x in xrange(leftover_events)]
+            events_to_persist = [x for x in events_to_process if not self._in_blacklist(x)]
+            try:
+                self._persist_events(events_to_persist)
+            except Exception:
+                log.exception("Could not persist all events")
 
     def _on_event(self, event, *args, **kwargs):
         self.event_queue.put(event)

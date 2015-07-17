@@ -60,11 +60,14 @@ class ProcessDispatcherRegistry(object):
                 self._containers[container_id] = dict(cc_obj=cc_obj, container_id=container_id, ts_event=ts_event)
             container_entry = self._containers[container_id]
             if ts_event >= container_entry["ts_event"] or state == EE_STATE_TERMINATED:
+                # This is filled for every new container_entry
                 container_entry["ts_update"] = get_ion_ts_millis()
                 container_entry["ts_event"] = ts_event
                 container_entry["state"] = state
                 container_entry["ee_info"] = container_entry["cc_obj"].execution_engine_config
                 container_entry["ts_created"] = int(container_entry["cc_obj"].ts_created)
+                container_entry["allocation"] = {}
+                container_entry["dead_procs"] = {}
 
         if not self.preconditions_true.is_set():
             self.check_preconditions()
@@ -83,6 +86,35 @@ class ProcessDispatcherRegistry(object):
         for eng_cont_list in ee_infos.values():
             eng_cont_list.sort(key=lambda ci: ci["ts_created"])
         return ee_infos
+
+    def register_process(self, container_id, process_id, proc_info, update=True):
+        container_entry = self._containers.get(container_id, None)
+        if not container_entry:
+            log.warn("Container {} not registered".format(container_id))
+            return
+        was_unknown = False
+        new_state = (proc_info or {}).get("state", ProcessStateEnum.RUNNING)
+        DEAD_STATES = (ProcessStateEnum.TERMINATING, ProcessStateEnum.TERMINATED, ProcessStateEnum.FAILED,
+                       ProcessStateEnum.REJECTED, ProcessStateEnum.EXITED)
+        if new_state in DEAD_STATES:
+            if process_id not in container_entry["allocation"] and process_id not in container_entry["dead_procs"]:
+                proc_entry = dict(process_id=process_id, state=ProcessStateEnum.RUNNING)
+                container_entry["dead_procs"][process_id] = proc_entry
+                was_unknown = True
+            elif process_id in container_entry["allocation"]:
+                dead_proc = container_entry["allocation"].pop(process_id)
+                container_entry["dead_procs"][process_id] = dead_proc
+
+            if proc_info and (update or was_unknown) and process_id in container_entry["dead_procs"]:
+                container_entry["dead_procs"][process_id].update(proc_info)
+        else:
+            if process_id not in container_entry["allocation"] and process_id not in container_entry["dead_procs"]:
+                proc_entry = dict(process_id=process_id, state=ProcessStateEnum.RUNNING)
+                container_entry["allocation"][process_id] = proc_entry
+                was_unknown = True
+
+            if proc_info and (update or was_unknown) and process_id in container_entry["allocation"]:
+                container_entry["allocation"][process_id].update(proc_info)
 
     def check_preconditions(self):
         if self.preconditions_true.is_set():
@@ -123,7 +155,7 @@ class ProcessDispatcherAggregator(object):
         self.sub_cont.get_ready_event().wait()
 
         self.evt_sub = EventSubscriber(event_type=OT.ContainerLifecycleEvent, callback=self._receive_event)
-        self.evt_sub.add_event_subscription(event_type=OT.ProcessLifecycleEvent, origin_type="PD")
+        self.evt_sub.add_event_subscription(event_type=OT.ProcessLifecycleEvent)
         self.evt_sub_gl = spawn(self.evt_sub.listen)
         self.evt_sub.get_ready_event().wait()
 
@@ -162,4 +194,6 @@ class ProcessDispatcherAggregator(object):
                 self.registry.register_container(event.origin, event.ts_created, EE_STATE_TERMINATED, {})
 
         elif isinstance(event, ProcessLifecycleEvent):
-            pass
+            proc_info = dict(state=event.state, proc_type=event.process_type, proc_name=event.process_name,
+                             resource_id=event.process_resource_id, service_name=event.service_name)
+            self.registry.register_process(event.container_id, event.origin, proc_info)

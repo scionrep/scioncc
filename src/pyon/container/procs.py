@@ -34,9 +34,11 @@ from pyon.core import (PROCTYPE_SERVICE, PROCTYPE_AGENT, PROCTYPE_IMMEDIATE, PRO
                        PROCTYPE_STREAMPROC)
 from pyon.core.bootstrap import CFG
 from pyon.core.exception import ContainerConfigError, BadRequest, NotFound
+from pyon.core.thread import ThreadManager
 from pyon.ion.endpoint import ProcessRPCServer
+from pyon.ion.event import EventPublisher
 from pyon.ion.process import IonProcessThreadManager, IonProcessError
-from pyon.ion.resource import RT, PRED
+from pyon.ion.resource import OT, PRED, RT
 from pyon.ion.service import BaseService
 from pyon.ion.stream import StreamPublisher, StreamSubscriber
 from pyon.net.messaging import IDPool
@@ -68,11 +70,18 @@ class ProcManager(object):
         self.ee_cfg = self._get_execution_engine_config()
 
         # Process dispatcher (if configured/enabled and not a child container process)
-        self.pd_cfg = CFG.get_safe("container.process_dispatcher") or {}
+        self.pd_cfg = CFG.get_safe("service.process_dispatcher") or {}
         self.pd_enabled = self.pd_cfg.get("enabled", False) is True and not self.ee_cfg["container"]["is_child"]
         self.pd_core = None
 
-        # The pyon worker process supervisor
+        self.event_pub = EventPublisher()
+        self.publish_events = CFG.get_safe("container.process.publish_events") is True
+
+        # Passive manager for simple threads/greenlets, to keep them registered (these are not OS threads)
+        # Note that each ION process has its own thread manager, so this is for container level threads
+        self.thread_manager = ThreadManager(heartbeat_secs=None, failure_notify_callback=None)
+
+        # Active supervisor for ION processes
         self.proc_sup = IonProcessThreadManager(heartbeat_secs=CFG.get_safe("container.timeout.heartbeat"),
                                                 failure_notify_callback=self._spawned_proc_failed)
 
@@ -216,6 +225,7 @@ class ProcManager(object):
         process_instance = None
 
         # alert we have a spawning process, but we don't have the instance yet, so give the class instead (more accurate than name)
+        # Note: this uses a str as first argument instead of a process instance
         self._call_proc_state_changed("%s.%s" % (module, cls), ProcessStateEnum.PENDING)
 
         try:
@@ -429,6 +439,10 @@ class ProcManager(object):
         #log.debug("Proc State Changed (%s): %s", ProcessStateEnum._str_map.get(state, state), svc)
         for cb in self._proc_state_change_callbacks:
             cb(svc, state, self.container)
+
+        # Trigger event
+        if self.publish_events:
+            self._publish_process_event(svc, state)
 
     def _create_listening_endpoint(self, **kwargs):
         """
@@ -644,7 +658,7 @@ class ProcManager(object):
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
 
         # Private PID listener
-        pid_listener_xo = self.container.create_process_xn(process_instance.id)
+        pid_listener_xo = self.container.create_process_xn(process_instance.id, auto_delete=True)
         rsvc = self._create_listening_endpoint(node=self.container.node,
                                                from_name=pid_listener_xo,
                                                process=process_instance)
@@ -1004,6 +1018,26 @@ class ProcManager(object):
             del self.procs_by_name[process_instance._proc_name]
         else:
             log.warn("Process name %s not in local registry", process_instance.name)
+
+
+    def _publish_process_event(self, proc_inst, state):
+        sub_type = ProcessStateEnum._str_map.get(state, state)
+        if isinstance(proc_inst, basestring):
+            # self.event_pub.publish_event(event_type=OT.ProcessLifecycleEvent,
+            #         origin=proc_inst, origin_type=RT.Process, sub_type=sub_type,
+            #         state=state,
+            #         container_id=self.container.id,
+            #         process_type="", process_name=proc_inst,
+            #         process_resource_id="", service_name="")
+            # This is a PENDING process without process_id
+            pass
+        else:
+            self.event_pub.publish_event(event_type=OT.ProcessLifecycleEvent,
+                    origin=proc_inst.id, origin_type=RT.Process, sub_type=sub_type,
+                    state=state,
+                    container_id=self.container.id,
+                    process_type=proc_inst._proc_type, process_name=proc_inst._proc_name,
+                    process_resource_id=proc_inst._proc_res_id, service_name=proc_inst.name or "")
 
     # -----------------------------------------------------------------
 

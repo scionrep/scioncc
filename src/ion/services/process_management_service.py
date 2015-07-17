@@ -14,7 +14,7 @@ class ProcessManagementService(BaseProcessManagementService):
 
     def on_init(self):
         self.rr = self.clients.resource_registry
-        self.pd_client = ProcessDispatcherClient(self.container, CFG.get_safe("container.process_dispatcher", {}))
+        self.pd_client = ProcessDispatcherClient(self.container, CFG.get_safe("service.process_dispatcher", {}))
 
     # -------------------------------------------------------------------------
 
