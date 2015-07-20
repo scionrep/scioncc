@@ -658,7 +658,8 @@ class ProcManager(object):
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
 
         # Private PID listener
-        pid_listener_xo = self.container.create_process_xn(process_instance.id, auto_delete=True)
+        #pid_listener_xo = self.container.create_process_xn(process_instance.id, auto_delete=True)
+        pid_listener_xo = self.container.create_process_xn(process_instance.id)
         rsvc = self._create_listening_endpoint(node=self.container.node,
                                                from_name=pid_listener_xo,
                                                process=process_instance)
@@ -1032,13 +1033,17 @@ class ProcManager(object):
             # This is a PENDING process without process_id
             pass
         else:
-            self.event_pub.publish_event(event_type=OT.ProcessLifecycleEvent,
-                    origin=proc_inst.id, origin_type=RT.Process, sub_type=sub_type,
-                    state=state,
-                    container_id=self.container.id,
-                    process_type=proc_inst._proc_type, process_name=proc_inst._proc_name,
-                    process_resource_id=proc_inst._proc_res_id, service_name=proc_inst.name or "")
-
+            try:
+                self.event_pub.publish_event(event_type=OT.ProcessLifecycleEvent,
+                        origin=getattr(proc_inst, "id", "PD"), origin_type=RT.Process, sub_type=sub_type,
+                        state=state,
+                        container_id=self.container.id,
+                        process_type=getattr(proc_inst, "_proc_type", ""),
+                        process_name=getattr(proc_inst, "_proc_name", ""),
+                        process_resource_id=getattr(proc_inst, "_proc_res_id", ""),
+                        service_name=getattr(proc_inst, "name", ""))
+            except Exception:
+                log.exception("Could not publish process event")
     # -----------------------------------------------------------------
 
     def _start_process_dispatcher(self):
