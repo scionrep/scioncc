@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-"""Unit test base class and utils"""
+""" Unit test base class and utils """
 
 from copy import deepcopy
 from mock import Mock, mocksignature, patch, DEFAULT
@@ -93,21 +93,7 @@ class UnitTestCase(unittest.TestCase):
                 setattr(mock_service, func_name, mock_func)
         return clients
 
-    # # Assuming your service is the only subclass of the Base Service
-    # def test_verify_service(self):
-    #     if not getattr(self, 'base_service', None):
-    #         raise unittest.SkipTest('Not implementing an Ion Service')
-    #     from zope.interface.verify import verifyClass
-    #     base_service = self.base_service
-    #     implemented_service = base_service.__subclasses__()[0]
-    #     iface = list(implementedBy(base_service))[0]
-    #     verifyClass(iface, implemented_service)
-    #     # Check if defined functions in Base Service are all implemented
-    #     difference = set(func_names(base_service)) - set(func_names(implemented_service)) - set(['__init__'])
-    #     if difference:
-    #         self.fail('Following function declarations in %s do not exist in %s : %s' %
-    #                 (iface, implemented_service,
-    #                     list(difference)))
+    # -------------------------------------------------------------------------
 
     def _breakpoint(self, scope=None, global_scope=None):
         from pyon.util.breakpoint import breakpoint
@@ -120,7 +106,7 @@ class UnitTestCase(unittest.TestCase):
         return DotDict(**cfg_clone)
 
     def patch_alt_cfg(self, cfg_obj_or_str, cfg_merge):
-        """Patches given CFG (DotDict) based on system CFG with given dict merged"""
+        """ Patches given CFG (DotDict) based on system CFG with given dict merged """
         alt_cfg = self._get_alt_cfg(cfg_merge)
         self.patch_cfg(cfg_obj_or_str, alt_cfg)
 
@@ -129,7 +115,7 @@ class UnitTestCase(unittest.TestCase):
         Helper method for patching the CFG (or any dict, but useful for patching CFG).
 
         This method exists because the decorator versions of patch/patch.dict do not function
-        until the test_ method is called - ie, when setUp is run, the patch hasn't occured yet.
+        until the test_ method is called - ie, when setUp is run, the patch hasn't occurred yet.
         Use this in your setUp method if you need to patch CFG and have stuff in setUp respect it.
 
         @param  cfg_obj_or_str  An actual ref to CFG or a string defining where to find it ie 'pyon.ion.exchange.CFG'

@@ -37,7 +37,7 @@ from pyon.util.config import Config
 from pyon.util.containers import get_default_container_id, DotDict, named_any, dict_merge, get_ion_ts
 from pyon.util.log import log
 from pyon.util.context import LocalContextMixin
-from pyon.util.greenlet_plugin import GreenletLeak
+from pyon.util.testing.greenlet_plugin import GreenletLeak
 from pyon.util.file_sys import FileSystem
 
 from interface.objects import ContainerStateEnum
@@ -304,7 +304,7 @@ class Container(BaseContainerAgent):
                                              sub_type="TERMINATE",
                                              state=ContainerStateEnum.TERMINATE)
             except Exception as ex:
-                log.exception(ex)
+                log.exception("Error sending event")
 
         while self._capabilities:
             capability = self._capabilities.pop()

@@ -54,8 +54,8 @@ setup(  name='scioncc',
         },
         entry_points={
              'nose.plugins.0.10': [
-                 'timer_plugin=pyon.util.timer_plugin:TestTimer',
-                 'greenletleak=pyon.util.greenlet_plugin:GreenletLeak',
+                 'timer_plugin=pyon.util.testing.timer_plugin:TestTimer',
+                 'greenletleak=pyon.util.testing.greenlet_plugin:GreenletLeak',
                  'gevent_profiler=pyon.util.testing.nose_gevent_profiler:TestGeventProfiler',
              ],
             'console_scripts': [

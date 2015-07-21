@@ -658,8 +658,7 @@ class ProcManager(object):
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
 
         # Private PID listener
-        #pid_listener_xo = self.container.create_process_xn(process_instance.id, auto_delete=True)
-        pid_listener_xo = self.container.create_process_xn(process_instance.id)
+        pid_listener_xo = self.container.create_process_xn(process_instance.id, auto_delete=True)
         rsvc = self._create_listening_endpoint(node=self.container.node,
                                                from_name=pid_listener_xo,
                                                process=process_instance)

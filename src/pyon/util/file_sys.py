@@ -1,8 +1,6 @@
-"""
-@author Luke Campbell
-@file pyon/util/file_sys.py
-@description Utility for managing relative file system paths
-"""
+""" Utility for managing relative file system paths """
+
+__author__ = "Luke Campbell"
 
 import errno
 import StringIO
@@ -12,16 +10,17 @@ import os
 import re
 import random
 import string
+
+from pyon.core.bootstrap import CFG as bootcfg, get_sys_name
 from pyon.util.log import log
 from pyon.util.containers import DotDict
-from pyon.core.bootstrap import CFG as bootcfg, get_sys_name
 
 
 class FileSystemError(Exception):
-    '''
+    """
     Client filesystem request failed
     Does this seem wrong to anyone else?!
-    '''
+    """
     status_code = 411
     def get_status_code(self):
         return self.status_code
@@ -35,8 +34,8 @@ class FileSystemError(Exception):
 
 class FileSystem(object):
     # These are static, and shared throughout the container, do not operate on a per-instance basis.
-    FS_DIRECTORY_LIST = ['RESOURCE','TEMP','LIBRARY','CACHE','RUN','USERS','LOG','FILESTORE']
-    FS_DIRECTORY = DotDict(zip(FS_DIRECTORY_LIST,FS_DIRECTORY_LIST))
+    FS_DIRECTORY_LIST = ['RESOURCE', 'TEMP', 'LIBRARY', 'CACHE', 'RUN', 'USERS', 'LOG', 'FILESTORE']
+    FS_DIRECTORY = DotDict(zip(FS_DIRECTORY_LIST, FS_DIRECTORY_LIST))
 
     FS = DotDict(zip(FS_DIRECTORY_LIST, FS_DIRECTORY_LIST))
     root = ''
@@ -60,8 +59,8 @@ class FileSystem(object):
         if not FileSystem.root:
             FileSystem.root = os.path.join(CFG.get_safe('container.filesystem.root', '/tmp/scion'), get_sys_name())
 
-        for k,v in FileSystem.FS_DIRECTORY.iteritems():
-            s = v.lower() # Lower case string
+        for k, v in FileSystem.FS_DIRECTORY.iteritems():
+            s = v.lower()  # Lower case string
             conf = CFG.get_safe('container.filesystem.%s' % s, None)
             if conf:
                 FileSystem.FS_DIRECTORY[k] = conf
@@ -85,7 +84,7 @@ class FileSystem(object):
     @staticmethod
     def get(path):
         if path.startswith('/'): # Like it should
-            path = path[1:] # Strip the begining /
+            path = path[1:]  # Strip the beginning /
         # Determine root
         tree = path.split('/')
         if tree[0].upper() not in FS:
@@ -152,7 +151,6 @@ class FileSystem(object):
         if path in black_list:
             return False
 
-
         return True
 
 
@@ -168,7 +166,7 @@ class FileSystem(object):
         return ret[:64]
 
     @classmethod
-    def get_url(cls,fs, filename, ext=''):
+    def get_url(cls, fs, filename, ext=''):
         """
         @param fs The file system enumeration for the resource where this file belongs. 'TEMP', 'LIBRARY' etc.
         @param file The filename to be used
@@ -180,7 +178,7 @@ class FileSystem(object):
         return path
 
     @classmethod
-    def get_hierarchical_url(cls,fs, filename, ext=''):
+    def get_hierarchical_url(cls, fs, filename, ext=''):
         """
         @param fs The file system enumeration for the resource where this file belongs. 'TEMP', 'LIBRARY' etc.
         @param file The filename to be turned into a path and name
@@ -193,24 +191,19 @@ class FileSystem(object):
             return os.path.join(FS_DIRECTORY[fs], '%s%s' % (clean_name, ext))
 
         else:
-
             path = os.path.join(FS_DIRECTORY[fs], "%s/%s" % (clean_name[0:2], clean_name[2:4]))
-
             cls.__makedirs(path)
 
             return os.path.join(path, '%s%s' % (clean_name[4:], ext))
 
     @classmethod
-    def get_extended_url(cls,path):
+    def get_extended_url(cls, path):
         if ':' in path:
             s = path.split(':')
             base = FileSystem.FS_DIRECTORY[s[0]]
             path = os.path.join(base, s[1])
             cls.__makedirs(path)
         return path
-
-
-
 
     @staticmethod
     def mktemp(filename='', ext=''):
@@ -221,10 +214,10 @@ class FileSystem(object):
         @return an open file to the desired temporary file
         """
         if filename:
-            return open(FileSystem.get_url(fs=FS.TEMP,filename=filename,ext=ext),'w+b')
+            return open(FileSystem.get_url(fs=FS.TEMP, filename=filename, ext=ext), 'w+b')
         else:
             rand_str = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(24))
-            return open(FileSystem.get_url(fs=FS.TEMP,filename=rand_str), 'w+b')
+            return open(FileSystem.get_url(fs=FS.TEMP, filename=rand_str), 'w+b')
 
     # This needs some work getting this right in the mean-time use mktemp its ok....
 
@@ -288,7 +281,7 @@ class AtomicFile(object):
     This is ideal for threads, concurrency, crashes and saving state.
 
     """
-    def __init__(self,fname):
+    def __init__(self, fname):
         self.filename = fname
         self.file = FileSystem.mktemp()
 

@@ -208,12 +208,11 @@ def main(opts, *args, **kwargs):
             new_sysname = bootstrap_config.get_safe("system.name")
             bootstrap.set_sys_name(new_sysname)
 
-        # Delete sysname datastores if option "force_clean" is set
+        # Force_clean - deletes sysname datastores
         if opts.force_clean:
             from pyon.datastore import clear_db_util
             log.info("force_clean=True. DROP DATASTORES for sysname=%s", bootstrap.get_sys_name())
             clear_db_util.clear_db(bootstrap_config, prefix=bootstrap.get_sys_name(), sysname=bootstrap.get_sys_name())
-            pyon_config.container.filesystem.force_clean=True
 
         from pyon.core.interfaces.interfaces import InterfaceAdmin
         iadm = InterfaceAdmin(bootstrap.get_sys_name(), config=bootstrap_config)

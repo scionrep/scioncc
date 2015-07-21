@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-"""Integration test base class and utils"""
+""" Integration test base class and utils """
 
 from mock import patch
 from unittest import SkipTest
 import unittest
 from copy import deepcopy
+import os
 from gevent import greenlet, spawn
 
 from pyon.container.cc import Container
@@ -14,7 +15,6 @@ from pyon.core.bootstrap import bootstrap_pyon, CFG
 from pyon.core.interfaces.interfaces import InterfaceAdmin
 from pyon.util.containers import DotDict, dict_merge
 from pyon.util.log import log
-from pyon.util.file_sys import FileSystem
 
 
 def pre_initialize_ion():
@@ -26,7 +26,8 @@ def pre_initialize_ion():
     iadm.store_interfaces(idempotent=True)
     iadm.close()
 
-# This is the only place where code is executed once before any integration test is run.
+# STATIC INITIALIZATION (called from below)
+# This code is executed once before any integration test is run.
 def initialize_ion_int_tests():
     # Bootstrap pyon CFG, logging and object/resource interfaces
     bootstrap_pyon()
@@ -38,7 +39,6 @@ def initialize_ion_int_tests():
 class IntegrationTestCase(unittest.TestCase):
     """
     Base test class to allow operations such as starting the container
-    TODO: Integrate with IonUnitTestCase
     """
     SkipTest = SkipTest
 
@@ -54,42 +54,73 @@ class IntegrationTestCase(unittest.TestCase):
         return "%s ( %s )" % (name[-1], '.'.join(name[:-2]) + ":" + '.'.join(name[-2:]))
     __str__ = __repr__
 
-
     def run(self, result=None):
         unittest.TestCase.run(self, result)
 
     def _start_container(self):
-        # hack to force queue auto delete on for int tests
-        self._turn_on_queue_auto_delete()
-        self._patch_out_diediedie()
         self._patch_out_fail_fast_kill()
 
-        bootstrap.testing_fast = True
-
-        # We cannot live without pre-initialized datastores and resource objects
+        # Tests cannot run without pre-initialized datastores and resource objects
         pre_initialize_ion()
-
-        # hack to force_clean on filesystem
-        try:
-            CFG['container']['filesystem']['force_clean'] = True
-        except KeyError:
-            CFG['container']['filesystem'] = {}
-            CFG['container']['filesystem']['force_clean'] = True
 
         self.container = None
         self.addCleanup(self._stop_container)
         self.container = Container()
         self.container.start()
 
-        bootstrap.testing_fast = False
-
     def _stop_container(self):
-        bootstrap.testing_fast = True
         if self.container:
-            self.container.stop(do_exit=False)
+            try:
+                self.container.stop(do_exit=False)
+            except Exception:
+                log.exception("Error stopping container")
+            try:
+                if self.container and self.container.pidfile and os.path.exists(self.container.pidfile):
+                    os.remove(self.container.pidfile)
+            except Exception:
+                log.exception("Error removing container pidfile")
+
             self.container = None
-        self._force_clean()         # deletes only
-        bootstrap.testing_fast = False
+
+        self._force_clean()
+
+    def _patch_out_fail_fast_kill(self):
+        patcher = patch('pyon.container.cc.Container._kill_fast')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @classmethod
+    def _force_clean(cls, recreate=False, initial=False):
+        # Database resources
+        from pyon.core.bootstrap import get_sys_name, CFG
+        from pyon.datastore.datastore_common import DatastoreFactory
+        datastore = DatastoreFactory.get_datastore(config=CFG, variant=DatastoreFactory.DS_BASE, scope=get_sys_name())
+        if initial:
+            datastore._init_database(datastore.database)
+
+        dbs = datastore.list_datastores()
+        clean_prefix = '%s_' % get_sys_name().lower()
+        things_to_clean = [x for x in dbs if x.startswith(clean_prefix)]
+        try:
+            for thing in things_to_clean:
+                datastore.delete_datastore(datastore_name=thing)
+                if recreate:
+                    datastore.create_datastore(datastore_name=thing)
+
+        finally:
+            datastore.close()
+
+        # Broker resources
+        from putil.rabbitmq.rabbit_util import RabbitManagementUtil
+        rabbit_util = RabbitManagementUtil(CFG, sysname=bootstrap.get_sys_name())
+        deleted_exchanges, deleted_queues = rabbit_util.clean_by_sysname()
+        log.info("Deleted %s exchanges, %s queues" % (len(deleted_exchanges), len(deleted_queues)))
+
+        # File system
+        from pyon.util.file_sys import FileSystem
+        FileSystem._clean(CFG)
+
+    # -------------------------------------------------------------------------
 
     def _start_tracer_log(self, config=None):
         """Temporarily enables tracer log and configures it until end of test (cleanUp)"""
@@ -113,54 +144,6 @@ class IntegrationTestCase(unittest.TestCase):
         from pyon.util.breakpoint import breakpoint
         breakpoint(scope=scope, global_scope=global_scope)
 
-    def _turn_on_queue_auto_delete(self):
-        patcher = patch('pyon.net.channel.RecvChannel._queue_auto_delete', True)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    def _patch_out_diediedie(self):
-        """
-        If things are running slowly, diediedie will send a kill -9 to the owning process,
-        which could be the test runner! Let the test runner decide if it's time to die.
-        """
-        patcher = patch('pyon.core.thread.shutdown_or_die')
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    def _patch_out_start_rel(self):
-        def start_rel_from_url(*args, **kwargs):
-            return True
-
-        patcher = patch('pyon.container.apps.AppManager.start_rel_from_url', start_rel_from_url)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    def _patch_out_fail_fast_kill(self):
-        patcher = patch('pyon.container.cc.Container._kill_fast')
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    @classmethod
-    def _force_clean(cls, recreate=False, initial=False):
-        from pyon.core.bootstrap import get_sys_name, CFG
-        from pyon.datastore.datastore_common import DatastoreFactory
-        datastore = DatastoreFactory.get_datastore(config=CFG, variant=DatastoreFactory.DS_BASE, scope=get_sys_name())
-        if initial:
-            datastore._init_database(datastore.database)
-
-        dbs = datastore.list_datastores()
-        things_to_clean = filter(lambda x: x.startswith('%s_' % get_sys_name().lower()), dbs)
-        try:
-            for thing in things_to_clean:
-                datastore.delete_datastore(datastore_name=thing)
-                if recreate:
-                    datastore.create_datastore(datastore_name=thing)
-
-        finally:
-            datastore.close()
-
-        FileSystem._clean(CFG)
-
     @staticmethod
     def _get_alt_cfg(cfg_merge):
         cfg_clone = deepcopy(CFG)
@@ -168,7 +151,7 @@ class IntegrationTestCase(unittest.TestCase):
         return DotDict(**cfg_clone)
 
     def patch_alt_cfg(self, cfg_obj_or_str, cfg_merge):
-        """Patches given CFG (DotDict) based on system CFG with given dict merged"""
+        """ Patches given CFG (DotDict) based on system CFG with given dict merged """
         alt_cfg = self._get_alt_cfg(cfg_merge)
         self.patch_cfg(cfg_obj_or_str, alt_cfg)
 
@@ -177,7 +160,7 @@ class IntegrationTestCase(unittest.TestCase):
         Helper method for patching the CFG (or any dict, but useful for patching CFG).
 
         This method exists because the decorator versions of patch/patch.dict do not function
-        until the test_ method is called - ie, when setUp is run, the patch hasn't occured yet.
+        until the test_ method is called - ie, when setUp is run, the patch hasn't occurred yet.
         Use this in your setUp method if you need to patch CFG and have stuff in setUp respect it.
 
         @param  cfg_obj_or_str  An actual ref to CFG or a string defining where to find it ie 'pyon.ion.exchange.CFG'

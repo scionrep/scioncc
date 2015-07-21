@@ -314,7 +314,6 @@ class ThreadManager(object):
         """
         self._shutting_down = True
         self._shutdown_event.set(True)
-        #unset = shutdown_or_die(timeout)        # Failsafe in case the following doesn't work
         elapsed = self.join_children(timeout)
 
         #unset()
@@ -326,31 +325,3 @@ class PyonThreadManager(ThreadManager, PyonThread):
     A thread manager that runs in a thread and can spawn threads.
     """
     pass
-
-
-def shutdown_or_die(delay_sec=0):
-    """
-    Wait the given number of seconds and forcibly kill this OS process if it's still running.
-    """
-
-    def diediedie(*args):
-        pid = os.getpid()
-        log.warn("Container shutdown timeout. Send KILL signal (pid %d).", pid)
-        os.kill(pid, signal.SIGKILL)
-
-    def dontdie():
-        signal.alarm(0)
-
-    if delay_sec > 0:
-        try:
-            #old = signal.signal(signal.SIGALRM, diediedie)
-            signal.alarm(int(delay_sec))
-
-            #if old:
-            #    log.warn("shutdown_or_die found a previously registered ALARM and overrode it.")
-        except ValueError as ex:
-            log.error("Failed to set failsafe shutdown signal. This only works on UNIX platforms.")
-    else:
-        diediedie()
-
-    return dontdie
