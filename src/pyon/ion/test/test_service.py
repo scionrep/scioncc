@@ -4,16 +4,18 @@ __author__ = 'Adam R. Smith'
 
 import uuid
 
+from pyon.util.int_test import IonIntegrationTestCase
+
 from pyon.core.bootstrap import IonObject
 from pyon.core.exception import NotFound
 from pyon.ion.resource import RT
 from pyon.ion.service import BaseService
-from pyon.util.int_test import IonIntegrationTestCase
+from pyon.util.containers import DotDict
 
 
 class TestService(BaseService):
     name = 'test-service'
-    clients = IonObject(RT.Resource)
+    clients = DotDict()
 
 
 class ServiceTest(IonIntegrationTestCase):
@@ -23,7 +25,6 @@ class ServiceTest(IonIntegrationTestCase):
         self.rr = self.container.resource_registry
 
     def test_serve(self):
-        # TODO: Make an equivalent of R1's ServiceProcess
         srv = TestService()
         #srv.serve_forever()
 
