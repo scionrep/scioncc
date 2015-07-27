@@ -117,14 +117,11 @@ class BaseService(LocalContextMixin):
         resource registry. Additionally, checks type and returns the result object.
         Supports optional argument and subtypes. res_type can be a list of (sub)types.
         """
+        if optional and not resource_id:
+            return
         if not resource_id and not optional:
             raise BadRequest("Argument '%s': missing" % arg_name)
-        try:
-             resource_obj = self.clients.resource_registry.read(resource_id)
-        except NotFound:
-            if optional:
-                return
-            raise
+        resource_obj = self.clients.resource_registry.read(resource_id)
         if res_type:
             type_list = res_type
             if not hasattr(res_type, "__iter__"):

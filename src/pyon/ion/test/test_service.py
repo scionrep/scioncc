@@ -39,7 +39,9 @@ class ServiceTest(IonIntegrationTestCase):
         self.assertRaises(NotFound, srv._validate_resource_id, arg_name="_id",
                           resource_id="badId",
                           optional=False)
+        self.assertIsNone(srv._validate_resource_id("_id", "", optional=True))
+        self.assertIsNone(srv._validate_resource_id("_id", None, optional=True))
         newid2 = uuid.uuid4().hex
-        self.assertIsNone(srv._validate_resource_id("_id", newid2,
-                                                    optional=True))
+        with self.assertRaises(NotFound):
+            srv._validate_resource_id("_id", newid2, optional=True)
         self.rr.delete(rid1)
