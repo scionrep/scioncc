@@ -81,7 +81,7 @@ setup(  name='scioncc',
             'psycopg2==2.5.4',
             'numpy==1.9.1',
             'python-daemon==2.0.5',
-            'ipython==3.1.0',
+            'ipython==0.13.0',
             'readline==6.2.4.1',
             'ndg-xacml==0.5.1',        # For policy rule engine
             'requests==2.4.3',

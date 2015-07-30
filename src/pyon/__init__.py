@@ -31,7 +31,7 @@ if 'pydevd' in sys.modules:
 
     from gevent import monkey; monkey.patch_all()
     # Solve issue with SSL in Python 2.7.9
-    import _sslwrap_patch
+    from pyon.util import sslwrap_patch
     for modname, feats_backup in unmonkey_backup.iteritems():
         mod = __import__(modname)
         for name,impl in feats_backup.iteritems():
@@ -41,7 +41,7 @@ else:
 
     from gevent import monkey; monkey.patch_all()
     # Solve issue with SSL in Python 2.7.9
-    import _sslwrap_patch
+    from pyon.util import sslwrap_patch
 
 # Fix AttributeError("'_DummyThread' object has no attribute '_Thread__block'",) issue
 # http://stackoverflow.com/questions/13193278/understand-python-threading-bug
