@@ -225,7 +225,15 @@ class BootstrapExchange(BootstrapPlugin):
                     svc_queues.add(queue)
                     rem_queues.remove(queue)
 
+            # LOCAL RPC QUEUES
+            # pattern "<sysname>.<root_xs>.rpc_<uuid>"
+            if len(pieces) == 3:
+                if pieces[-1].startswith("rpc_"):
+                    rem_queues.remove(queue)
+
+
         # EMPTY LEFTOVER QUEUES - they are unaccounted for
+        # TODO - current container used queues, e.g. process_dispatcher
 
         for qn in rem_queues:
             if int(queues[qn]['consumers']) == 0:

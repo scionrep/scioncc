@@ -40,11 +40,12 @@ class BootstrapProcess(ImmediateProcess, BootstrapPlugin):
     def on_start(self):
         bootmode = self.CFG.get_safe("bootmode", "initial")
 
-        # TODO: Consider repair restart, hot restart, etc
-
         if bootmode == "initial":
             self.on_initial_bootstrap(self, self.CFG)
         elif bootmode == "restart":
             self.on_restart(self, self.CFG)
+        elif bootmode == "secondary":
+            # Basically ignore bootstrap actions if we are a non-primary system instance
+            pass
         else:
             raise Exception("Unknown bootmode: %s", bootmode)
