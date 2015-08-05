@@ -6,12 +6,14 @@ from uuid import uuid4
 import bcrypt
 
 #from pyon.core.security.authentication import Authentication
-from pyon.public import log, RT, OT, Inconsistent, NotFound, BadRequest, get_ion_ts_millis, get_ion_ts, Unauthorized
+from pyon.public import log, CFG, RT, OT, Inconsistent, NotFound, BadRequest
+from pyon.public import get_ion_ts_millis, get_ion_ts, Unauthorized
 
 from interface.objects import SecurityToken, TokenTypeEnum, Credentials, AuthStatusEnum
 
 from interface.services.core.iidentity_management_service import BaseIdentityManagementService
 
+CFG_PREFIX = 'service.identity_management'
 MAX_TOKEN_VALIDITY = 365*24*60*60
 
 
@@ -220,7 +222,8 @@ class IdentityManagementService(BaseIdentityManagementService):
         actor_id = self.find_actor_identity_by_username(username)
         actor = self.rr.read(actor_id)
 
-        actor.passwd_reset_token = self._create_token(actor_id=actor_id, validity=10,
+        validity = CFG.get_safe(CFG_PREFIX + '.password_token_validity', 60*60)
+        actor.passwd_reset_token = self._create_token(actor_id=actor_id, validity=validity,
                                                       token_type=TokenTypeEnum.ACTOR_RESET_PASSWD)
         self.rr.update(actor)
 
