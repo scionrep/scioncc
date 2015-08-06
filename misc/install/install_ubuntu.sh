@@ -1,16 +1,20 @@
 #!/bin/bash
 
-# Update packages
+# Update/upgrade packages
 sudo apt-get update
+#sudo apt-get upgrade -y
 
-# Dependencies for Python and packages
-sudo apt-get install -y --no-install-recommends git git-core vim build-essential
+# Common dev packages
+sudo apt-get install -y git git-core vim build-essential
 
-sudo apt-get install -y --no-install-recommends python-pip python-virtualenv virtualenvwrapper python2.7 python2.7-dev python python-all-dev
+# Dependencies for Python
+sudo apt-get install -y python-pip python-virtualenv virtualenvwrapper python2.7 python2.7-dev python python-all-dev
 
-sudo apt-get install -y --no-install-recommends libev-dev libffi-dev libpq-dev libxml2-dev libxslt1-dev libzmq-dev ncurses-dev swig
+# Dependencies for Python common libraries
+sudo apt-get install -y libev-dev libffi-dev libpq-dev libxml2-dev libxslt1-dev libzmq-dev ncurses-dev swig
 
-sudo apt-get install -y --no-install-recommends libgeos-dev libgdal-doc
+# Dependencies for Python geospatial libraries
+sudo apt-get install -y libgeos-dev libgdal-dev gdal-bin libspatialindex-dev
 
 # Dependencies for ant / Java
 sudo apt-get install -y ant ant-optional
@@ -25,12 +29,5 @@ sudo sh -c "echo 'deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main'
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 sudo apt-get update
 
-sudo apt-get install -y postgresql postgresql-contrib
-sudo apt-get install -y postgis
-sudo apt-get install -y postgresql-9.4-postgis-2.1
-sudo apt-get install -y postgresql-server-dev-9.4
-sudo apt-get install -y postgresql-plpython-9.4
-sudo apt-get install -y postgresql-9.4-plv8
-
-sudo apt-get update
-#sudo apt-get upgrade -y
+sudo apt-get install -y postgresql postgresql-contrib postgis postgresql-9.4-postgis-2.1 postgresql-server-dev-9.4
+sudo apt-get install -y postgresql-plpython-9.4 postgresql-9.4-plv8

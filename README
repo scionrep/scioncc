@@ -30,7 +30,8 @@ services for a variety of applications, including scientific observation,
 data streaming and signal processing.
 
 SciON provides a message-driven, service-oriented scalable application
-deployment platform that can be extended to meet custom needs.
+deployment platform with REST API gateway that can be extended to meet
+custom needs.
 
 Based on the Ocean Observatories Initiative Cyberinfrastructure, see
 https://github.com/ooici/pyon and https://github.com/ooici/coi-services
@@ -64,10 +65,15 @@ See file INSTALL for details.
 CONFIGURE
 =========
 
-Provide local configuration (e.g. host names, passwords, log levels) in:
-    > res/config/pyon.local.yml
-    > res/config/logging.local.yml
-    Note: You can copy from res/config/examples. DO NOT EDIT the provided config files.
+Provide local configuration (e.g. host names, passwords) in:
+    ./res/config/pyon.local.yml
+    Note: additional override config can be provided via the bin/pycc command line
+
+Note: You can copy from res/config/examples. DO NOT EDIT the provided config files.
+
+Provide logging override configuration for loggers by module in:
+    ./res/config/logging.local.yml
+    Note: additional override logging config can be provided via the command line
 
 
 USAGE
@@ -139,6 +145,9 @@ Database inspection using psql tool (example):
 Using IPython with buildout:
     > bin/ipython
 
+To get a trace of concurrent greenlets in the container (replace pid with container's pid):
+    > kill -SIGUSR2 pid
+
 
 TEST
 ====
@@ -165,16 +174,16 @@ Code coverage.
     > bin/coverage html
 
 
-DEPLOYMENT
-==========
+PACKAGING AND DEPLOYMENT
+========================
 
 To create a distribution egg in ./dist:
-    > dist_version=`cat VERSION`
-    > swdist_key="~/.ssh/AgXAWSKey.pem"
     > ant clean
     > bin/generate_interfaces
     > bin/buildout setup . bdist_egg
-    > scp -i ${swdist_key} dist/scioncc-${dist_version}-py2.7.egg ubuntu@agproxdev.ddns.net:/home/ubuntu/html/swdist/releases
+
+To configure a ScionCC application as an Upstart daemon, read ./misc/deploy/deploy_ubuntu.txt
+    > sudo service scion start
 
 
 TROUBLESHOOTING
@@ -187,10 +196,10 @@ pyon.local.yml or logging.local.yml. Also try restarting RabbitMQ.
 
 If your code/tests fail unexpectedly when you have tried everything else, your build
 environment might be corrupted.
-    > check for bogus packages in virtualenv lssitepackages -al
-    > rm and recreate the virtualenv
-    > re-run bootstrap.py and buildout
-    > If you suspect an egg is bad, remove the suspected egg from the eggs/ dir. Re-run buildout.
+    - check for bogus packages in virtualenv lssitepackages -al
+    - rm and recreate the virtualenv
+    - re-run bootstrap.py and buildout
+    - If you suspect an egg is bad, remove the suspected egg from the eggs/ dir. Re-run buildout.
 
 
 DEBUG
@@ -201,10 +210,4 @@ are possible. Set the executable to bin/pycc (or bin/nosetests) and set the
 working directory to the git repository root. Use the -n option to avoid the
 interactive IPython shell--it does not work properly with the debugger.
 
-See DEVELOPMENT section for how configure PyCharm IDE.
-
-
-DOCKER USAGE
-============
-
-TBD
+See DEVELOPMENT section for how to configure PyCharm IDE.

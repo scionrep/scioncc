@@ -1,14 +1,10 @@
 Deployment instructions for Ubuntu:
 
 Prerequisites:
-    - Code repository in ~dev/scion (or change scripts)
-    - virtualenv scion existing in ~/.virtualenvs
-    - Virtualenvwrapper installed in /usr/share/virtualenvwrapper
+    - Create user scion
+    - Code repository in ~dev/scioncc (or change upstart config)
+    - virtualenv scion created in ~/.virtualenvs
 
-Copy init.d service
-    sudo cp initd_scion /etc/init.d/scion
-    sudo chmod +x /etc/init.d/scion
-
-Copy start and stop scripts into home directory
-    cp start_scion.sh stop_scion.sh ~/
-    chmod +x ~/start_scion.sh ~/stop_scion.sh
+Copy Ubuntu upstart service config
+    sudo cp etcinit_scion.conf /etc/init/scion.conf
+    sudo chmod +x /etc/init/scion.conf

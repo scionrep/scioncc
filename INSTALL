@@ -14,8 +14,9 @@ Use a fresh Ubuntu 14.04 VM with latest patches:
     > sudo apt-get upgrade -y
 
 Execute dependencies install script (from repo root dir - only if you are comfortable):
-    Make sure no errors occur. NOTE: PostgreSQL 9.3 works too
+    Make sure no errors occur.
     > sudo sh misc/install/install_ubuntu.sh
+    NOTE: PostgreSQL 9.3 can be installed if desired (manual steps)
 
 Set postgres superuser password and create users (replace xxxxx with a good password):
     > sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'xxxxx';"
@@ -23,11 +24,13 @@ Set postgres superuser password and create users (replace xxxxx with a good pass
     > sudo -u postgres psql -U postgres -d postgres -c "alter user ion with password 'xxxxx';"
 
 Configure postgres:
-    > sudo vim /etc/postgresql/9.4/main/pg_hba.conf
-    # For rule all (1 line), change peer to md5 to enable password login
+    # Allow password login for postgres user
+    > sudo sed -i "s/local   all             postgres                                peer/local   all             postgres                                md5/g" /etc/postgresql/9.4/main/pg_hba.conf
+    # If remote connection is required (Optional)
+    > sudo sed -i "s/#listen_addresses = 'localhost'/listen_addresses = 'localhost'/g" /etc/postgresql/9.4/main/postgresql.conf
     > sudo service postgresql restart
 
-Create virtualenv:
+Configure virtualenv:
     > cd
     > mkdir .virtualenvs
     > cat <<EOF >> .profile
@@ -36,6 +39,8 @@ Create virtualenv:
     source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
     EOF
     > source .profile
+
+    Note: virtualenvwrapper is not required
 
 
 MAC OS:
@@ -83,7 +88,6 @@ Troubleshooting Mac OS Python install (tested on Mac OS 10.9):
     > easy_install --upgrade pip stevedore setuptools virtualenv virtualenvwrapper
 
 
-
 COMMON INSTALLATION
 ===================
 
@@ -93,8 +97,13 @@ Configure git:
     > git config --global core.editor vim
 
 Setup a virtualenv to run the SciON capability container:
-    > mkvirtualenv --no-site-packages scion
-    > pip install setuptools --upgrade
+    > mkvirtualenv scion
+    Note: Alternatively without virtualenvwrapper:
+    > virtualenv scion
+    > source scion/bin/activate
+
+    > pip install --upgrade pip
+    > pip install --upgrade setuptools
 
 Clone scioncc (this repository) in your code directory:
     > cd code   # Whatever your code repository directory is
@@ -105,6 +114,10 @@ Use buildout to install the python package dependencies with:
     > python bootstrap.py -v 2.3.1
     > bin/buildout
 
+Optional: You can establish a buildout cache by adding
+    > mkdir -p ~/.buildout/eggs ~/.buildout/dlcache
+    > printf "[buildout]\neggs-directory=$HOME/.buildout/eggs\ndownload-cache=$HOME/.buildout/dlcache\n" > ~/.buildout/default.cfg
+
 Add current directory to PYTHONPATH (you can add this to your ~/.profile or
     bash_profile):
     > export PYTHONPATH=.
@@ -113,10 +126,6 @@ Generate service definition interfaces and abstract base classes:
     > bin/generate_interfaces
     Note: These will be placed in the interfaces/ subdirectory.
 
-Optional: You can establish a buildout cache by adding
-    > mkdir -p ~/.buildout/eggs ~/.buildout/dlcache
-    > printf "[buildout]\neggs-directory=$HOME/.buildout/eggs\ndownload-cache=$HOME/.buildout/dlcache\n" > ~/.buildout/default.cfg
-
 
 RUN-TIME DEPENDENCIES
 =====================
@@ -124,22 +133,25 @@ RUN-TIME DEPENDENCIES
 POSTGRESQL (DATABASE):
 
 Start postgresql (in a terminal or as a service) before starting the container or running tests:
-    MacOS:
-    > /usr/local/bin/postgres -D /usr/local/var/postgres
     Ubuntu Linux:
     > sudo service postgresql start
+    MacOS:
+    > /usr/local/bin/postgres -D /usr/local/var/postgres
 
 RABBITMQ (MESSAGE BROKER):
-    MacOS:
-    > rabbitmq-server
     Ubuntu Linux:
     > sudo service rabbitmq-server start
+    MacOS:
+    > rabbitmq-server
 
 
 DOCKER INSTALL
 ==============
 
 Currently experimental - docker images not regularly maintained.
+
+Dockerfiles for cc, postgres, rabbit containers are available here:
+    https://github.com/scionrep/docker-scion
 
 Install a recent docker on Ubuntu 14.04:
     See https://docs.docker.com/installation/ubuntulinux/
