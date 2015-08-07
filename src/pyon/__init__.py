@@ -29,7 +29,7 @@ if 'pydevd' in sys.modules:
         mod = __import__(modname)
         unmonkey_backup[modname] = dict((feat, getattr(mod, feat)) for feat in feats)
 
-    from gevent import monkey; monkey.patch_all()
+    from gevent import monkey; monkey.patch_all(subprocess=True)
     # Solve issue with SSL in Python 2.7.9
     from pyon.util import sslwrap_patch
     for modname, feats_backup in unmonkey_backup.iteritems():
@@ -39,7 +39,7 @@ if 'pydevd' in sys.modules:
 else:
     print "gevent monkey patching (all)"
 
-    from gevent import monkey; monkey.patch_all()
+    from gevent import monkey; monkey.patch_all(subprocess=True)
     # Solve issue with SSL in Python 2.7.9
     from pyon.util import sslwrap_patch
 
