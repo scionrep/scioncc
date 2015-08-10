@@ -72,15 +72,20 @@ class Preloader(object):
                 log.info("Skipping step %s" % step)
                 continue
             step_filename = "%s/%s.yml" % (os.path.dirname(filename), step)
-            self._execute_step(step_filename)
+            self._execute_step(step, step_filename, skip_steps)
 
-    def _execute_step(self, filename):
+    def _execute_step(self, step, filename, skip_steps):
         """Executes a preload step file"""
         with open(filename, "r") as f:
             step_yml = f.read()
         step_cfg = yaml.safe_load(step_yml)
         if not "preload_type" in step_cfg or step_cfg["preload_type"] != "actions":
             raise BadRequest("Invalid preload actions file")
+        if skip_steps and step_cfg.get("requires", ""):
+            if any([rs in skip_steps for rs in step_cfg["requires"].split(",")]):
+                log.info("Skipping step %s - required step was skipped" % step)
+                skip_steps.append(step)
+                return
 
         for action in step_cfg["actions"]:
             try:
