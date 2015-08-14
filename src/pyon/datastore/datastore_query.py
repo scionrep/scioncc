@@ -148,6 +148,11 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
     def get_query_arg(self, argname, default=None):
         return self.query["query_args"].get(argname, default)
 
+    def set_query_arg(self, argname, value):
+        if not argname or argname in ("id_only", "profile", "datastore", "ds_sub", "format", "limit", "skip"):
+            raise BadRequest("Invalid query arg")
+        self.query["query_args"][argname] = value
+
     def get_query(self):
         self.check_query(self.query)
         return self.query
@@ -377,6 +382,7 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
             qargs["id_only"] = id_only
 
     def set_query_parameters(self, params):
+        """ Sets a parameter value for substitution for a parameterized value """
         if not params:
             return
         self.query.setdefault("query_params", {}).update(params)

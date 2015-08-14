@@ -406,8 +406,8 @@ class PostgresPyonDataStore(PostgresDataStore):
         query_args.update(access_args)
         return query_clause
 
-    def _add_deleted_filter(self, tablename, ds_sub, query_clause, query_args, show_all=False):
-        if show_all:
+    def _add_deleted_filter(self, tablename, ds_sub, query_clause, query_args, with_deleted=False):
+        if with_deleted:
             return query_clause
         deleted_filter = ""
         if not ds_sub:
@@ -739,7 +739,7 @@ class PostgresPyonDataStore(PostgresDataStore):
         if self.profile == DataStore.DS_PROFILE.RESOURCES:
             pqb.where = self._add_deleted_filter(pqb.table_aliases[0], query_ds_sub,
                                                  pqb.where, pqb.values,
-                                                 show_all=query["query_args"].get("show_all", False))
+                                                 with_deleted=query["query_args"].get("with_deleted", False) is True)
 
         with self.pool.cursor(**self.cursor_args) as cur:
             exec_query = pqb.get_query()
