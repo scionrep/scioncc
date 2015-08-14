@@ -855,10 +855,53 @@ class TestResourceRegistry(IonIntegrationTestCase):
         assoc_objs = self.rr.find_associations(query=aq.get_query(), id_only=False)
         self.assertEquals(len(assoc_objs), 3)
 
-        #print assoc_objs
+        # --- Lifecycle state
 
-        #from pyon.util.breakpoint import breakpoint
-        #breakpoint()
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        self.rr.lcs_delete(res_by_name["ID2"])
+
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 1)
+
+        rq.set_query_arg("with_deleted", True)
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+        self.rr.undelete(res_by_name["ID2"])
+        rq = ResourceQuery()
+        rq.set_filter(rq.filter_type(RT.TestInstrument))
+        res_obj = self.rr.find_resources_ext(query=rq.get_query(), id_only=False)
+        self.assertEquals(len(res_obj), 2)
+
+
+        aq = AssociationQuery()
+        aq.set_filter(aq.filter_subject(res_by_name["PD1"]))
+        assocs = self.rr.find_associations(query=aq.get_query())
+        self.assertEquals(len(assocs), 1)
+
+        self.rr.lcs_delete(res_by_name["ID1"])
+
+        aq = AssociationQuery()
+        aq.set_filter(aq.filter_subject(res_by_name["PD1"]))
+        assocs = self.rr.find_associations(query=aq.get_query())
+        self.assertEquals(len(assocs), 0)
+
+        aq.set_query_arg("with_deleted", True)
+        assocs = self.rr.find_associations(query=aq.get_query())
+        self.assertEquals(len(assocs), 1)
+
+        self.rr.undelete(res_by_name["ID1"], undelete_associations=True)
+
+        aq = AssociationQuery()
+        aq.set_filter(aq.filter_subject(res_by_name["PD1"]))
+        assocs = self.rr.find_associations(query=aq.get_query())
+        self.assertEquals(len(assocs), 1)
 
         # --- Clean up
 

@@ -111,7 +111,8 @@ class BaseService(LocalContextMixin):
         if not condition:
             raise BadRequest(errorstr)
 
-    def _validate_resource_id(self, arg_name, resource_id, res_type=None, optional=False, allow_subtype=True):
+    def _validate_resource_id(self, arg_name, resource_id, res_type=None, optional=False, allow_subtype=True,
+                              allow_deleted=False):
         """
         Check that the given argument is a resource id (string), by retrieving the resource from the
         resource registry. Additionally, checks type and returns the result object.
@@ -122,6 +123,8 @@ class BaseService(LocalContextMixin):
         if not resource_id and not optional:
             raise BadRequest("Argument '%s': missing" % arg_name)
         resource_obj = self.clients.resource_registry.read(resource_id)
+        if resource_obj.lcstate == "DELETED" and not allow_deleted:
+            raise NotFound("Object with id %s does not exist." % resource_id)
         if res_type:
             type_list = res_type
             if not hasattr(res_type, "__iter__"):

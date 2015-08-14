@@ -245,6 +245,29 @@ class ResourceRegistry(object):
                                          lcstate=res_obj.lcstate, availability=res_obj.availability,
                                          lcstate_before=old_state, availability_before=res_obj.availability)
 
+    def undelete(self, resource_id, new_lcstate=None, undelete_associations=False):
+        res_obj = self.read(resource_id)
+        if not new_lcstate:
+            lcsm = get_restype_lcsm(res_obj.type_)
+            new_lcstate = lcsm.initial_state if lcsm else LCS.DEPLOYED
+        if new_lcstate not in LCS:
+            raise BadRequest("Invalid lifecycle state")
+        if res_obj.lcstate != LCS.DELETED:
+            raise BadRequest("Resource is not DELETED")
+        res_obj.lcstate = new_lcstate
+        self.rr_store.update(res_obj)
+        log.info("undelete(res_id=%s). Undeleted resource to lcstate=%s", resource_id, new_lcstate)
+
+        if undelete_associations:
+            aq = AssociationQuery()
+            aq.set_filter(aq.filter_subject(resource_id), aq.filter_object(resource_id), or_filters=True)
+            aq.set_query_arg("with_deleted", True)
+            assocs = self.find_associations(query=aq.get_query(), id_only=False)
+            for assoc in assocs:
+                assoc.retired = False
+            if assocs:
+                self.rr_store.update_mult(assocs)
+                log.info("undelete(res_id=%s). Undeleted %s associations", resource_id, len(assocs))
 
     def execute_lifecycle_transition(self, resource_id='', transition_event=''):
         if transition_event == LCE.DELETE:
