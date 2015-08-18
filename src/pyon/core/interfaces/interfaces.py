@@ -12,6 +12,7 @@ from pyon.core.path import list_files_recursive
 from pyon.datastore.datastore_common import DatastoreFactory
 from pyon.ion.directory_standalone import DirectoryStandalone
 from pyon.ion.resregistry_standalone import ResourceRegistryStandalone
+from pyon.util.containers import get_safe
 from pyon.util.log import log
 
 
@@ -44,10 +45,13 @@ class InterfaceAdmin:
     def set_config(self, config):
         self.config = config
 
+    def system_data_exists(self):
+        """ Returns True if there is persistent system data in the database - this may be a restart. """
+        actors = self.rr.find_by_type("ActorIdentity", id_only=True, limit=1)
+        return bool(actors)
+
     def create_core_datastores(self):
-        """
-        Create core datastores, so that they exist when containers start concurrently.
-        """
+        """ Create core datastores, so that they exist when containers start concurrently. """
         ds = DatastoreFactory.get_datastore(config=self.config, scope=self.sysname, variant=DatastoreFactory.DS_BASE)
         datastores = [
             ('resources', 'RESOURCES'),
@@ -78,12 +82,13 @@ class InterfaceAdmin:
         self.dir.register_safe("/", "System", description="System management information", create_only=True)
         self.dir.register_safe("/System", "Locks", description="System exclusive locks", create_only=True)
 
-        de = self.dir.lookup(self.DIR_CONFIG_PATH + "/CFG")
-        if de:
-            log.debug("store_interfaces: Updating system config in directory...")
-        else:
-            log.info("store_interfaces: Storing system config in directory...")
-        self.dir.register(self.DIR_CONFIG_PATH, "CFG", **deepcopy(system_cfg))
+        if get_safe(system_cfg, "bootstrap.store_config") is True:
+            de = self.dir.lookup(self.DIR_CONFIG_PATH + "/CFG")
+            if de:
+                log.debug("store_interfaces: Updating system config in directory...")
+            else:
+                log.info("store_interfaces: Storing system config in directory...")
+            self.dir.register(self.DIR_CONFIG_PATH, "CFG", **deepcopy(system_cfg))
 
     def store_interfaces(self, object_definition_file=None, service_definition_file=None, idempotent=True):
         """
@@ -228,12 +233,3 @@ class InterfaceAdmin:
         rabbit_util.declare_exchange("events")
         rabbit_util.declare_queue("events", "event_persister")
         rabbit_util.bind_queue("events", "event_persister", "#")
-
-        # Container broadcast boot queue
-        # This is so that the first PD will immediately learn about the existence of containers,
-        # and does not have to query datastore or wait for EEs to broadcast
-        # heartbeat_topic = self.config.get_safe("service.process_management.process_dispatcher.aggregator.container_topic", "bx_containers")
-        # heartbeat_topic_queue = heartbeat_topic + "_boot"
-        # rabbit_util.declare_exchange("")
-        # rabbit_util.declare_queue("", heartbeat_topic_queue)
-        # rabbit_util.bind_queue("", heartbeat_topic_queue, heartbeat_topic)

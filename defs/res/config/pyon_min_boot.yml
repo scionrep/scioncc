@@ -3,7 +3,9 @@
 # Note: override with pyon.local.yml and pycc command line args
 system:
   root_org: ION
-  auto_bootstrap: True
+
+bootstrap:
+  auto_store_interfaces: True
 
 server:
   couchdb:

@@ -22,12 +22,6 @@ system:
   # Global flag indicating debug mode to all processes
   debug: True
 
-  # Global flag that indicates if pycc programs should check on startup for
-  # the presence of persisted system config and interfaces. If not, create these.
-  # Use this in development only as this leads to race conditions with multiple
-  # concurrently starting containers, or execute bin/store_interfaces before.
-  auto_bootstrap: True
-
   # Global config for use of a Real SMTP server or a fake logging class
   # True is Real, False is fake
   smtp: False
@@ -43,6 +37,19 @@ system:
 # The "bootstrap" root entry defines settings for the system bootstrapping and
 # restart process.
 bootstrap:
+  # If True, the pycc program checks on startup for the presence of persisted system
+  # interfaces and otherwise create these.
+  # Warning: race conditions occur if more than once container starts concurrently.
+  # The alternative is to manually run "bin/store_interfaces" before
+  auto_store_interfaces: True
+
+  # If True, stores system config in directory under /Config/CFG
+  store_config: False
+
+  # Determines if the pycc program will detect a restart and set the bootmode automatically.
+  # Set to: auto (restart auto detect), secondary (no bootstrap), or empty (use args)
+  set_bootmode: auto
+
   # Path to policy initialization rule set (YML file)
   initial_policy_rules: res/config/policy/basic_policy_rules.yml
 

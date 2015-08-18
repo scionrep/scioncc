@@ -101,13 +101,13 @@ class Preloader(object):
         #log.debug("Preload action %s id=%s", action_type, action.get("id", ""))
         scope, func_type = action_type.split(":", 1)
         default_funcname = "_load_%s_%s" % (scope, func_type)
-        action_func = getattr(self.process, default_funcname, None)
+        action_func = getattr(self, default_funcname, None)
         if not action_func:
             action_funcname = self.preload_cfg["action_plugins"].get(action_type, {})
             if not action_funcname:
                 log.warn("Unknown action: %s", action_type)
                 return
-            action_func = getattr(self.process, action_funcname, None)
+            action_func = getattr(self, action_funcname, None)
             if not action_func:
                 log.warn("Action function %s not found for action %s", action_funcname, action_type)
                 return

@@ -11,7 +11,8 @@ from pyon.datastore import clear_db_util
 from pyon.ion.directory_standalone import DirectoryStandalone
 from pyon.ion.resregistry_standalone import ResourceRegistryStandalone
 
-@attr('INT',group='coi')
+
+@attr('INT', group='coi')
 class InterfaceAdminTest(IonIntegrationTestCase):
 
     def setUp(self):
@@ -27,7 +28,7 @@ class InterfaceAdminTest(IonIntegrationTestCase):
         self.iadm.store_config(ion_config)
 
         # Validate the CFG entries are stored in DB
-        entries = self.dir.lookup('/Config/CFG')
+        entries = self.dir.lookup('/System')
         self.assertTrue(entries)
 
     def test_store_interfaces(self):

@@ -4,7 +4,8 @@
 
 __author__ = 'Michael Meisinger'
 
-from pyon.public import log, iex, ImmediateProcess, RT
+from pyon.core.exception import ContainerConfigError
+from pyon.public import log, ImmediateProcess, RT
 
 
 class BootstrapPlugin(object):
@@ -28,8 +29,10 @@ class BootstrapPlugin(object):
         @retval  bool; if False, abort bootstrap and terminate launch
         """
 
+
 class AbortBootstrap(Exception):
     pass
+
 
 class BootstrapProcess(ImmediateProcess, BootstrapPlugin):
     """
@@ -48,4 +51,4 @@ class BootstrapProcess(ImmediateProcess, BootstrapPlugin):
             # Basically ignore bootstrap actions if we are a non-primary system instance
             pass
         else:
-            raise Exception("Unknown bootmode: %s", bootmode)
+            raise ContainerConfigError("Unknown bootmode: %s" % bootmode)

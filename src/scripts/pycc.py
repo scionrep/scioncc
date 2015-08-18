@@ -148,13 +148,14 @@ def main(opts, *args, **kwargs):
         In particular make sure configuration is loaded in correct order and
         pycc startup arguments are considered.
         """
-        # SIDE EFFECT: The import triggers static initializers: Monkey patching, setting pyon defaults
+        # SIDE EFFECT: The import triggers static initializers: Gevent monkey patching, setting pyon defaults
         import pyon
 
         import threading
         threading.current_thread().name = "CC-Main"
 
         from pyon.core import bootstrap, config
+        from pyon.util.containers import get_safe, dict_merge
 
         # Set global testing flag to False. We are running as capability container, because
         # we started through the pycc program.
@@ -217,17 +218,17 @@ def main(opts, *args, **kwargs):
         from pyon.core.interfaces.interfaces import InterfaceAdmin
         iadm = InterfaceAdmin(bootstrap.get_sys_name(), config=bootstrap_config)
 
-        # If auto_bootstrap, load config and interfaces into directory
-        # Note: this is idempotent and will not alter anything if this is not the first container to run
-        if bootstrap_config.system.auto_bootstrap:
-            log.debug("auto_bootstrap=True.")
+        # If auto_store_interfaces: ensure that all datastores exist and directory is prepared, with config
+        # WARNING: If multiple containers start concurrently, this may fail
+        if get_safe(bootstrap_config, "bootstrap.auto_store_interfaces") is True:
+            log.debug("auto_store_interfaces=True.")
             stored_config = deepcopy(pyon_config)
             config.apply_configuration(stored_config, config_override)
             config.apply_configuration(stored_config, command_line_config)
             iadm.create_core_datastores()
             iadm.store_config(stored_config)
 
-        # Determine the final pyon_config
+        # Determine the final pyon_config:
         # - Start from standard config already set (pyon.yml + local YML files)
         # - Optionally load config from directory
         if opts.config_from_directory:
@@ -241,12 +242,23 @@ def main(opts, *args, **kwargs):
         config.apply_configuration(pyon_config, command_line_config)
         iadm.set_config(pyon_config)
 
-        # Also set the immediate flag, but only if specified - it is an override
+        # Set the immediate flag when command line override specified
         if opts.immediate:
-            from pyon.util.containers import dict_merge
-            dict_merge(pyon_config, {'system': {'immediate': True}}, inplace=True)
+            dict_merge(pyon_config, {"system": {"immediate": True}}, inplace=True)
 
-        # Bootstrap pyon's core. Load configuration etc.
+        # Determine system bootmode for bootstrapping actions (unless explicitly specified)
+        if not pyon_config.get_safe("bootmode"):
+            set_bootmode = get_safe(pyon_config, "bootstrap.set_bootmode")
+            if set_bootmode == "auto":
+                if iadm.system_data_exists():
+                    dict_merge(pyon_config, {"bootmode": "restart"}, inplace=True)
+                log.info("System bootmode auto-detection is ON. Determined bootmode=%s", pyon_config.get_safe("bootmode", "initial"))
+            elif set_bootmode == "secondary":
+                dict_merge(pyon_config, {"bootmode": "secondary"}, inplace=True)
+                log.info("System bootmode override. Set to bootmode=%s", pyon_config.get_safe("bootmode", ""))
+        log.info("System in bootmode=%s", pyon_config.get_safe("bootmode", "initial"))
+
+        # Bootstrap the pyon framework's core. Load configuration etc.
         bootstrap.bootstrap_pyon(pyon_cfg=pyon_config)
 
         # Delete any queues/exchanges owned by sysname if option "broker_clean" is set
@@ -265,8 +277,8 @@ def main(opts, *args, **kwargs):
             from pyon.util.file_sys import FileSystem
             FileSystem._clean(pyon_config)
 
-        # Auto-bootstrap interfaces
-        if bootstrap_config.system.auto_bootstrap:
+        # If auto_store_interfaces (cont'd): Store interfaces if not yet existing; set up messaging
+        if get_safe(bootstrap_config, "bootstrap.auto_store_interfaces") is True:
             iadm.store_interfaces(idempotent=True)
             iadm.declare_core_exchange_resources()
 
