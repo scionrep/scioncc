@@ -84,13 +84,13 @@ setup(  name='scioncc',
             'ipython==0.13.0',
             'readline==6.2.4.1',
             'ndg-xacml==0.5.1',        # For policy rule engine
-            'requests==2.4.3',
+            'requests==2.5.3',
             'psutil==2.1.3',
             'Flask==0.10.1',
             'flask-socketio==0.4.1',
             'python-dateutil==2.4.2',
             'bcrypt==1.0.1',           # For password authentication
-            'lovely.buildouthttp==0.6.1',    # For buildout
+            'lovely.buildouthttp==0.6.1',    # For buildout (getting password protected eggs)
             'pyzmq==2.2.0',            # For IPython manhole
             'gevent_zeromq==0.2.5',
             'flask-oauthlib==0.9.1',
