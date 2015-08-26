@@ -79,7 +79,7 @@ setup(  name='scioncc',
             'httplib2==0.9.1',
             'zope.interface==4.1.1',
             'psycopg2==2.5.4',
-            'numpy==1.9.2',
+            'numpy==1.9.2   ',
             'python-daemon==2.0.5',
             'ipython==0.13.0',
             'readline==6.2.4.1',
@@ -88,7 +88,7 @@ setup(  name='scioncc',
             'psutil==2.1.3',
             'Flask==0.10.1',
             'flask-socketio==0.4.1',
-            'python-dateutil==2.2',
+            'python-dateutil==2.4.2',
             'bcrypt==1.0.1',           # For password authentication
             'lovely.buildouthttp==0.6.1',    # For buildout
             'pyzmq==2.2.0',            # For IPython manhole
