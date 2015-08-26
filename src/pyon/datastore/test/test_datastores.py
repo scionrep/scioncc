@@ -49,6 +49,9 @@ class TestDataStoreUnitTest(IonUnitTestCase):
         qb.build_query(where=qb.within_geom(qb.RA_GEOM_LOC,wkt,buf))
         self.assertEquals(qb.get_query()['where'], ['gop:within_geom', ('geom_loc', 'POINT(-72.0 40.0)', 0.1)])
 
+        qb = DatastoreQueryBuilder()
+        qb.build_query(where=qb.crosses_geom(qb.RA_GEOM_LOC,wkt,buf))
+        self.assertEquals(qb.get_query()['where'], ['gop:crosses_geom', ('geom_loc', 'POINT(-72.0 40.0)', 0.1)])
 
 @attr('INT', group='datastore')
 class TestDataStores(IonIntegrationTestCase):
