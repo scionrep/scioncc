@@ -27,6 +27,7 @@ class PostgresQueryBuilder(object):
               DQ.GOP_CONTAINS_BBOX: "~",
               DQ.GOP_WITHIN_BBOX: "@",
               DQ.GOP_OVERLAPS_GEOM: "ST_Intersects(%s,%s)",
+              DQ.GOP_CROSSES_GEOM: "ST_Crosses(%s,%s)",
               DQ.GOP_CONTAINS_GEOM: "ST_Contains(%s,%s)",
               DQ.GOP_WITHIN_GEOM: "ST_Within(%s,%s)",
               DQ.ROP_OVERLAPS_RANGE: "&&",
