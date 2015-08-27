@@ -60,6 +60,7 @@ class DatastoreQueryConst(object):
     GOP_WITHIN_GEOM = GOP_PREFIX + "within_geom"      # Find objects with geometry within given WKT geometry
     GOP_CONTAINS_GEOM = GOP_PREFIX + "contains_geom"  # Find objects with geometry containing given WKT geometry
     GOP_CROSSES_GEOM = GOP_PREFIX + "crosses_geom"  # Find objects with geometry crossing given WKT geometry
+    GOP_TOUCHES_GEOM = GOP_PREFIX + "touches_geom"  # Find objects with geometry touching given WKT geometry
 
     GOP_DISTANCE = GOP_PREFIX + "distance"            # Find objects with geometry distance relative to given point
 
@@ -343,6 +344,11 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
         self._check_col(col)
         colname = col.split(":", 1)[1]
         return self.op_expr(self.GOP_CROSSES_GEOM, colname, wkt, buf)
+
+    def touches_geom(self, col, wkt, buf):
+        self._check_col(col)
+        colname = col.split(":", 1)[1]
+        return self.op_expr(self.GOP_TOUCHES_GEOM, colname, wkt, buf)
 
     def within_geom(self, col, wkt, buf):
         self._check_col(col)
