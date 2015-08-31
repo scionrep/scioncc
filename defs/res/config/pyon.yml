@@ -169,6 +169,8 @@ container:
     publish_events: True          # Should the container publish ProcessLifecycleEvents?
     exit_once_empty: True         # Should the container exit once all spawned processes have been terminated?
     log_exceptions: False         # Should all RPC call invocation exceptions be logged?
+    log_dbstats: False            # Should all RPC call DB stats be logged?
+    warn_dbstmt_threshold: 0      # Warning threshold DB statements per RPC calls (0=off)
     max_replicas: 0               # Limit the number of process replicas to start per container (0 is unlimited)
     use_process_dispatcher: False # Should deploy files be sent to PD, or processed in local container?
     pd_command_queue: pd_command

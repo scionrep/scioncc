@@ -14,9 +14,10 @@ from pyon.core.bootstrap import CFG
 from pyon.core.exception import IonException, ContainerError
 from pyon.core.exception import Timeout as IonTimeout
 from pyon.core.thread import PyonThreadManager, PyonThread, ThreadManager, PyonThreadTraceback, PyonHeartbeatError
-from pyon.util.log import log
+from pyon.datastore.postgresql.pg_util import init_db_stats, get_db_stats, clear_db_stats
 from pyon.ion.service import BaseService
 from pyon.util.containers import get_ion_ts, get_ion_ts_millis
+from pyon.util.log import log
 
 STAT_INTERVAL_LENGTH = 60000  # Interval time for process saturation stats collection
 
@@ -87,6 +88,8 @@ class IonProcessThread(PyonThread):
         self._heartbeat_count   = 0                 # number of times this operation has been seen consecutively
 
         self._log_call_exception = CFG.get_safe("container.process.log_exceptions", False)
+        self._log_call_dbstats = CFG.get_safe("container.process.log_dbstats", False)
+        self._warn_call_dbstmt_threshold = CFG.get_safe("container.process.warn_dbstmt_threshold", 0)
         PyonThread.__init__(self, target=target, **kwargs)
 
     def heartbeat(self):
@@ -362,6 +365,7 @@ class IonProcessThread(PyonThread):
                 log.info("control_flow: attempting to process message that has been cancelled, ignore")
                 continue
 
+            init_db_stats()
             try:
                 # ******************************************************************
                 # ****** THIS IS WHERE THE RPC OPERATION/SERVICE CALL IS MADE ******
@@ -404,7 +408,18 @@ class IonProcessThread(PyonThread):
                     # have to raise something friendlier on the client side
                     calling_gl.kill(exception=ContainerError(str(exc)), block=False)
             finally:
-                self._compute_proc_stats(start_proc_time)
+                try:
+                    self._compute_proc_stats(start_proc_time)
+
+                    db_stats = get_db_stats()
+                    if db_stats:
+                        if self._warn_call_dbstmt_threshold > 0 and db_stats.get("stmt_total", 0) >= self._warn_call_dbstmt_threshold:
+                            log.warn("PROC_OP '%s.%s' EXCEEDED DB THRESHOLD. stats=%s", call.__module__, call.__name__, db_stats)
+                        elif self._log_call_dbstats:
+                            log.info("PROC_OP '%s.%s' DB STATS: %s", call.__module__, call.__name__, db_stats)
+                    clear_db_stats()
+                except Exception:
+                    log.exception("Error computing process call stats")
 
                 self._ctrl_current = None
 

@@ -2,7 +2,7 @@
 
 __author__ = 'Thomas R. Lennan, Michael Meisinger'
 
-
+import gevent
 from nose.plugins.attrib import attr
 from unittest import SkipTest
 from mock import Mock, patch, ANY
@@ -19,6 +19,7 @@ from pyon.ion.resource import RT, PRED, LCS, AS, lcstate, create_access_args
 from pyon.util.tracer import CallTracer
 
 from pyon.datastore.postgresql.datastore import PostgresPyonDataStore
+from pyon.datastore.postgresql.pg_util import init_db_stats, get_db_stats, clear_db_stats
 from pyon.datastore.datastore_query import DatastoreQueryBuilder
 
 import interface.objects
@@ -939,3 +940,61 @@ class TestDataStores(IonIntegrationTestCase):
 
         # Clean up
         self.data_store.delete_mult([plat1_obj_id, plat2_obj_id, plat3_obj_id, aid1_obj_id, dp1_obj_id])
+
+    def test_datastore_transactions(self):
+        data_store = self.ds_class(datastore_name='ion_test_ds', profile=DataStore.DS_PROFILE.RESOURCES, scope=get_sys_name())
+        # Just in case previous run failed without cleaning up, delete data store
+        try:
+            data_store.delete_datastore()
+        except NotFound:
+            pass
+        data_store.create_datastore()
+        self.data_store = data_store
+
+        init_db_stats()
+        try:
+            with data_store.in_transaction():
+                obj_id1, _ = data_store.create_doc(dict(foo="bar1"))
+                obj_id2, _ = data_store.create_doc(dict(foo="bar2"))
+                obj_id3, _ = data_store.create_doc(dict(foo="bar3"))
+
+                objs = data_store.read_mult([obj_id1, obj_id2, obj_id3])
+                self.assertEqual(set([obj_id1, obj_id2, obj_id3]), {o["_id"] for o in objs})
+                raise BadRequest("EXIT")
+        except BadRequest as br:
+            if br.message != "EXIT":
+                raise
+        objs = data_store.read_mult([obj_id1, obj_id2, obj_id3], strict=False)
+        self.assertEqual(objs, [None]*3)
+
+        with data_store.in_transaction():
+            obj_id1, _ = data_store.create_doc(dict(foo="bar4"))
+            obj_id2, _ = data_store.create_doc(dict(foo="bar5"))
+        objs = data_store.read_mult([obj_id1, obj_id2], strict=False)
+        self.assertEqual(set([obj_id1, obj_id2]), {o["_id"] for o in objs})
+
+        data_store.delete_mult([obj_id1, obj_id2])
+
+        db_stats = get_db_stats()
+        #print "STATS", db_stats
+        self.assertEqual(db_stats["stmt_select"], 3)
+        self.assertEqual(db_stats["stmt_nonsel"], 7)    # Note: delete_mult issues individual statements
+        self.assertEqual(db_stats["stmt_total"], 10)
+
+        clear_db_stats()
+
+        # TEST: Check 2 concurrent greenlets
+
+        def worker(num):
+            with data_store.in_transaction() as conn:
+                obj_id1, _ = data_store.create_doc(dict(foo="gevent1"+str(num)))
+                gevent.sleep(0.1)
+                obj_id2, _ = data_store.create_doc(dict(foo="gevent2"+str(num)))
+                gevent.sleep(0.1)
+                obj_id3, _ = data_store.create_doc(dict(foo="gevent2"+str(num)))
+                objs = data_store.read_mult([obj_id1, obj_id2, obj_id3])
+                self.assertEqual(set([obj_id1, obj_id2, obj_id3]), {o["_id"] for o in objs})
+                data_store.delete_mult([obj_id1, obj_id2, obj_id3])
+
+        gevent.joinall([gevent.spawn(worker, i) for i in xrange(3)])
+

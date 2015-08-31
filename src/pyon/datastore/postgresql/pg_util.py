@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Common utilities for PostgreSQL datastore. SIDE EFFECT: Gevent monkey patching"""
+""" Common utilities for PostgreSQL datastore. SIDE EFFECT: Gevent monkey patching """
 
 __author__ = 'Michael Meisinger'
 
@@ -8,9 +8,10 @@ import contextlib
 import gevent
 from gevent.queue import Queue
 from gevent.socket import wait_read, wait_write
-import time
 import sys
 import simplejson as json
+import time
+import threading
 
 try:
     import psycopg2
@@ -45,8 +46,12 @@ extensions.set_wait_callback(gevent_wait_callback)
 register_default_json(None, globally=True, loads=json.loads)
 
 
+# THREAD (GEVENT) LOCAL - Holds current transaction and per request stats
+db_context = threading.local()
+
+
 class DatabaseConnectionPool(object):
-    """Gevent compliant database connection pool"""
+    """ Gevent compliant database connection pool """
 
     def __init__(self, maxsize=100):
         if not isinstance(maxsize, (int, long)):
@@ -81,8 +86,12 @@ class DatabaseConnectionPool(object):
                 pass
 
     @contextlib.contextmanager
-    def connection(self, isolation_level=None):
+    def in_transaction(self, isolation_level=None):
+        trans_conn = getattr(db_context, "cur_transaction", None)
+        if trans_conn:
+            raise OperationalError("Already in a transaction context")
         conn = self.get()
+        db_context.cur_transaction = conn
         try:
             if isolation_level is not None:
                 if conn.isolation_level == isolation_level:
@@ -106,11 +115,43 @@ class DatabaseConnectionPool(object):
                 if isolation_level is not None:
                     conn.set_isolation_level(isolation_level)
                 self.put(conn)
+            db_context.cur_transaction = None
+
+    @contextlib.contextmanager
+    def connection(self, isolation_level=None):
+        trans_conn = getattr(db_context, "cur_transaction", None)
+        conn = trans_conn if trans_conn else self.get()
+        try:
+            if isolation_level is not None:
+                if conn.isolation_level == isolation_level:
+                    isolation_level = None
+                else:
+                    conn.set_isolation_level(isolation_level)
+            yield conn
+        except:
+            if conn.closed:
+                conn = None
+                self.closeall()
+            else:
+                conn = self._rollback(conn)
+            raise
+        else:
+            if conn.closed:
+                raise OperationalError("Cannot commit because connection was closed: %r" % (conn, ))
+            if not trans_conn:
+                conn.commit()
+        finally:
+            if conn is not None and not conn.closed:
+                if isolation_level is not None:
+                    conn.set_isolation_level(isolation_level)
+                if not trans_conn:
+                    self.put(conn)
 
     @contextlib.contextmanager
     def cursor(self, *args, **kwargs):
         isolation_level = kwargs.pop('isolation_level', None)
-        conn = self.get()
+        trans_conn = getattr(db_context, "cur_transaction", None)
+        conn = trans_conn if trans_conn else self.get()
         try:
             if isolation_level is not None:
                 if conn.isolation_level == isolation_level:
@@ -132,12 +173,14 @@ class DatabaseConnectionPool(object):
         else:
             if conn.closed:
                 raise OperationalError("Cannot commit because connection was closed: %r" % (conn, ))
-            conn.commit()
+            if not trans_conn:
+                conn.commit()
         finally:
             if conn is not None and not conn.closed:
                 if isolation_level is not None:
                     conn.set_isolation_level(isolation_level)
-                self.put(conn)
+                if not trans_conn:
+                    self.put(conn)
 
     def _rollback(self, conn):
         try:
@@ -209,6 +252,9 @@ def psycopg2_connect(dsn=None, *args, **kwargs):
         conn = psycopg2.connect(dsn, *args, **kwargs)
     return conn
 
+# Alias
+db_connect = psycopg2_connect
+
 
 class TracingConnection(_connection):
     """A connection that logs all queries to a file or logger__ object."""
@@ -239,8 +285,7 @@ class TracingCursor(_cursor):
             query_time = time.time() - t_begin
             return res
         finally:
-            if self._tracer:
-                self._log_call(self._tracer, trace_stmt=self._trace_stmt, query_time=query_time)
+            self._log_call(self._tracer, trace_stmt=self._trace_stmt, query_time=query_time)
 
     def callproc(self, procname, vars=None):
         query_time = 0
@@ -250,8 +295,7 @@ class TracingCursor(_cursor):
             query_time = time.time() - t_begin
             return res
         finally:
-            if self._tracer:
-                self._log_call(self._tracer, trace_stmt=self._trace_stmt, query_time=query_time)
+            self._log_call(self._tracer, trace_stmt=self._trace_stmt, query_time=query_time)
 
     def fetchall(self):
         query_time = 0
@@ -267,16 +311,32 @@ class TracingCursor(_cursor):
 
     def _log_call(self, tracer, trace_stmt=None, query_time=None):
         statement = trace_stmt or self.query
-        status = self.rowcount
-        log_entry = dict(
-            statement=statement,
-            status=status,
-        )
-        if query_time is not None:
-            log_entry["statement_time"] = query_time
-        tracer.log_call(log_entry, include_stack=True)
-        self._current_entry = log_entry
-        return log_entry
+
+        # Set stats
+        stats_obj = get_db_stats()
+        if stats_obj is not None:
+            stats_obj["stmt_total"] = stats_obj.get("stmt_total", 0) + 1
+            if "select" in statement[:7].lower():
+                stats_obj["stmt_select"] = stats_obj.get("stmt_select", 0) + 1
+                if self.rowcount >= 0:
+                    stats_obj["rows_select"] = stats_obj.get("rows_select", 0) + self.rowcount
+            else:
+                stats_obj["stmt_nonsel"] = stats_obj.get("stmt_nonsel", 0) + 1
+                if self.rowcount >= 0:
+                    stats_obj["rows_nonsel"] = stats_obj.get("rows_nonsel", 0) + self.rowcount
+
+        # Log to tracer
+        if tracer:
+            status = self.rowcount
+            log_entry = dict(
+                statement=statement,
+                status=status,
+            )
+            if query_time is not None:
+                log_entry["statement_time"] = query_time
+            tracer.log_call(log_entry, include_stack=True)
+            self._current_entry = log_entry
+            return log_entry
 
 
 class StatementBuilder(object):
@@ -297,3 +357,18 @@ class StatementBuilder(object):
     def build(self):
         self.statement = "".join(self.st_frag)
         return self.statement, self.statement_args
+
+
+def init_db_stats():
+    """ Clears DB stats object for current thread/gevent local request stack """
+    db_context.db_stats = {}
+
+
+def get_db_stats():
+    """ Returns DB stats object for current thread/gevent local request stack """
+    return getattr(db_context, "db_stats", None)
+
+
+def clear_db_stats():
+    """ Removes DB stats object for current thread/gevent local request stack """
+    db_context.db_stats = None

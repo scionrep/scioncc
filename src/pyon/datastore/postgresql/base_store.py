@@ -4,6 +4,7 @@
 
 __author__ = 'Michael Meisinger'
 
+import contextlib
 import getpass
 import os.path
 from uuid import uuid4
@@ -349,6 +350,11 @@ class PostgresDataStore(DataStore):
             log.debug("Datastore '%s' exists: %s", datastore_name or qual_ds_name, exists)
 
         return exists
+
+    @contextlib.contextmanager
+    def in_transaction(self, isolation_level=None):
+        with self.pool.in_transaction(isolation_level) as conn:
+            yield conn
 
     # -------------------------------------------------------------------------
     # Document operations

@@ -46,10 +46,11 @@ class ResourceRegistry(object):
         self.superuser_actors = None
 
     def start(self):
-        pass
+        self.container.in_transaction = self.rr_store.pool.in_transaction
 
     def stop(self):
         self.close()
+        delattr(self.container, "in_transaction")
 
     def close(self):
         """
