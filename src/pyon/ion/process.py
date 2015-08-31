@@ -413,10 +413,12 @@ class IonProcessThread(PyonThread):
 
                     db_stats = get_db_stats()
                     if db_stats:
-                        if self._warn_call_dbstmt_threshold > 0 and db_stats.get("stmt_total", 0) >= self._warn_call_dbstmt_threshold:
-                            log.warn("PROC_OP '%s.%s' EXCEEDED DB THRESHOLD. stats=%s", call.__module__, call.__name__, db_stats)
+                        if self._warn_call_dbstmt_threshold > 0 and db_stats.get("count.all", 0) >= self._warn_call_dbstmt_threshold:
+                            stats_str = ", ".join("{}={}".format(k, db_stats[k]) for k in sorted(db_stats.keys()))
+                            log.warn("PROC_OP '%s.%s' EXCEEDED DB THRESHOLD. stats=%s", call.__module__, call.__name__, stats_str)
                         elif self._log_call_dbstats:
-                            log.info("PROC_OP '%s.%s' DB STATS: %s", call.__module__, call.__name__, db_stats)
+                            stats_str = ", ".join("{}={}".format(k, db_stats[k]) for k in sorted(db_stats.keys()))
+                            log.info("PROC_OP '%s.%s' DB STATS: %s", call.__module__, call.__name__, stats_str)
                     clear_db_stats()
                 except Exception:
                     log.exception("Error computing process call stats")

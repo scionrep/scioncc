@@ -315,15 +315,17 @@ class TracingCursor(_cursor):
         # Set stats
         stats_obj = get_db_stats()
         if stats_obj is not None:
-            stats_obj["stmt_total"] = stats_obj.get("stmt_total", 0) + 1
+            stats_obj["count.all"] = stats_obj.get("count.all", 0) + 1
             if "select" in statement[:7].lower():
-                stats_obj["stmt_select"] = stats_obj.get("stmt_select", 0) + 1
+                stats_obj["count.select"] = stats_obj.get("count.select", 0) + 1
                 if self.rowcount >= 0:
-                    stats_obj["rows_select"] = stats_obj.get("rows_select", 0) + self.rowcount
+                    stats_obj["rows.select"] = stats_obj.get("rows.select", 0) + self.rowcount
             else:
-                stats_obj["stmt_nonsel"] = stats_obj.get("stmt_nonsel", 0) + 1
+                stats_obj["count.nonsel"] = stats_obj.get("count.nonsel", 0) + 1
                 if self.rowcount >= 0:
-                    stats_obj["rows_nonsel"] = stats_obj.get("rows_nonsel", 0) + self.rowcount
+                    stats_obj["rows.nonsel"] = stats_obj.get("rows.nonsel", 0) + self.rowcount
+            if query_time:
+                stats_obj["time.all"] = stats_obj.get("time.all", 0.0) + query_time
 
         # Log to tracer
         if tracer:

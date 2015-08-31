@@ -976,10 +976,10 @@ class TestDataStores(IonIntegrationTestCase):
         data_store.delete_mult([obj_id1, obj_id2])
 
         db_stats = get_db_stats()
-        #print "STATS", db_stats
-        self.assertEqual(db_stats["stmt_select"], 3)
-        self.assertEqual(db_stats["stmt_nonsel"], 7)    # Note: delete_mult issues individual statements
-        self.assertEqual(db_stats["stmt_total"], 10)
+        print "STATS", db_stats
+        self.assertEqual(db_stats["count.select"], 3)
+        self.assertEqual(db_stats["count.nonsel"], 7)    # Note: delete_mult issues individual statements
+        self.assertEqual(db_stats["count.all"], 10)
 
         clear_db_stats()
 
