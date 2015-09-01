@@ -22,6 +22,7 @@ if sys.platform == 'darwin':
 VERSION = read("VERSION").strip()
 
 # See http://pythonhosted.org/setuptools/setuptools.html
+# noinspection PyPackageRequirements
 setup(  name='scioncc',
         version=VERSION,
         description='Scientific Observatory Network Capability Container',
@@ -108,7 +109,7 @@ setup(  name='scioncc',
 
             # Check if all these are needed
             'graypy==0.2.11',          # For production logging
-            'ntplib==0.3.2',
+            'ntplib==0.3.3',
             'pyproj==1.9.4'            # For geospatial calculations
             #'M2Crypto==0.22.3',        # For X.509 certificates (currently unused)
         ],
