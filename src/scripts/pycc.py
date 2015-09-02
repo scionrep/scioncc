@@ -4,6 +4,7 @@
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 
+# NOTE: Imports here must be controlled before gevent monkey patching
 import argparse
 import ast
 from copy import deepcopy
@@ -13,16 +14,14 @@ import signal
 import sys
 import traceback
 from uuid import uuid4
-
-import logging
-log = logging.getLogger('pycc')
-
-from putil.script_util import parse_args
-
 # WARNING - DO NOT IMPORT GEVENT OR PYON HERE. IMPORTS **MUST** BE DONE IN THE main()
 # DUE TO DAEMONIZATION.
 #
 # SEE: http://groups.google.com/group/gevent/browse_thread/thread/6223805ffcd5be22?pli=1
+
+from putil.script_util import parse_args
+
+log = None
 
 version = "3.1"     # TODO: extract version info from the code (tag/commit)
 description = '''
@@ -153,6 +152,10 @@ def main(opts, *args, **kwargs):
 
         import threading
         threading.current_thread().name = "CC-Main"
+
+        import logging
+        global log
+        log = logging.getLogger('pycc')
 
         from pyon.core import bootstrap, config
         from pyon.util.containers import get_safe, dict_merge

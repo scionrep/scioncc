@@ -115,6 +115,7 @@ class ProcessEndpointUnitMixin(EndpointUnit):
         container_id        = context.get('origin-container-id', None)
         original_conv_id    = context.get('original-conv-id', None)
         conv_id             = context.get('conv-id', None)
+        request_id          = context.get('request-id', None)
 
         # If an actor-id is specified then there may be other associated data that needs to be passed on
         if actor_id:
@@ -129,6 +130,8 @@ class ProcessEndpointUnitMixin(EndpointUnit):
             header[MSG_HEADER_VALID] = expiry
         if container_id:
             header['origin-container-id'] = container_id
+        if request_id:
+            header['request-id'] = request_id
 
         if original_conv_id:
             # Since this is not the originating message, this must be a requests within an existing conversation,

@@ -337,12 +337,16 @@ class IonProcessThread(PyonThread):
             svc_name = "unnamed-service"
             if self.service is not None and hasattr(self.service, 'name'):
                 svc_name = self.service.name
-            threading.current_thread().name = "%s-%s-ctrl" % (svc_name, self.name)
+            threading.current_thread().name = "%s-%s" % (svc_name, self.name)
+        thread_base_name = threading.current_thread().name
 
         self._ready_control.set()
 
         for calltuple in self._ctrl_queue:
             calling_gl, ar, call, callargs, callkwargs, context = calltuple
+            request_id = (context or {}).get("request-id", None)
+            if request_id:
+                threading.current_thread().name = thread_base_name + "-" + str(request_id)
             #log.debug("control_flow making call: %s %s %s (has context: %s)", call, callargs, callkwargs, context is not None)
 
             res = None
@@ -424,6 +428,7 @@ class IonProcessThread(PyonThread):
                     log.exception("Error computing process call stats")
 
                 self._ctrl_current = None
+                threading.current_thread().name = thread_base_name
 
             ar.set(res)
 

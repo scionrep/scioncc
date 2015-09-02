@@ -696,6 +696,9 @@ class ServiceGateway(object):
         headers = dict()
         headers[MSG_HEADER_ACTOR] = actor_id
         headers[MSG_HEADER_VALID] = expiry
+        req_info = flask.g.get("req_info", None)
+        if req_info:
+            headers["request-id"] = str(req_info["request_id"])
 
         # If this is an anonymous requester then there are no roles associated with the request
         if actor_id == DEFAULT_ACTOR_ID:
