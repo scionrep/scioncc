@@ -67,6 +67,12 @@ class Preloader(object):
         if not "preload_type" in master_cfg or master_cfg["preload_type"] != "steps":
             raise BadRequest("Invalid preload steps file")
 
+        if "actions" in master_cfg:
+            # Shorthand notation for one step in master
+            step_filename = filename
+            self._execute_step("default", step_filename, skip_steps)
+            return
+
         for step in master_cfg["steps"]:
             if skip_steps and step in skip_steps:
                 log.info("Skipping step %s" % step)
@@ -79,9 +85,9 @@ class Preloader(object):
         with open(filename, "r") as f:
             step_yml = f.read()
         step_cfg = yaml.safe_load(step_yml)
-        if not "preload_type" in step_cfg or step_cfg["preload_type"] != "actions":
+        if not "preload_type" in step_cfg or step_cfg["preload_type"] not in ("actions", "steps"):
             raise BadRequest("Invalid preload actions file")
-        if skip_steps and step_cfg.get("requires", ""):
+        if skip_steps and step_cfg["preload_type"] == "actions" and step_cfg.get("requires", ""):
             if any([rs in skip_steps for rs in step_cfg["requires"].split(",")]):
                 log.info("Skipping step %s - required step was skipped" % step)
                 skip_steps.append(step)
