@@ -58,6 +58,7 @@ class DatastoreQueryConst(object):
 
     GOP_OVERLAPS_GEOM = GOP_PREFIX + "overlaps_geom"  # Find objects with geometry overlapping given WKT geometry
     GOP_WITHIN_GEOM = GOP_PREFIX + "within_geom"      # Find objects with geometry within given WKT geometry
+    GOP_EQUALS_GEOM = GOP_PREFIX + "equals_geom"      # Find objects with geometry equals given WKT geometry
     GOP_CONTAINS_GEOM = GOP_PREFIX + "contains_geom"  # Find objects with geometry containing given WKT geometry
     GOP_CROSSES_GEOM = GOP_PREFIX + "crosses_geom"  # Find objects with geometry crossing given WKT geometry
     GOP_TOUCHES_GEOM = GOP_PREFIX + "touches_geom"  # Find objects with geometry touching given WKT geometry
@@ -354,6 +355,11 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
         self._check_col(col)
         colname = col.split(":", 1)[1]
         return self.op_expr(self.GOP_WITHIN_GEOM, colname, wkt, buf)
+
+    def equals_geom(self, col, wkt, buf):
+        self._check_col(col)
+        colname = col.split(":", 1)[1]
+        return self.op_expr(self.GOP_EQUALS_GEOM, colname, wkt, buf)
 
     # --- By association
 
