@@ -55,3 +55,8 @@ class PostgresDataStoreUnitTest(IonUnitTestCase):
         qb.build_query(where=qb.within_geom(qb.RA_GEOM_LOC,wkt,buf))
         pqb = PostgresQueryBuilder(qb.get_query(), 'test')
         self.assertEquals(pqb.get_query(),"SELECT id,doc FROM test WHERE ST_Within(geom_loc,ST_Buffer(ST_GeomFromEWKT('SRID=4326;POINT(-72.0 40.0)'), 0.100000))")
+
+        qb = DatastoreQueryBuilder()
+        qb.build_query(where=qb.equals_geom(qb.RA_GEOM_LOC,wkt,buf))
+        pqb = PostgresQueryBuilder(qb.get_query(), 'test')
+        self.assertEquals(pqb.get_query(),"SELECT id,doc FROM test WHERE ST_Equals(geom_loc,ST_Buffer(ST_GeomFromEWKT('SRID=4326;POINT(-72.0 40.0)'), 0.100000))")
