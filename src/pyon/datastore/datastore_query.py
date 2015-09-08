@@ -243,7 +243,7 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
 
     def eq_in(self, col, expr):
         """Filter to list of values if type iterable else value equality"""
-        if type(expr) in (list, tuple):
+        if expr and type(expr) in (list, tuple):
             return self.in_(col, *expr)
         else:
             return self.eq(col, expr)
