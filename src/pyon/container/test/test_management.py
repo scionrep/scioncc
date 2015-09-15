@@ -1,3 +1,4 @@
+import os
 
 from pyon.util.unit_test import PyonTestCase
 import pyon.container.management
@@ -8,6 +9,7 @@ from pyon.core.bootstrap import IonObject
 from pyon.ion.resource import OT
 
 #config.set_debug(True)
+TEST_DIR = os.path.split(os.path.abspath(__file__))[0]
 
 class AdminMessageTest(PyonTestCase):
 
@@ -19,7 +21,7 @@ class AdminMessageTest(PyonTestCase):
 
     def test_logging_handler(self):
         """ initial log level for ion.processes.event is INFO -- test we can change it to TRACE """
-        config.replace_configuration('src/pyon/container/test/logging.yml')
+        config.replace_configuration(os.path.join(TEST_DIR, 'logging.yml'))
         log.debug('this should probably not be logged')
 
         self.assertFalse(log.isEnabledFor(TRACE))
@@ -34,7 +36,7 @@ class AdminMessageTest(PyonTestCase):
         """ initial log level for ion.processes.event is INFO -- test that we can clear it
             (root level WARN should apply)
         """
-        config.replace_configuration('src/pyon/container/test/logging.yml')
+        config.replace_configuration(os.path.join(TEST_DIR, 'logging.yml'))
         log.debug('this should probably not be logged')
 
         self.assertTrue(log.isEnabledFor(logging.INFO), msg=repr(log.__dict__))
@@ -48,7 +50,7 @@ class AdminMessageTest(PyonTestCase):
 
     def xtest_logging_root(self):
         """ initial root log level is WARN -- test that we can change it to ERROR """
-        config.replace_configuration('src/pyon/container/test/logging.yml')
+        config.replace_configuration(os.path.join(TEST_DIR, 'logging.yml'))
         otherlog = logging.getLogger('pyon.container')
 
         self.assertTrue(otherlog.isEnabledFor(logging.WARN))
