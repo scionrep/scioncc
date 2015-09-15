@@ -36,7 +36,7 @@ class AdminMessageTest(PyonTestCase):
         """ initial log level for ion.processes.event is INFO -- test that we can clear it
             (root level WARN should apply)
         """
-        config.replace_configuration('extern/scioncc/''src/pyon/container/test/logging.yml')
+        config.replace_configuration(os.path.join(TEST_DIR, 'logging.yml'))
         log.debug('this should probably not be logged')
 
         self.assertTrue(log.isEnabledFor(logging.INFO), msg=repr(log.__dict__))
