@@ -410,7 +410,17 @@ class IonProcessThread(PyonThread):
                     log.warn("Attempting to continue...")
 
                     # have to raise something friendlier on the client side
-                    calling_gl.kill(exception=ContainerError(str(exc)), block=False)
+                    # calling_gl.kill(exception=ContainerError(str(exc)), block=False)
+                    # If exception string representation then calling calling_gl.kill(exception=ContainerError(str(exc)), block=False)
+                    # will crush the container.
+                    exceptions_str = str(exc)
+                    if len(exceptions_str) > 10000:
+                        exceptions_str = (
+                            "Exception string representation is to large to put it all here. "
+                            "Begin and end of the exception:\n"
+                            + exceptions_str[:2000] + "\n...\n" + exceptions_str[-2000:]
+                        )
+                    calling_gl.kill(exception=ContainerError(exceptions_str), block=False)
             finally:
                 try:
                     self._compute_proc_stats(start_proc_time)
