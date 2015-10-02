@@ -17,7 +17,7 @@ from pyon.public import Container, SimpleProcess, log, PRED, RT, IonObject, CFG,
 from interface import objects
 
 
-# Initialize the flask app - abs path so that static files can be loaded from egg
+# Initialize the flask app
 app = Flask(__name__)
 
 DEFAULT_WEB_SERVER_HOSTNAME = "localhost"
@@ -47,6 +47,7 @@ class AdminUI(SimpleProcess):
         self.web_server_enabled = True
         self.logging = None
         self.interaction_observer = None
+        self.plugin = None
         app.secret_key = self.__class__.__name__   # Enables sessions (for mscweb)
 
         #retain a pointer to this object for use in ProcessRPC calls
@@ -56,6 +57,11 @@ class AdminUI(SimpleProcess):
         #Start the gevent web server unless disabled
         if self.web_server_enabled:
             self.start_service(self.server_hostname, self.server_port)
+
+            plugin_cls = CFG.get_safe(CFG_PREFIX + '.plugin')
+            if plugin_cls:
+                cls = named_any(plugin_cls)
+                self.plugin = cls(app, self)
 
     def on_quit(self):
         if self.interaction_observer and self.interaction_observer.started:
@@ -431,6 +437,11 @@ def build_commands(resource_id, restype):
     args = [('select', 'lcstate', options)]
     fragments.append(build_command("Change Lifecycle State", "/cmd/set_lcs?rid=%s" % resource_id, args))
 
+    if restype == "ActorIdentity":
+        fragments.append(build_command("Unlock User", "/cmd/unlock_user?rid=%s" % resource_id))
+
+    if adminui_instance.plugin:
+        adminui_instance.plugin.resource_commands(resource_id, restype, fragments)
 
     fragments.append("</table>")
     return "".join(fragments)
@@ -479,7 +490,11 @@ def process_command(cmd):
             res_obj = Container.instance.resource_registry.read(resource_id)
 
         func_name = "_process_cmd_%s" % cmd
-        cmd_func = globals().get(func_name, None)
+        cmd_func = None
+        if adminui_instance.plugin:
+            cmd_func = getattr(adminui_instance.plugin, func_name, None)
+        if not cmd_func:
+            cmd_func = globals().get(func_name, None)
         if not cmd_func:
             raise Exception("Command %s unknown" % (cmd))
 
@@ -577,6 +592,14 @@ def _process_cmd_execute_lcs(resource_id, res_obj=None):
     new_state = Container.instance.resource_registry.execute_lifecycle_transition(resource_id, lcevent)
     return "OK. New state: %s" % new_state
 
+def _process_cmd_unlock_user(resource_id, res_obj=None):
+    user_obj = Container.instance.resource_registry.read(resource_id)
+    if user_obj.type_ != RT.ActorIdentity:
+        return "ERROR: Not an ActorIdentity"
+    user_obj.auth_fail_count = 0
+    user_obj.auth_status = objects.AuthStatusEnum.ENABLED
+    Container.instance.resource_registry.update(user_obj)
+    return "OK"
 
 # ----------------------------------------------------------------------------------------
 
