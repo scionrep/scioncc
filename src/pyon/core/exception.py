@@ -63,6 +63,13 @@ class NotFound(IonException):
     status_code = 404
 
 
+class NotAcceptable(IonException):
+    """
+    Incorrectly formatted client request
+    """
+    status_code = 406
+
+
 class Timeout(IonException):
     """
     Client request timed out

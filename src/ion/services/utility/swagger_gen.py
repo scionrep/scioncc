@@ -102,7 +102,7 @@ class SwaggerSpecGenerator(object):
 
         return schema
 
-    EXC_MAP = {"BadRequest": "400", "NotFound": "404", "Conflict": "409", "Unauthorized": "401"}
+    EXC_MAP = {"BadRequest": "400", "NotFound": "404", "Conflict": "409", "Unauthorized": "401", "NotAcceptable": "406"}
 
     def _add_throws(self, path_entry, op_schema):
         if not op_schema["throws"]:

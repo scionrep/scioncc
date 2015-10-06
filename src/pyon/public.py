@@ -15,8 +15,8 @@ __all__ += ['MSG_HEADER_ACTOR', 'MSG_HEADER_ROLES', 'MSG_HEADER_VALID']
 from pyon.core.bootstrap import get_obj_registry, IonObject, get_sys_name, CFG
 __all__ += ['get_obj_registry', 'IonObject', 'get_sys_name', 'CFG']
 
-from pyon.core.exception import BadRequest, NotFound, Inconsistent, Conflict, IonException, Timeout, Unauthorized
-__all__ += ['BadRequest', 'NotFound', 'Inconsistent', 'Conflict', 'IonException', 'Timeout', 'Unauthorized']
+from pyon.core.exception import BadRequest, NotFound, Inconsistent, Conflict, IonException, Timeout, Unauthorized, NotAcceptable
+__all__ += ['BadRequest', 'NotFound', 'Inconsistent', 'Conflict', 'IonException', 'Timeout', 'Unauthorized', 'NotAcceptable']
 
 from pyon.core.thread import PyonThreadError, PyonThread, PyonThreadManager
 __all__ += ['PyonThreadError', 'PyonThread', 'PyonThreadManager']
