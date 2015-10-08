@@ -214,7 +214,7 @@ interceptor:
     validate:
       class: pyon.core.interceptor.validate.ValidateInterceptor
       config:
-        enabled: true
+        enabled: True
     encode:
       class: pyon.core.interceptor.encode.EncodeInterceptor
       config:
@@ -222,7 +222,7 @@ interceptor:
     governance:
       class: pyon.core.governance.governance_interceptor.GovernanceInterceptor
       config:
-        enabled: true
+        enabled: True
         interceptor_order: [policy]
         governance_interceptors:
           policy:
@@ -294,8 +294,11 @@ process:
       develop_mode: True
       set_cors: True
     security:
-      secret: ""             # Server secret for cookie encryption
-      session_timeout: 900   # Timeout in seconds
+      secret: ""                     # Server secret for cookie encryption
+      session_timeout: 900           # Timeout in seconds
+      extend_session_timeout: False  # If True, reset session timeout on activity
+      max_session_validity: 0        # Maximum seconds since authentication
+      remember_user: True            # If True, maintain user_id/access_token in server session for resume
     oauth:
       enabled: True
       default_scope: scioncc
@@ -315,7 +318,7 @@ service:
       container_topic: bx_containers     # Container heartbeat broadcast topic (for binding)
     engine:                       # PD decision engine
       type: default
-      await_preconditions:        # Preconditions for start of decision engine. Blocks until true.
+      await_preconditions:        # Preconditions for start of decision engine. Blocks until True.
         await_timeout: 10         # Maximum wait in sec to wait for preconditions
         min_engines: 1
         engines_exist:
@@ -343,13 +346,13 @@ service:
     service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible
     service_blacklist: []    # Names of services not accessible via the gateway. Applies after white list
     user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
-    develop_mode: true
-    set_cors: true           # Set CORS headers (only in development mode)
-    strict_types: true       # Only accept types according to operation parameter schema, or try to coerce?
-    require_login: true      # Must provide session or token and no anonymous access allowed
+    develop_mode: True
+    set_cors: True           # Set CORS headers (only in development mode)
+    strict_types: True       # Only accept types according to operation parameter schema, or try to coerce?
+    require_login: True      # Must provide session or token and no anonymous access allowed
     no_login_whitelist: []   # List of service operations that can be accessed anonymously: request/svc/op
     swagger_spec:
-      enable: true           # Support generation of Swagger v2 service interfaces
+      enable: True           # Support generation of Swagger v2 service interfaces
       info:
         version: 3.0.0
         title: ScionCC Application

@@ -11,7 +11,7 @@ import sys
 import json
 import simplejson
 
-from pyon.public import BadRequest, OT
+from pyon.public import BadRequest, OT, get_ion_ts_millis
 from pyon.util.containers import get_datetime
 
 from interface.objects import ActorIdentity, SecurityToken, TokenTypeEnum
@@ -27,6 +27,8 @@ class UIExtension(object):
     def on_start(self):
         pass
     def on_stop(self):
+        pass
+    def extend_user_session_attributes(self, session, actor_obj):
         pass
 
 
@@ -72,6 +74,7 @@ def get_arg(arg_name, default="", is_mult=False):
 
 
 def get_auth():
+    """ Returns a dict with user session values from server session. """
     return dict(user_id=flask.session.get("actor_id", ""),
                 actor_id=flask.session.get("actor_id", ""),
                 username=flask.session.get("username", ""),
@@ -84,6 +87,7 @@ def get_auth():
 
 
 def set_auth(actor_id, username, full_name, valid_until, **kwargs):
+    """ Sets server session based on user attributes. """
     flask.session["actor_id"] = actor_id or ""
     flask.session["username"] = username or ""
     flask.session["full_name"] = full_name or ""
@@ -94,6 +98,7 @@ def set_auth(actor_id, username, full_name, valid_until, **kwargs):
 
 
 def clear_auth():
+    """ Clears server session and empties user attributes. """
     flask.session["actor_id"] = ""
     flask.session["username"] = ""
     flask.session["full_name"] = ""
@@ -103,9 +108,17 @@ def clear_auth():
     flask.session.modified = True
 
 
+def get_req_bearer_token():
+    auth_hdr = request.headers.get("authorization", None)
+    if auth_hdr and auth_hdr.startswith("Bearer "):
+        token = auth_hdr[7:]
+        return token
+    return None
+
+
 class OAuthClientObj(object):
-    """Object holding information for a OAuth client.
-    Delegates information to ActorIdentity
+    """
+    Object holding information about an OAuth2 client for flask-oauthlib.
     """
     client_id = None
     client_secret = "foo"
@@ -115,6 +128,7 @@ class OAuthClientObj(object):
 
     @classmethod
     def from_actor_identity(cls, actor_obj):
+        """ Factory method from a suitable ActorIdentity object """
         if not actor_obj or not isinstance(actor_obj, ActorIdentity) or not actor_obj.details or \
                         actor_obj.details.type_ != OT.OAuthClientIdentityDetails:
             raise BadRequest("Bad actor identity object")
@@ -150,8 +164,8 @@ class OAuthClientObj(object):
 
 
 class OAuthTokenObj(object):
-    """Object holding information for an OAuth token.
-    Delegates information to SecurityToken object
+    """
+    Object holding information for an OAuth2 token for flask-oauthlib.
     """
     access_token = None
     refresh_token = None
@@ -160,9 +174,11 @@ class OAuthTokenObj(object):
     expires = None
     user = None
     _scopes = None
+    _token_obj = None
 
     @classmethod
     def from_security_token(cls, token_obj):
+        """ Factory method from a SecurityToken object """
         if not token_obj or not isinstance(token_obj, SecurityToken) \
                         or not token_obj.token_type in (TokenTypeEnum.OAUTH_ACCESS, TokenTypeEnum.OAUTH_REFRESH):
             raise BadRequest("Bad token object")
@@ -175,7 +191,17 @@ class OAuthTokenObj(object):
         oauth_token.client_id = token_obj.attributes.get("client_id", "")
         oauth_token.expires = get_datetime(token_obj.expires, local_time=False)
         oauth_token.user = {"actor_id": token_obj.actor_id}
+        oauth_token._token_obj = token_obj
         return oauth_token
+
+    def is_valid(self, check_expiry=False):
+        if not self._token_obj:
+            return False
+        if self._token_obj.status != "OPEN":
+            return False
+        if check_expiry and int(self._token_obj.expires) < get_ion_ts_millis():
+            return False
+        return True
 
     def delete(self):
         print "### DELETE TOKEN", self.access_token

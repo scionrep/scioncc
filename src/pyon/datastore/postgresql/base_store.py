@@ -26,7 +26,7 @@ from pyon.datastore.datastore_common import DataStore, get_obj_geospatial_bounds
     get_obj_temporal_bounds, get_obj_vertical_bounds, get_obj_geometry
 from pyon.datastore.datastore_query import DQ
 from pyon.datastore.postgresql.pg_util import PostgresConnectionPool, StatementBuilder, psycopg2_connect, TracingCursor
-from pyon.util.containers import create_basic_identifier, parse_ion_ts, DotDict
+from pyon.util.containers import create_basic_identifier
 from pyon.util.tracer import CallTracer
 
 TABLE_PREFIX = "ion_"

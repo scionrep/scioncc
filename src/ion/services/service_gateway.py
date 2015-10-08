@@ -407,8 +407,9 @@ class ServiceGateway(object):
         expiry = DEFAULT_EXPIRY
         authtoken = ""
         user_session = get_auth()
-        if user_session.get("actor_id", None):
-            # Get info from current session
+        if user_session.get("actor_id", None) and user_session.get("valid_until", 0):
+            # Get info from current server session
+            # NOTE: Actor id may be inside server session
             actor_id = user_session["actor_id"]
             expiry = str(int(user_session.get("valid_until", 0)) * 1000)
             log.info("Request associated with session actor_id=%s, expiry=%s", actor_id, expiry)
@@ -422,8 +423,7 @@ class ServiceGateway(object):
                 # flask.session["valid_until"] = int(expiry / 1000)
             log.info("Request associated with actor_id=%s, expiry=%s from developer api_key", actor_id, expiry)
 
-        # Try to find auth token override
-        # Check in headers for OAuth bearer token
+        # Check in headers for OAuth2 bearer token
         auth_hdr = request.headers.get("authorization", None)
         if auth_hdr:
             valid, req = self.process.oauth.verify_request([self.process.oauth_scope])
@@ -433,6 +433,7 @@ class ServiceGateway(object):
                     log.info("Request associated with actor_id=%s, expiry=%s from OAuth token", actor_id, expiry)
                     return actor_id, DEFAULT_EXPIRY
 
+        # Try to find auth token override
         if not authtoken:
             if json_params:
                 if "authtoken" in json_params:

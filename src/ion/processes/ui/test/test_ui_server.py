@@ -2,7 +2,9 @@
 
 __author__ = 'Michael Meisiger'
 
+from mock import Mock, patch
 from nose.plugins.attrib import attr
+import gevent
 import json
 import requests
 
@@ -210,20 +212,140 @@ class TestUIServer(IonIntegrationTestCase):
         session = requests.session()
 
         # TEST: OAuth2 authorize
-        log.info("------------ Get token")
+        log.info("------------ Get token #1")
         auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
         resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
         access_token = resp.json()
 
         # TEST: Service access
-        log.info("------------ Access")
+        log.info("------------ Access with token")
         resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
                            headers={"Authorization": "Bearer %s" % access_token["access_token"]})
         resp_json = self._assert_json_response(resp, None)
         #self.assertIn(actor_id, resp_json["result"][0])
+
+        log.info("------------ Access with bad token")
+        resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                           headers={"Authorization": "Bearer FOOBAR"})
+        resp_json = self._assert_json_response(resp, None, status=401)
+
+        # TEST: Get session using token
+        log.info("------------ Get session using token")
+        resp = session.get(self.ui_base_url + "/auth/session",
+                           headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+        resp_json = self._assert_json_response(resp, None)
+        self.assertEqual(actor_id, resp_json["result"]["actor_id"])
 
         # TEST: Get new access token
         log.info("------------ Refresh token")
         auth_params = {"client_id": client_id, "grant_type": "refresh_token", "refresh_token": access_token["refresh_token"]}
         resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
         access_token1 = resp.json()
+
+
+        with patch('ion.processes.ui.server.ui_instance.session_timeout', 2):
+            log.info("Patched server.session_timeout to %s", self.ui_server_proc.session_timeout)
+
+            session = requests.session()
+
+            log.info("------------ Get token #2 (with short expiration)")
+            auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
+            resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+            access_token = resp.json()
+
+            # TEST: Service access
+            log.info("------------ Access before expired")
+            resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                               headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+            resp_json = self._assert_json_response(resp, None)
+
+            gevent.sleep(2)
+
+            # TEST: Service access fails after expiration
+            log.info("------------ Access after token expiration")
+            resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                               headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+            resp_json = self._assert_json_response(resp, None, status=401)
+
+
+        with patch('ion.processes.ui.server.ui_instance.session_timeout', 2), \
+             patch('ion.processes.ui.server.ui_instance.extend_session_timeout', True), \
+             patch('ion.processes.ui.server.ui_instance.max_session_validity', 3):
+
+            session = requests.session()
+
+            log.info("------------ Get token #3 (with short expiration)")
+            auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
+            resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+            access_token = resp.json()
+
+            gevent.sleep(1)
+
+            # TEST: Service access extends expiration
+            log.info("------------ Access before expired should extend expiration")
+            resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                               headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+            resp_json = self._assert_json_response(resp, None)
+
+            gevent.sleep(1.1)
+
+            # TEST: Service access will fail unless was extended
+            log.info("------------ Access before expired after extension")
+            resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                               headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+            resp_json = self._assert_json_response(resp, None)
+
+            gevent.sleep(1.5)
+
+            # TEST: Service access fails after max validity
+            log.info("------------ Access after token expiration")
+            resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                               headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+            resp_json = self._assert_json_response(resp, None, status=401)
+
+
+        # TEST: Remember user from within session
+        session = requests.session()
+        log.info("------------ Get token #4")
+        auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
+        resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+        access_token = resp.json()
+
+        # TEST: Get session without token tests remember user
+        log.info("------------ Get session without token")
+        resp = session.get(self.ui_base_url + "/auth/session")
+        resp_json = self._assert_json_response(resp, None)
+        self.assertEqual(actor_id, resp_json["result"]["actor_id"])
+
+        # TEST: Logout
+        log.info("------------ Logout")
+        resp = session.get(self.ui_base_url + "/auth/logout",
+                           headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+        resp_json = self._assert_json_response(resp, None)
+        self.assertEqual(resp_json["result"], "OK")
+
+        # TEST: Get session without token after logout
+        log.info("------------ Get session without token")
+        resp = session.get(self.ui_base_url + "/auth/session")
+        resp_json = self._assert_json_response(resp, None)
+        self.assertEqual(resp_json["result"]["actor_id"], "")
+
+        # TEST: Service access after logout
+        log.info("------------ Access with token after logout")
+        resp = session.get(self.sg_base_url + "/request/resource_registry/find_resources?restype=ActorIdentity&id_only=True",
+                           headers={"Authorization": "Bearer %s" % access_token["access_token"]})
+        resp_json = self._assert_json_response(resp, None, 401)
+
+
+        with patch('ion.processes.ui.server.ui_instance.remember_user', False):
+            session = requests.session()
+            log.info("------------ Get token #5")
+            auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}
+            resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+            access_token = resp.json()
+
+            # TEST: Get session without token fails if remember user is False
+            log.info("------------ Get session without token")
+            resp = session.get(self.ui_base_url + "/auth/session")
+            resp_json = self._assert_json_response(resp, None)
+            self.assertEqual(resp_json["result"]["actor_id"], "")

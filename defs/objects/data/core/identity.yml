@@ -10,7 +10,7 @@ SecurityToken:
   token_type: !TokenTypeEnum
   # Timestamp (UNIX epoch) for when the token expires in UTC
   expires : ""
-  # One of OPEN, VERIFIED, EXPIRED
+  # One of OPEN, VERIFIED, EXPIRED, CANCELLED
   status: ""
   # ID of an actor identity.
   actor_id:

@@ -70,6 +70,7 @@ setup(  name='scioncc',
             },
         dependency_links=[],
         install_requires=[
+            # NOTE: Install order is bottom to top! Lower level dependencies need to be down
             'setuptools',
             'greenlet==0.4.7',
             'gevent==1.0.2',
@@ -90,6 +91,7 @@ setup(  name='scioncc',
             'Flask==0.10.1',
             'flask-socketio==0.4.1',
             'python-dateutil==2.4.2',
+            'pytz',
             'bcrypt==1.0.1',           # For password authentication
             'lovely.buildouthttp==0.6.1',    # For buildout (getting password protected eggs)
             'pyzmq==2.2.0',            # For IPython manhole
@@ -100,6 +102,7 @@ setup(  name='scioncc',
             # Pin dependent libraries
             'cffi==0.9.2',
             'oauthlib==0.7.2',
+            'six==1.9.0',
 
             # Test support
             'nose==1.1.2',

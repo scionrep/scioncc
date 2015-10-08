@@ -155,8 +155,8 @@ class DictDiffer(object):
 
 
 def simple_deepcopy(coll):
-    """Performs a recursive deep copy on given collection, only using dict, list and set
-    collection types and not checking for cycles."""
+    """ Performs a recursive deep copy on given collection, only using dict, list and set
+    collection types and not checking for cycles. """
     if isinstance(coll, dict):
         return {k: simple_deepcopy(v) for k, v in coll.iteritems()}
     elif isinstance(coll, set):
@@ -169,11 +169,11 @@ def simple_deepcopy(coll):
 # dict_merge from: http://appdelegateinc.com/blog/2011/01/12/merge-deeply-nested-dicts-in-python/
 
 def quacks_like_dict(object):
-    """Check if object is dict-like"""
+    """ Check if object is dict-like """
     return isinstance(object, collections.Mapping)
 
 def dict_merge(base, upd, inplace=False):
-    """Merge two deep dicts non-destructively.
+    """ Merge two deep dicts non-destructively.
     Uses a stack to avoid maximum recursion depth exceptions.
     @param base the dict to merge into
     @param upd the content to merge
@@ -248,9 +248,9 @@ def named_any(name):
     return obj
 
 def for_name(modpath, classname):
-    '''
+    """
     Returns a class of "classname" from module "modname".
-    '''
+    """
     module = __import__(modpath, fromlist=[classname])
     classobj = getattr(module, classname)
     return classobj()
@@ -263,29 +263,28 @@ get_ion_ts_millis = current_time_millis
 def get_ion_ts():
     """
     Returns standard ION representation of a global timestamp.
-    It is defined as a str representing an integer number, the millis in UNIX epoch
+    It is defined as a str representing an integer number, the millis in UNIX epoch,
+    which started 1970-01-01 midnight UTC
     """
     return str(current_time_millis())
 
 def get_datetime(ts, local_time=True):
     """
-    Returns a datatime instance in either local time or GMT time based on the given ION
+    Returns a naive datetime object in either local time or UTC time based on the given ION
     timestamp
     @param ts  ION timestamp (str with millis in epoch)
-    @param local_time  if True, returns local time (default), otherwise GMT
-    @retval  datetime instance
+    @param local_time  if True, returns local time (default), otherwise UTC
+    @retval  datetime instance, naive
     """
     tsf = float(ts) / 1000
-    timev = time.localtime(tsf) if local_time else time.gmtime(tsf)
-    dt = datetime.datetime.fromtimestamp(time.mktime(timev))
-    return dt
+    return datetime.datetime.fromtimestamp(tsf) if local_time else datetime.datetime.utcfromtimestamp(tsf)
 
 def get_datetime_str(ts, show_millis=False, local_time=True):
     """
     Returns a string with date and time representation from an ION timestamp
     @param ts  ION timestamp (str with millis in epoch)
     @param show_millis  If True, appends the milli seconds
-    @param local_time  if True, returns local time (default), otherwise GMT
+    @param local_time  if True, returns local time (default), otherwise UTC
     @retval  str with ION standard date and time representation
     """
     dt = get_datetime(ts, local_time)
@@ -295,33 +294,13 @@ def get_datetime_str(ts, show_millis=False, local_time=True):
     return dts
 
 def parse_ion_ts(ts):
-    return float(ts) / 1000.0
+    """ Returns a Python timestamp from an ION ts """
+    return float(ts) / 1000
 
-
-def is_valid_ts(s):
-
-    if not is_string(s):
-        return False
-
-    #Checking for only numeric characters and length of 13
-    #TODO - will need to change this length to 14 in the year 2286!!!  :)
-    if not re.match("^[0-9]*$", s) or len(s) < 13 or len(s) > 14:
-        return False
-    try:
-        val = int(s)
-        if val < 0:
-            return False
-
-        return True
-    except ValueError:
-        return False
-
-def is_string(obj):
-    try:
-        return isinstance(obj, basestring)
-    except NameError:
-        return isinstance(obj, str)
-
+def is_valid_ts(ts):
+    """ Check if given ts is string with only digits and length of 13 """
+    # We assume no timestamps before 2001-09
+    return isinstance(ts, basestring) and len(ts) == 13 and ts.isdigit() and ts[0] != "0"
 
 def itersubclasses(cls, _seen=None):
     """
