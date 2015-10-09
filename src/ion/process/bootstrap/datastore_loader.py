@@ -21,10 +21,10 @@ from pyon.core.bootstrap import get_sys_name
 
 class DatastoreAdmin(ImmediateProcess):
     """
-    bin/pycc -x ion.processes.bootstrap.datastore_loader.DatastoreLoader op=clear prefix=ion
-    bin/pycc -x ion.processes.bootstrap.datastore_loader.DatastoreLoader op=dump path=res/preload/local/my_dump
-    bin/pycc -fc -x ion.processes.bootstrap.datastore_loader.DatastoreLoader op=load path=res/preload/local/my_dump
-    bin/pycc -x ion.processes.bootstrap.datastore_loader.DatastoreLoader op=dumpres
+    bin/pycc -x ion.process.bootstrap.datastore_loader.DatastoreLoader op=clear prefix=ion
+    bin/pycc -x ion.process.bootstrap.datastore_loader.DatastoreLoader op=dump path=res/preload/local/my_dump
+    bin/pycc -fc -x ion.process.bootstrap.datastore_loader.DatastoreLoader op=load path=res/preload/local/my_dump
+    bin/pycc -x ion.process.bootstrap.datastore_loader.DatastoreLoader op=dumpres
     """
     def on_init(self):
         pass

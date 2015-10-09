@@ -96,7 +96,7 @@ class UIServer(SimpleProcess):
                 self.socket_io = SocketIO(app)
 
             if self.has_service_gateway:
-                from ion.services.service_gateway import ServiceGateway, sg_blueprint
+                from ion.service.service_gateway import ServiceGateway, sg_blueprint
                 self.gateway_base_url = self.base_url + self.service_gateway_prefix
                 self.service_gateway = ServiceGateway(process=self, config=self.CFG, response_class=app.response_class)
 

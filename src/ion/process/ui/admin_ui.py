@@ -934,7 +934,7 @@ def process_tree(resid):
     @return An HTTP Response containing the JSON string (Content-Type: application/json)
     '''
     from flask import make_response, Response
-    from ion.services.utility.resource_tree import build
+    from ion.service.utility.resource_tree import build
     try:
         resp = make_response(Response(),200)
         data = build(resid).to_j()

@@ -4,7 +4,7 @@
 @description Builds a D3 JSON Hierarchy Tree based on a resource
 '''
 from pyon.container.cc import Container
-from ion.services.utility.jsonify import JSONtree as jt
+from ion.service.utility.jsonify import JSONtree as jt
 
 tree_depth_max = 5
 

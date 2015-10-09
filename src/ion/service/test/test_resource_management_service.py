@@ -10,7 +10,7 @@ from pyon.util.int_test import IonIntegrationTestCase
 from pyon.public import PRED, RT, IonObject, OT, log, BadRequest, Conflict, Inconsistent, NotFound
 from pyon.util.context import LocalContextMixin
 
-from ion.services.resource_management_service import ResourceManagementService
+from ion.service.resource_management_service import ResourceManagementService
 from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 
 from interface.services.core.iresource_management_service import ResourceManagementServiceClient

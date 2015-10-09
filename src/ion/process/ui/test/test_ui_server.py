@@ -87,7 +87,7 @@ class TestUIServer(IonIntegrationTestCase):
 
     def _do_test_service_gateway(self, actor_id):
         # We don't want to modify import order during testing, so import here
-        from ion.services.service_gateway import SG_IDENTIFICATION
+        from ion.service.service_gateway import SG_IDENTIFICATION
 
         session = requests.session()
 
@@ -243,7 +243,7 @@ class TestUIServer(IonIntegrationTestCase):
         access_token1 = resp.json()
 
 
-        with patch('ion.processes.ui.server.ui_instance.session_timeout', 2):
+        with patch('ion.process.ui.server.ui_instance.session_timeout', 2):
             log.info("Patched server.session_timeout to %s", self.ui_server_proc.session_timeout)
 
             session = requests.session()
@@ -268,9 +268,9 @@ class TestUIServer(IonIntegrationTestCase):
             resp_json = self._assert_json_response(resp, None, status=401)
 
 
-        with patch('ion.processes.ui.server.ui_instance.session_timeout', 2), \
-             patch('ion.processes.ui.server.ui_instance.extend_session_timeout', True), \
-             patch('ion.processes.ui.server.ui_instance.max_session_validity', 3):
+        with patch('ion.process.ui.server.ui_instance.session_timeout', 2), \
+             patch('ion.process.ui.server.ui_instance.extend_session_timeout', True), \
+             patch('ion.process.ui.server.ui_instance.max_session_validity', 3):
 
             session = requests.session()
 
@@ -337,7 +337,7 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None, 401)
 
 
-        with patch('ion.processes.ui.server.ui_instance.remember_user', False):
+        with patch('ion.process.ui.server.ui_instance.remember_user', False):
             session = requests.session()
             log.info("------------ Get token #5")
             auth_params = {"client_id": client_id, "grant_type": "password", "username": "jdoe", "password": "mypasswd"}

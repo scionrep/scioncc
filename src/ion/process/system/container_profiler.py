@@ -3,7 +3,7 @@
 """ Process performing system profiling.
 
     Use in the container shell with:
-      cc.spawn_process("profiler", "ion.processes.system.container_profiler", "ContainerProfiler")
+      cc.spawn_process("profiler", "ion.process.system.container_profiler", "ContainerProfiler")
 """
 
 __author__ = 'Michael Meisinger'

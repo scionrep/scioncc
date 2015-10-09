@@ -4,9 +4,9 @@
 
     invoke with commands like this:
 
-    bin/pycc -x ion.processes.test.manage_system.ChangeLogLevel logger=ion.processes.bootstrap.ion_logger level=DEBUG
-    bin/pycc -x ion.processes.test.manage_system.ReportStats
-    bin/pycc -x ion.processes.test.manage_system.ClearStats
+    bin/pycc -x ion.process.test.manage_system.ChangeLogLevel logger=ion.process.bootstrap.ion_logger level=DEBUG
+    bin/pycc -x ion.process.test.manage_system.ReportStats
+    bin/pycc -x ion.process.test.manage_system.ClearStats
 """
 
 __author__ = 'Michael Meisinger, Ian Katz, Thomas Lennan'

@@ -6,7 +6,7 @@ __author__ = 'Stephen Henrie, Michael Meisinger'
 
 from pyon.public import log
 from ion.core.bootstrap_process import BootstrapPlugin
-from ion.processes.bootstrap.load_system_policy import LoadSystemPolicy
+from ion.process.bootstrap.load_system_policy import LoadSystemPolicy
 
 
 class BootstrapPolicy(BootstrapPlugin):

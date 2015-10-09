@@ -11,7 +11,7 @@ from pyon.public import log, IonObject, Unauthorized, ResourceQuery, PRED, CFG, 
 from pyon.util.config import Config
 from pyon.util.containers import get_safe, named_any, get_ion_ts, is_basic_identifier
 
-from ion.services.ds_discovery import DatastoreDiscovery
+from ion.service.ds_discovery import DatastoreDiscovery
 
 import interface.objects
 from interface.objects import AgentCapability, AgentCommandResult, CapabilityType, Resource, View

@@ -11,7 +11,7 @@ from pyon.core.exception import BadRequest, Conflict, Inconsistent, NotFound
 from pyon.public import PRED, RT, IonObject, OT
 
 from interface.objects import PolicyTypeEnum
-from ion.services.policy_management_service import PolicyManagementService
+from ion.service.policy_management_service import PolicyManagementService
 
 from interface.services.core.ipolicy_management_service import PolicyManagementServiceClient
 

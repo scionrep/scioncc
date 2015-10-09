@@ -20,7 +20,7 @@ from pyon.public import PRED, RT, IonObject, CFG, log, OT, LCS, LCE, AS
 
 from pyon.ion.resregistry import ResourceRegistryServiceWrapper
 from pyon.core.governance.negotiation import Negotiation
-from ion.processes.bootstrap.load_system_policy import LoadSystemPolicy
+from ion.process.bootstrap.load_system_policy import LoadSystemPolicy
 from pyon.core.governance import MODERATOR_ROLE, MEMBER_ROLE, SUPERUSER_ROLE, OPERATOR_ROLE, get_system_actor, get_system_actor_header
 from pyon.core.governance import get_actor_header
 from pyon.net.endpoint import RPCClient, BidirClientChannel

@@ -27,7 +27,7 @@ from pyon.public import MSG_HEADER_ACTOR, MSG_HEADER_VALID, MSG_HEADER_ROLES
 from pyon.util.lru_cache import LRUCache
 from pyon.util.containers import current_time_millis
 
-from ion.services.utility.swagger_gen import SwaggerSpecGenerator
+from ion.service.utility.swagger_gen import SwaggerSpecGenerator
 from ion.util.parse_utils import get_typed_value
 from ion.util.ui_utils import CONT_TYPE_JSON, json_dumps, json_loads, encode_ion_object, get_auth, clear_auth
 

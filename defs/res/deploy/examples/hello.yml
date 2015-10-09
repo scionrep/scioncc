@@ -7,7 +7,7 @@ apps:
   - name: hello
     description: Hello service
     version: 0.1
-    processapp: [hello, ion.services.examples.hello_service, HelloService]
+    processapp: [hello, ion.service.examples.hello_service, HelloService]
     config:
         some: "Hi"
 

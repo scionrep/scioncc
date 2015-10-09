@@ -464,13 +464,13 @@ class GovernanceIntTest(IonIntegrationTestCase):
 
     @attr('PRECONDITION1')
     def test_multiple_process_pre_conditions(self):
-        hello1 = self.container.spawn_process('hello_service1','ion.services.examples.hello_service','HelloService' )
+        hello1 = self.container.spawn_process('hello_service1','ion.service.examples.hello_service','HelloService' )
         self.addCleanup(self.container.terminate_process, hello1)
 
-        hello2 = self.container.spawn_process('hello_service2','ion.services.examples.hello_service','HelloService' )
+        hello2 = self.container.spawn_process('hello_service2','ion.service.examples.hello_service','HelloService' )
         self.addCleanup(self.container.terminate_process, hello2)
 
-        hello3 = self.container.spawn_process('hello_service3','ion.services.examples.hello_service','HelloService' )
+        hello3 = self.container.spawn_process('hello_service3','ion.service.examples.hello_service','HelloService' )
         #self.addCleanup(self.container.terminate_process, hello3)
 
         client = HelloServiceProcessClient(process=self.gov_client)

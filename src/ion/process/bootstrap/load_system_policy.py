@@ -17,7 +17,7 @@ from interface.services.core.ipolicy_management_service import PolicyManagementS
 
 class LoadSystemPolicy(ImmediateProcess):
     """
-    bin/pycc -x ion.processes.bootstrap.load_system_policy.LoadSystemPolicy op=load
+    bin/pycc -x ion.process.bootstrap.load_system_policy.LoadSystemPolicy op=load
     """
     def on_init(self):
         pass

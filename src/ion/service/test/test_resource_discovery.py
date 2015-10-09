@@ -11,7 +11,7 @@ from mock import Mock, patch, sentinel
 from pyon.util.int_test import IonIntegrationTestCase
 from pyon.public import PRED, CFG, RT, OT, LCS, BadRequest, NotFound, IonObject, DotDict, ResourceQuery, EventQuery, log
 
-from ion.services.resource_management_service import ResourceManagementService
+from ion.service.resource_management_service import ResourceManagementService
 from ion.util.geo_utils import GeoUtils
 from ion.util.testing_utils import create_dummy_resources, create_dummy_events
 

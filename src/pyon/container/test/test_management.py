@@ -20,7 +20,7 @@ class AdminMessageTest(PyonTestCase):
         self.assertEqual(ion.type_,ion2.type_)
 
     def test_logging_handler(self):
-        """ initial log level for ion.processes.event is INFO -- test we can change it to TRACE """
+        """ initial log level for ion.process.event is INFO -- test we can change it to TRACE """
         config.replace_configuration(os.path.join(TEST_DIR, 'logging.yml'))
         log.debug('this should probably not be logged')
 
@@ -33,7 +33,7 @@ class AdminMessageTest(PyonTestCase):
         self.assertTrue(log.isEnabledFor(TRACE))
 
     def test_logging_clear(self):
-        """ initial log level for ion.processes.event is INFO -- test that we can clear it
+        """ initial log level for ion.process.event is INFO -- test that we can clear it
             (root level WARN should apply)
         """
         config.replace_configuration(os.path.join(TEST_DIR, 'logging.yml'))
@@ -62,7 +62,7 @@ class AdminMessageTest(PyonTestCase):
         self.assertFalse(otherlog.isEnabledFor(logging.WARN))
 
     def xtest_policy_cache_handler(self):
-        """ initial log level for ion.processes.event is INFO -- test we can change it to TRACE """
+        """ initial log level for ion.process.event is INFO -- test we can change it to TRACE """
 
         #
         handler = pyon.container.management.PolicyCacheHandler()
@@ -71,7 +71,7 @@ class AdminMessageTest(PyonTestCase):
         #
 
     def test_garbage_collection_handler(self):
-        """ initial log level for ion.processes.event is INFO -- test we can change it to TRACE """
+        """ initial log level for ion.process.event is INFO -- test we can change it to TRACE """
 
         #
         handler = pyon.container.management.GarbageCollectionHandler()

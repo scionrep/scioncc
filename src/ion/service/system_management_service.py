@@ -12,7 +12,7 @@ ALL_CONTAINERS_INSTANCE = AllContainers()
 
 class SystemManagementService(BaseSystemManagementService):
     """ container management requests are handled by the event listener
-        ion.processes.event.container_manager.ContainerManager
+        ion.process.event.container_manager.ContainerManager
         which must be running on each container.
     """
 

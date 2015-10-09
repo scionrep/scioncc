@@ -326,7 +326,7 @@ def main(opts, *args, **kwargs):
         if opts.mx:
             from pyon.public import CFG
             port = CFG.get_safe('process.admin_ui.web_server.port', 8080)
-            container.spawn_process("admin_ui", "ion.processes.ui.admin_ui", "AdminUI")
+            container.spawn_process("admin_ui", "ion.process.ui.admin_ui", "AdminUI")
 
         if opts.signalparent:
             log.info("Signal parent pid %d that pycc pid %d service start process is complete...", os.getppid(), os.getpid())

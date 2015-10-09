@@ -2,7 +2,7 @@ type: application
 name: hello
 description: Hello service
 version: 0.1
-module: ion.services.examples.hello_service
+module: ion.service.examples.hello_service
 dependencies: []
 config:
     some: "Hi"

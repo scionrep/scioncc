@@ -2,7 +2,7 @@ type: application
 name: hello1
 description: Hello service (procapp version)
 version: 0.1
-processapp: [hello1, ion.services.examples.hello_service, HelloService]
+processapp: [hello1, ion.service.examples.hello_service, HelloService]
 dependencies: []
 config:
     some: "Hi"

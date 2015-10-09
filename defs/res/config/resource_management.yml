@@ -26,7 +26,7 @@ ResourceInterface:
       object_size:
         get: func:self.get_resource_size($RESOURCE_ID)
       object_size1:
-        get: func:ion.services.agent_management_service.get_resource_size($RESOURCE_ID)
+        get: func:ion.service.agent_management_service.get_resource_size($RESOURCE_ID)
       description:
         set: func:self.set_resource_description($RESOURCE_ID,$VALUE)
       name:

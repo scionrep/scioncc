@@ -58,7 +58,7 @@ class ProcessStateGateIntTest(IonIntegrationTestCase):
         self.pd_cli = ProcessDispatcherServiceClient()
 
         self.process_definition = IonObject(OT.ProcessDefinition, name='test_process')
-        self.process_definition.executable = {'module': 'ion.services.test.test_process_state_gate',
+        self.process_definition.executable = {'module': 'ion.service.test.test_process_state_gate',
                                               'class': 'TestProcess'}
         self.process_definition_id = self.pd_cli.create_process_definition(self.process_definition)
         self.event_queue = queue.Queue()

@@ -11,7 +11,7 @@ apps:
   ##################################
 
   - name: resource_registry
-    processapp: [resource_registry, ion.services.resource_registry_service, ResourceRegistryService]
+    processapp: [resource_registry, ion.service.resource_registry_service, ResourceRegistryService]
     bootlevel: 5
     replicas: 1
 
@@ -23,5 +23,5 @@ apps:
   ##################################
 
   - name: ui_server
-    processapp: [ui_server, ion.processes.ui.server, UIServer]
+    processapp: [ui_server, ion.process.ui.server, UIServer]
     bootlevel: 30

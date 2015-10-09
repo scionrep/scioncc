@@ -12,7 +12,7 @@ from pyon.ion import exchange
 from pyon.net.transport import BaseTransport
 from pyon.public import PRED, RT, CFG, log, BadRequest, Conflict, Inconsistent, NotFound
 from pyon.util.containers import DotDict
-from ion.services.exchange_management_service import ExchangeManagementService
+from ion.service.exchange_management_service import ExchangeManagementService
 
 from interface.objects import ExchangeSpace, ExchangePoint, ExchangeName
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceClient
