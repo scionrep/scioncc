@@ -13,8 +13,9 @@ import gevent
 from gevent.lock import RLock
 from gevent.wsgi import WSGIServer
 from datetime import datetime, timedelta
+import random
 
-from pyon.public import SimpleProcess, log, BadRequest, NotFound, OT, get_ion_ts_millis
+from pyon.public import SimpleProcess, log, BadRequest, Conflict, NotFound, OT, get_ion_ts_millis
 from pyon.util.containers import named_any, current_time_millis
 from ion.util.ui_utils import (build_json_response, build_json_error, get_arg, get_auth, get_req_bearer_token,
                                set_auth, clear_auth, OAuthClientObj, OAuthTokenObj)
@@ -36,6 +37,7 @@ ui_instance = None
 client_cache = {}
 
 _token_lock = RLock()
+
 
 class UIServer(SimpleProcess):
     """
@@ -472,7 +474,6 @@ def load_token(access_token=None, refresh_token=None):
     """ Callback to retrieve token info from given token string.
     Called from verify_request. Expiration verification is done afterwards in the library.
     """
-    global _token_lock
     log.info("OAuth:load_token(access=%s, refresh=%s)", access_token, refresh_token)
     try:
         if access_token:
@@ -492,9 +493,18 @@ def load_token(access_token=None, refresh_token=None):
                         # Make sure token does not exceed maximum validity
                         new_expires = min(new_expires, token_obj.attributes.get("ts_created", 0) +
                                           1000 * ui_instance.max_session_validity)
-                    if new_expires > int(token_obj.expires):
-                        token_obj.expires = str(new_expires)
-                        ui_instance.container.object_store.update(token_obj)
+                    if (ui_instance.session_timeout <= 120 and new_expires > int(token_obj.expires)) or \
+                            (ui_instance.session_timeout > 120 and new_expires - 60000 > int(token_obj.expires)):
+                        # Only extend session if by 60 sec (unless session is very short as in testing)
+                        # This reduces the likelihood of an extension
+                        for i in xrange(3):
+                            token_obj.expires = str(new_expires)
+                            try:
+                                ui_instance.container.object_store.update(token_obj)
+                            except Conflict:
+                                # Concurrency conflict: random wait, then get most recent object rev
+                                gevent.sleep(random.random() * 0.05 * (i+1))  # Add some random delays
+                                token_obj = ui_instance.container.object_store.read(token_id)
                         token = OAuthTokenObj.from_security_token(token_obj)
                         log.info("Access token extended for user=%s", token.user["actor_id"])
                         # IGNORE session in ActorIdentity
