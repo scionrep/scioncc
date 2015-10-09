@@ -501,6 +501,7 @@ def load_token(access_token=None, refresh_token=None):
                             token_obj.expires = str(new_expires)
                             try:
                                 ui_instance.container.object_store.update(token_obj)
+                                break
                             except Conflict:
                                 # Concurrency conflict: random wait, then get most recent object rev
                                 gevent.sleep(random.random() * 0.05 * (i+1))  # Add some random delays
