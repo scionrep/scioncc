@@ -10,6 +10,7 @@ from flask import Flask, Response, request, render_template
 from flask_socketio import SocketIO, SocketIOServer
 from flask_oauthlib.provider import OAuth2Provider
 import gevent
+from gevent.lock import RLock
 from gevent.wsgi import WSGIServer
 from datetime import datetime, timedelta
 
@@ -34,6 +35,7 @@ oauth = OAuth2Provider(app)
 ui_instance = None
 client_cache = {}
 
+_token_lock = RLock()
 
 class UIServer(SimpleProcess):
     """
@@ -470,31 +472,33 @@ def load_token(access_token=None, refresh_token=None):
     """ Callback to retrieve token info from given token string.
     Called from verify_request. Expiration verification is done afterwards in the library.
     """
+    global _token_lock
     log.info("OAuth:load_token(access=%s, refresh=%s)", access_token, refresh_token)
     try:
         if access_token:
             token_id = str("access_token_%s" % access_token)
-            token_obj = ui_instance.container.object_store.read(token_id)
-            token = OAuthTokenObj.from_security_token(token_obj)
-            if not token.is_valid():
-                log.info("OAuth: client used invalid access token")
-                return None
+            with _token_lock:
+                token_obj = ui_instance.container.object_store.read(token_id)
+                token = OAuthTokenObj.from_security_token(token_obj)
+                if not token.is_valid():
+                    log.info("OAuth: client used invalid access token")
+                    return None
 
-            flask.g.oauth_user = token.user
-            flask.g.actor_id = token.user["actor_id"]
-            if ui_instance.extend_session_timeout and token.is_valid(check_expiry=True):
-                new_expires = get_ion_ts_millis() + 1000 * ui_instance.session_timeout
-                if ui_instance.max_session_validity:
-                    # Make sure token does not exceed maximum validity
-                    new_expires = min(new_expires, token_obj.attributes.get("ts_created", 0) +
-                                      1000 * ui_instance.max_session_validity)
-                if new_expires > int(token_obj.expires):
-                    token_obj.expires = str(new_expires)
-                    ui_instance.container.object_store.update(token_obj)
-                    token = OAuthTokenObj.from_security_token(token_obj)
-                    log.info("Access token extended for user=%s", token.user["actor_id"])
-                    # IGNORE session in ActorIdentity
-            return token
+                flask.g.oauth_user = token.user
+                flask.g.actor_id = token.user["actor_id"]
+                if ui_instance.extend_session_timeout and token.is_valid(check_expiry=True):
+                    new_expires = get_ion_ts_millis() + 1000 * ui_instance.session_timeout
+                    if ui_instance.max_session_validity:
+                        # Make sure token does not exceed maximum validity
+                        new_expires = min(new_expires, token_obj.attributes.get("ts_created", 0) +
+                                          1000 * ui_instance.max_session_validity)
+                    if new_expires > int(token_obj.expires):
+                        token_obj.expires = str(new_expires)
+                        ui_instance.container.object_store.update(token_obj)
+                        token = OAuthTokenObj.from_security_token(token_obj)
+                        log.info("Access token extended for user=%s", token.user["actor_id"])
+                        # IGNORE session in ActorIdentity
+                return token
 
         elif refresh_token:
             token_id = str("refresh_token_%s" % refresh_token)
