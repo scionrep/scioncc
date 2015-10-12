@@ -83,6 +83,7 @@ class ServiceGateway(object):
         self.gateway_base_url = process.gateway_base_url
         self.develop_mode = self.config.get_safe(CFG_PREFIX + ".develop_mode") is True
         self.require_login = self.config.get_safe(CFG_PREFIX + ".require_login") is True
+        self.token_from_session = self.config.get_safe(CFG_PREFIX + ".token_from_session") is True
 
         # Optional list of trusted originators can be specified in config.
         self.trusted_originators = self.config.get_safe(CFG_PREFIX + ".trusted_originators")
@@ -407,12 +408,23 @@ class ServiceGateway(object):
         expiry = DEFAULT_EXPIRY
         authtoken = ""
         user_session = get_auth()
-        if user_session.get("actor_id", None) and user_session.get("valid_until", 0):
+        #if user_session.get("actor_id", None) and user_session.get("valid_until", 0):
+        if user_session.get("actor_id", None):
             # Get info from current server session
             # NOTE: Actor id may be inside server session
-            actor_id = user_session["actor_id"]
-            expiry = str(int(user_session.get("valid_until", 0)) * 1000)
-            log.info("Request associated with session actor_id=%s, expiry=%s", actor_id, expiry)
+            expiry = int(user_session.get("valid_until", 0)) * 1000
+            if expiry:
+                # This was a proper non-token server session authentication
+                expiry = str(expiry)
+                actor_id = user_session["actor_id"]
+                log.info("Request associated with session actor_id=%s, expiry=%s", actor_id, expiry)
+            else:
+                # We are just taking the user_id out of the session
+                # TODO: Need to check access token here
+                expiry = str(expiry)
+                if self.token_from_session:
+                    actor_id = user_session["actor_id"]
+                    log.info("Request associated with actor's token from session; actor_id=%s, expiry=%s", actor_id, expiry)
 
         # Developer access using api_key
         if self.develop_mode and "api_key" in request.args and request.args["api_key"]:
