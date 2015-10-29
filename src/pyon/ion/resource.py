@@ -154,7 +154,7 @@ def is_resource(object):
 
 def create_access_args(current_actor_id=None, superuser_actor_ids=None):
     """Returns a dict that can be provided to resource registry and datastore find operations to indicate
-    the caller's and
+    the caller' actor and system superusers
     """
     access_args = dict(current_actor_id=current_actor_id,
                        superuser_actor_ids=superuser_actor_ids)

@@ -104,8 +104,6 @@ def process_index():
         from pyon.core.bootstrap import get_sys_name
         default_ds_server = CFG.get_safe("container.datastore.default_server", "postgresql")
 
-
-
         fragments = [
             "<h1>SciON Admin UI</h1>",
             "<p><ul>",
@@ -117,14 +115,11 @@ def process_index():
             "<li>Governance: <a href='/list/Commitment'>Commitment</a>, <a href='/list/Negotiation'>Negotiation</a>, <a href='/list/Policy'>Policy</a></li>",
             _get_resmenu_extension(),
             "</ul></li>",
+            "<li><a href='/syscmds'><b>System Commands</b></a></li>",
             "<li><a href='/events'><b>Browse Events</b></a></li>",
+            "<li><a href='/dir'><b>Browse SciON Directory</b></a></li>",
             "<li><a href='/viewobj'><b>View Objects</b></a></li>",
             "<li><a href='/viewstate'><b>View Process State</b></a></li>",
-            "<li><a href='/dir'><b>Browse SciON Directory</b></a></li>",
-            #"<li><a href='/mscweb'><b>Show system messages (MSCWeb)</b></a>",
-            #"<ul>",
-            #"<li><a href='/mscaction/stop'>Stop system message recording</a></li>",
-            #"</ul></li>",
             "<li><a href='http://localhost:4000'><b>Application Web UI (if running)</b></a></li>",
             "<li><a href='http://" + CFG.get_safe("server.amqp.host") + ":15672/'><b>RabbitMQ Management UI (if running)</b></a></li>",
             "<li><a href='http://localhost:9001/'><b>Supervisord UI (if running)</b></a></li>",
@@ -132,7 +127,7 @@ def process_index():
             "<h2>System and Container Properties</h2>",
             "<p><table>",
             "<tr><th>Property</th><th>Value</th></tr>",
-            "<tr><td>system.name (sysname)</td><td>%s</td></tr>" % get_sys_name(),
+            "<tr><td>Sysname (system.name)</td><td>%s</td></tr>" % get_sys_name(),
             "<tr><td>Message Broker</td><td>%s</td></tr>" % "%s:%s" % (CFG.server.amqp.host, CFG.server.amqp.port),
             "<tr><td>Database</td><td>%s</td></tr>" % "%s:%s" % (CFG.get_safe("server.%s.host" % default_ds_server), CFG.get_safe("server.%s.port" % default_ds_server)),
             "<tr><td>Container ID</td><td>%s</td></tr>" % Container.instance.id,
@@ -424,7 +419,7 @@ def build_commands(resource_id, restype):
     options = [(p, p) for p in sorted(PRED)]
     args = [('select', 'pred', options), ('input', 'rid2', 45)]
     fragments.append(build_command("Associate from subject", "/cmd/createassoc?rid=%s&dir=from" % resource_id, args))
-    fragments.append(build_command("Associate to object", "/cmd/createassoc?rid=%s&dir=to" % resource_id, args))
+    fragments.append(build_command("Associate to object", "/cmd/createassoc?rid=%s&dir=to" % resource_id, args, variant="1"))
 
     from pyon.ion.resource import LCE, LCS, AS
     event_list = LCE.keys()
@@ -443,35 +438,6 @@ def build_commands(resource_id, restype):
     if adminui_instance.plugin:
         adminui_instance.plugin.resource_commands(resource_id, restype, fragments)
 
-    fragments.append("</table>")
-    return "".join(fragments)
-
-def build_command(text, link, args=None, confirm=None):
-    fragments = []
-    if args:
-        arg_params = "'%s'" % link
-        for arg in args:
-            arg_type, arg_name, arg_more = arg
-            arg_params += ",'%s','%s'" % (arg_name, arg_name)
-        func_name = "linkto"
-        if len(args) > 1:
-            func_name += str(len(args))
-        fragments.append("<div><a href='#' onclick=\"return %s(%s);\">%s</a> " % (func_name, arg_params, text))
-        for arg in args:
-            arg_type, arg_name, arg_more = arg
-            if arg_type == "select":
-                fragments.append("<select id='%s'>" % arg_name)
-                for oname, oval in arg_more:
-                    fragments.append("<option value='%s'>%s</option>" % (oval, oname))
-                fragments.append("</select>")
-            elif arg_type == "input":
-                fragments.append("<input id='%s' type='text' size='%s'>" % (arg_name, arg_more or 30))
-                fragments.append("</input>")
-        fragments.append("</div>")
-    else:
-        if confirm:
-            confirm = "return confirm('%s');" % confirm
-        fragments.append("<div>%s</div>" % build_link(text, link, confirm))
     return "".join(fragments)
 
 # ----------------------------------------------------------------------------------------
@@ -486,7 +452,7 @@ def process_command(cmd):
             raise Unauthorized("Cannot %s %s in read-only mode!" % (cmd, resource_id))
 
         res_obj = None
-        if resource_id != "NEW" and cmd not in {'deleteassoc'}:
+        if resource_id and resource_id != "NEW" and cmd not in {'deleteassoc'}:
             res_obj = Container.instance.resource_registry.read(resource_id)
 
         func_name = "_process_cmd_%s" % cmd
@@ -504,7 +470,7 @@ def process_command(cmd):
             build_standard_menu(),
             "<h1>Command %s result</h1>" % cmd,
             "<p><pre>%s</pre></p>" % result,
-            "<p>%s</p>" % build_link("Back to Resource Page", "/view/%s" % resource_id),
+            "<p>%s</p>" % build_link("Back to Resource Page", "/view/%s" % resource_id) if resource_id else build_link("Home Page", "/"),
         ]
 
         content = "\n".join(fragments)
@@ -600,6 +566,27 @@ def _process_cmd_unlock_user(resource_id, res_obj=None):
     user_obj.auth_status = objects.AuthStatusEnum.ENABLED
     Container.instance.resource_registry.update(user_obj)
     return "OK"
+
+@app.route('/syscmds', methods=['GET','POST'])
+def process_system_commands():
+    try:
+        fragments = [
+            build_standard_menu(),
+            "<h1>System Commands</h1>",
+            "<p>",
+        ]
+
+        if adminui_instance.plugin and hasattr(adminui_instance.plugin, "system_commands"):
+            adminui_instance.plugin.system_commands(fragments)
+        else:
+            fragments.append("None defined")
+        fragments.append("</p>")
+
+        content = "\n".join(fragments)
+        return build_page(content)
+
+    except Exception as e:
+        return build_error_page(traceback.format_exc())
 
 # ----------------------------------------------------------------------------------------
 
@@ -966,11 +953,58 @@ def get_rr_access_args(as_superuser=True):
 def build_type_link(restype):
     return build_link(restype, "/list/%s" % restype)
 
-def build_link(text, link, onclick=None):
+def build_link(text, link, onclick=None, confirm=None, iconcls=None, icontext=False):
+    classattr, label = "", text
+    if iconcls:
+        classattr = "class='smbutton icon %s'" % iconcls
+        label = ("<span class=img></span><span class=txt>%s</span>" % text) if icontext and text else "<span class=img></span>"
+    if confirm:
+        onclick = "return confirm('%s');" % confirm
     if onclick:
-        return "<a href='%s' onclick=\"%s\">%s</a>" % (link, onclick, text)
+        return "<a %s title='%s' href='%s' onclick=\"%s\">%s</a>" % (classattr, text, link, onclick, label)
     else:
-        return "<a href='%s'>%s</a>" % (link, text)
+        return "<a %s title='%s' href='%s'>%s</a>" % (classattr, text, link, label)
+
+def build_command(text, link, args=None, confirm=None, variant="", block=True, link_first=True, iconcls=None, icontext=False):
+    classattr, label = "", text
+    if iconcls:
+        classattr = "class='smbutton icon %s'" % iconcls
+        label = ("<span class=img></span><span class=txt>%s</span>" % text) if icontext and text else "<span class=img></span>"
+    fragments = []
+    if args:
+        arg_params = "'%s'" % link
+        for arg in args:
+            arg_type, arg_name, arg_more = arg
+            arg_params += ",'%s','%s'" % (arg_name, arg_name+variant)
+        func_name = "linkto"
+        if len(args) > 1:
+            func_name += str(len(args))
+        link_frag = "<a %s title='%s'  href='#' onclick=\"return %s(%s);\">%s</a> " % (classattr, text, func_name, arg_params, label)
+        if link_first:
+            fragments.append(link_frag)
+        for arg in args:
+            arg_type, arg_name, arg_more = arg
+            if arg_type == "select":  # Dropdown select
+                fragments.append("<select id='%s'>" % (arg_name+variant))
+                for oname, oval in arg_more:
+                    fragments.append("<option value='%s'>%s</option>" % (oval, oname))
+                fragments.append("</select>")
+            elif arg_type == "input":  # Text input
+                fragments.append("<input id='%s' type='text' size='%s'>" % ((arg_name+variant), arg_more or 30))
+                fragments.append("</input>")
+            elif arg_type == "ref":
+                # Value is somewhere else
+                pass
+        if not link_first:
+            fragments.append(link_frag)
+    else:
+        if confirm:
+            confirm = "return confirm('%s');" % confirm
+        fragments.append("%s" % build_link(text, link, confirm))
+    if block:
+        fragments.insert(0, "<div>")
+        fragments.append("</div>")
+    return "".join(fragments)
 
 def build_standard_menu():
     return "<p><a href='/'>[Home]</a></p>"
@@ -1014,9 +1048,13 @@ def build_page(content, title=""):
     ]
     return "\n".join(fragments)
 
-def get_arg(arg_name, default=None):
-    aval = request.values.get(arg_name, None)
-    return str(aval) if aval else default
+def get_arg(arg_name, default="", is_mult=False):
+    if is_mult:
+        aval = request.form.getlist(arg_name)
+        return aval
+    else:
+        aval = request.values.get(arg_name, None)
+        return str(aval) if aval else default
 
 def convert_unicode(data):
     """

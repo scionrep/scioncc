@@ -15,8 +15,8 @@ __all__ += ['MSG_HEADER_ACTOR', 'MSG_HEADER_ROLES', 'MSG_HEADER_VALID']
 from pyon.core.bootstrap import get_obj_registry, IonObject, get_sys_name, CFG
 __all__ += ['get_obj_registry', 'IonObject', 'get_sys_name', 'CFG']
 
-from pyon.core.exception import BadRequest, NotFound, Inconsistent, Conflict, IonException, Timeout, Unauthorized, NotAcceptable
-__all__ += ['BadRequest', 'NotFound', 'Inconsistent', 'Conflict', 'IonException', 'Timeout', 'Unauthorized', 'NotAcceptable']
+from pyon.core.exception import BadRequest, NotFound, Inconsistent, Conflict, IonException, Timeout, Unauthorized, NotAcceptable, ServerError
+__all__ += ['BadRequest', 'NotFound', 'Inconsistent', 'Conflict', 'IonException', 'Timeout', 'Unauthorized', 'NotAcceptable', 'ServerError']
 
 from pyon.core.thread import PyonThreadError, PyonThread, PyonThreadManager
 __all__ += ['PyonThreadError', 'PyonThread', 'PyonThreadManager']
@@ -60,8 +60,8 @@ __all__ += ['Publisher', 'Subscriber']
 from pyon.util.async import spawn, switch
 __all__ += ['spawn', 'switch']
 
-from pyon.util.containers import DotDict, DotList, dict_merge, get_safe, named_any, get_ion_ts, get_ion_ts_millis
-__all__ += ['DotDict', 'DotList', 'dict_merge', 'get_safe', 'named_any', 'get_ion_ts', 'get_ion_ts_millis']
+from pyon.util.containers import DotDict, DotList, dict_merge, get_safe, named_any, get_ion_ts, get_ion_ts_millis, current_time_millis
+__all__ += ['DotDict', 'DotList', 'dict_merge', 'get_safe', 'named_any', 'get_ion_ts', 'get_ion_ts_millis', 'current_time_millis']
 
 from pyon.util.log import log
 __all__ += ['log']
