@@ -320,10 +320,14 @@ class TracingCursor(_cursor):
                 stats_obj["count.select"] = stats_obj.get("count.select", 0) + 1
                 if self.rowcount >= 0:
                     stats_obj["rows.select"] = stats_obj.get("rows.select", 0) + self.rowcount
+                if query_time:
+                    stats_obj["time.select"] = stats_obj.get("time.select", 0.0) + query_time
             else:
                 stats_obj["count.nonsel"] = stats_obj.get("count.nonsel", 0) + 1
                 if self.rowcount >= 0:
                     stats_obj["rows.nonsel"] = stats_obj.get("rows.nonsel", 0) + self.rowcount
+                if query_time:
+                    stats_obj["time.nonsel"] = stats_obj.get("time.nonsel", 0.0) + query_time
             if query_time:
                 stats_obj["time.all"] = stats_obj.get("time.all", 0.0) + query_time
 

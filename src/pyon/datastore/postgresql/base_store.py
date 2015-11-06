@@ -47,6 +47,9 @@ OBJ_TYPE_PRECED = {"R": 1, "A": 2, "D": 3}
 # Shared connection pool for container
 pg_connection_pool = None
 
+# Special callback for DB traces (note: during early phases of framework start, this is None)
+stats_callback = None
+
 
 class PostgresDataStore(DataStore):
     """
@@ -86,7 +89,7 @@ class PostgresDataStore(DataStore):
             self.database = "%s_%s" % (self.scope, self.database)
         self.datastore_name = datastore_name
 
-        self._call_tracer = CallTracer(scope="DB." + (self.datastore_name or "_"))
+        self._call_tracer = DBCallTracer(scope="DB." + (self.datastore_name or "_"))
         self.cursor_args = dict(cursor_factory=TracingCursor, tracer=self._call_tracer)
 
         # Make sure database exists and set connection
@@ -163,7 +166,7 @@ class PostgresDataStore(DataStore):
         """Disconnects all user sessions from given database"""
         with psycopg2_connect(c_host=host, c_port=port, c_dbname=default_database,
                               c_user=username, c_password=password,
-                              tracer=CallTracer(scope="DB._")) as conn:
+                              tracer=DBCallTracer(scope="DB._")) as conn:
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
             with conn.cursor() as cur:
                 try:
@@ -178,7 +181,7 @@ class PostgresDataStore(DataStore):
         """Drops a database"""
         with psycopg2_connect(c_host=host, c_port=port, c_dbname=default_database,
                               c_user=username, c_password=password,
-                              tracer=CallTracer(scope="DB._")) as conn:
+                              tracer=DBCallTracer(scope="DB._")) as conn:
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
             with conn.cursor() as cur:
                 try:
@@ -1192,3 +1195,25 @@ class PostgresDataStore(DataStore):
             return None
         doc = internal_doc
         return doc
+
+
+class DBCallTracer(object):
+    def __init__(self, scope):
+        self.scope = scope
+
+    def log_call(self, log_entry, include_stack=True):
+        if stats_callback:
+            stats_callback(self.scope, log_entry)
+        else:
+            # We want to capture traces from the early moments on, so push to tracer.
+            CallTracer.log_scope_call(self.scope, log_entry, include_stack=include_stack)
+
+
+def set_db_stats_callback(stats_cb):
+    """ Sets a callback function (hook) to push stats after a DB  call. """
+    global stats_callback
+    if stats_cb is None:
+        pass
+    elif stats_callback:
+        log.warn("Stats callback already defined")
+    stats_callback = stats_cb

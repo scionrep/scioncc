@@ -113,6 +113,7 @@ class ServiceGateway(object):
         #maxAgeMs = oldest entry to keep
         self.user_role_cache = LRUCache(self.user_cache_size, 0, 0)
 
+        self.request_callback = None
         self.log_errors = self.config.get_safe(CFG_PREFIX + ".log_errors", True)
 
         self.rr_client = ResourceRegistryServiceProcessClient(process=self.process)
@@ -518,6 +519,21 @@ class ServiceGateway(object):
     # -------------------------------------------------------------------------
     # Service call (messaging) helpers
 
+    def register_request_callback(self, cb_func):
+        if cb_func is None:
+            pass
+        elif self.request_callback:
+            log.warn("Callback already registered")
+        self.request_callback = cb_func
+
+    def _call_request_callback(self, action, req_info):
+        if not self.request_callback:
+            return
+        try:
+            self.request_callback(action, req_info)
+        except Exception:
+            log.exception("Error calling request callback")
+
     def _add_cors_headers(self, resp):
         # Set CORS headers so that a Swagger client on a different domain can read spec
         resp.headers["Access-Control-Allow-Headers"] = "Origin, X-Atmosphere-tracking-id, X-Atmosphere-Framework, X-Cache-Date, Content-Type, X-Atmosphere-Transport, *"
@@ -528,9 +544,10 @@ class ServiceGateway(object):
     def _log_request_start(self, req_type="SG"):
         global req_seqnum
         req_seqnum += 1
-        req_info = dict(request_id=req_seqnum, start_time=time.time(), req_type=req_type)
+        req_info = dict(request_id=req_seqnum, start_time=time.time(), req_type=req_type, req_url=request.url)
         flask.g.req_info = req_info
         webapi_log.info("%s REQUEST (%s) - %s", req_type, req_info["request_id"], request.url)
+        self._call_request_callback("start", req_info)
 
     def _log_request_response(self, content_type, result="", content_length=-1, status_code=200):
         req_info = flask.g.get("req_info", None)
@@ -551,6 +568,7 @@ class ServiceGateway(object):
                             "/id="+result[GATEWAY_ERROR_EXCID] if result[GATEWAY_ERROR_EXCID] else "",
                             result[GATEWAY_ERROR_EXCEPTION],
                             result[GATEWAY_ERROR_MESSAGE])
+            self._call_request_callback("error", req_info)
         else:
             webapi_log.warn("REQUEST ERROR (%s%s) - %s: %s",
                             status_code,
@@ -569,6 +587,7 @@ class ServiceGateway(object):
                             req_info.get("resp_content_length", ""),
                             req_info.get("resp_content_type", "")
             )
+            self._call_request_callback("end", req_info)
         else:
             webapi_log.warn("REQUEST END - missing start info")
 

@@ -21,6 +21,8 @@ from pyon.util.log import log
 
 STAT_INTERVAL_LENGTH = 60000  # Interval time for process saturation stats collection
 
+stats_callback = None
+
 
 class OperationInterruptedException(BaseException):
     """
@@ -90,6 +92,7 @@ class IonProcessThread(PyonThread):
         self._log_call_exception = CFG.get_safe("container.process.log_exceptions", False)
         self._log_call_dbstats = CFG.get_safe("container.process.log_dbstats", False)
         self._warn_call_dbstmt_threshold = CFG.get_safe("container.process.warn_dbstmt_threshold", 0)
+
         PyonThread.__init__(self, target=target, **kwargs)
 
     def heartbeat(self):
@@ -333,10 +336,9 @@ class IonProcessThread(PyonThread):
         in the greenlet that originally scheduled the call.  If successful, the AsyncResult
         created at scheduling time is set with the result of the call.
         """
+        svc_name = getattr(self.service, "name", "unnamed-service") if self.service else "unnamed-service"
+        proc_id = getattr(self.service, "id", "unknown-pid") if self.service else "unknown-pid"
         if self.name:
-            svc_name = "unnamed-service"
-            if self.service is not None and hasattr(self.service, 'name'):
-                svc_name = self.service.name
             threading.current_thread().name = "%s-%s" % (svc_name, self.name)
         thread_base_name = threading.current_thread().name
 
@@ -374,10 +376,10 @@ class IonProcessThread(PyonThread):
                 # ******************************************************************
                 # ****** THIS IS WHERE THE RPC OPERATION/SERVICE CALL IS MADE ******
 
-                with self.service.push_context(context):
-                    with self.service.container.context.push_context(context):
-                        self._ctrl_current = ar
-                        res = call(*callargs, **callkwargs)
+                with self.service.push_context(context), \
+                     self.service.container.context.push_context(context):
+                    self._ctrl_current = ar
+                    res = call(*callargs, **callkwargs)
 
                 # ****** END CALL, EXCEPTION HANDLING FOLLOWS                 ******
                 # ******************************************************************
@@ -394,52 +396,57 @@ class IonProcessThread(PyonThread):
                 # Raise the exception in the calling greenlet.
                 # Try decorating the args of the exception with the true traceback -
                 # this should be reported by ThreadManager._child_failed
-                exc = PyonThreadTraceback("IonProcessThread _control_flow caught an exception (call: %s, *args %s, **kwargs %s, context %s)\nTrue traceback captured by IonProcessThread' _control_flow:\n\n%s" % (
-                        call, callargs, callkwargs, context, traceback.format_exc()))
+                exc = PyonThreadTraceback("IonProcessThread _control_flow caught an exception "
+                                          "(call: %s, *args %s, **kwargs %s, context %s)\n"
+                                          "True traceback captured by IonProcessThread' _control_flow:\n\n%s" % (
+                                          call, callargs, callkwargs, context, traceback.format_exc()))
                 e.args = e.args + (exc,)
 
-                # HACK HACK HACK
-                # we know that we only handle TypeError and IonException derived things, so only forward those if appropriate
                 if isinstance(e, (TypeError, IonException)):
+                    # Pass through known process exceptions, in particular IonException
                     calling_gl.kill(exception=e, block=False)
                 else:
-                    # otherwise, swallow/record/report and hopefully we can continue on our way
+                    # Otherwise, wrap unknown, forward and hopefully we can continue on our way
                     self._errors.append((call, callargs, callkwargs, context, e, exc))
 
                     log.warn(exc)
                     log.warn("Attempting to continue...")
 
-                    # have to raise something friendlier on the client side
-                    # calling_gl.kill(exception=ContainerError(str(exc)), block=False)
-                    # If exception string representation then calling calling_gl.kill(exception=ContainerError(str(exc)), block=False)
-                    # will crush the container.
-                    exceptions_str = str(exc)
-                    if len(exceptions_str) > 10000:
-                        exceptions_str = (
-                            "Exception string representation is to large to put it all here. "
+                    # Note: Too large exception string will crash the container (when passed on as msg header).
+                    exception_str = str(exc)
+                    if len(exception_str) > 10000:
+                        exception_str = (
+                            "Exception string representation too large. "
                             "Begin and end of the exception:\n"
-                            + exceptions_str[:2000] + "\n...\n" + exceptions_str[-2000:]
+                            + exception_str[:2000] + "\n...\n" + exception_str[-2000:]
                         )
-                    calling_gl.kill(exception=ContainerError(exceptions_str), block=False)
+                    calling_gl.kill(exception=ContainerError(exception_str), block=False)
             finally:
                 try:
+                    # Compute statistics
                     self._compute_proc_stats(start_proc_time)
 
                     db_stats = get_db_stats()
                     if db_stats:
                         if self._warn_call_dbstmt_threshold > 0 and db_stats.get("count.all", 0) >= self._warn_call_dbstmt_threshold:
                             stats_str = ", ".join("{}={}".format(k, db_stats[k]) for k in sorted(db_stats.keys()))
-                            log.warn("PROC_OP '%s.%s' EXCEEDED DB THRESHOLD. stats=%s", call.__module__, call.__name__, stats_str)
+                            log.warn("PROC_OP '%s.%s' EXCEEDED DB THRESHOLD. stats=%s", svc_name, call.__name__, stats_str)
                         elif self._log_call_dbstats:
                             stats_str = ", ".join("{}={}".format(k, db_stats[k]) for k in sorted(db_stats.keys()))
-                            log.info("PROC_OP '%s.%s' DB STATS: %s", call.__module__, call.__name__, stats_str)
+                            log.info("PROC_OP '%s.%s' DB STATS: %s", svc_name, call.__name__, stats_str)
                     clear_db_stats()
+
+                    if stats_callback:
+                        stats_callback(proc_id=proc_id, proc_name=self.name, svc=svc_name, op=call.__name__,
+                                       request_id=request_id, context=context,
+                                       db_stats=db_stats, proc_stats=self.time_stats, result=res, exc=None)
                 except Exception:
                     log.exception("Error computing process call stats")
 
                 self._ctrl_current = None
                 threading.current_thread().name = thread_base_name
 
+            # Set response in AsyncEvent of caller (endpoint greenlet)
             ar.set(res)
 
     def _record_proc_time(self, cur_time):
@@ -599,3 +606,13 @@ def get_ion_actor_id(process):
         ctx = process.get_context()
         ion_actor_id = ctx.get(MSG_HEADER_ACTOR, None) if ctx else None
     return ion_actor_id
+
+
+def set_process_stats_callback(stats_cb):
+    """ Sets a callback function (hook) to push stats after a process operation call. """
+    global stats_callback
+    if stats_cb is None:
+        pass
+    elif stats_callback:
+        log.warn("Stats callback already defined")
+    stats_callback = stats_cb
