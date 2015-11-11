@@ -372,15 +372,23 @@ class ServiceGateway(object):
             log.exception("Error deleting attachment")
             return self.gateway_error_response(ex)
 
-    def get_version_info(self):
+    def get_version_info(self, pack=None):
         import pkg_resources
         pkg_list = ["scioncc"]
+
+        packs = self.config.get_safe(CFG_PREFIX + ".version_packages")
+        if packs:
+            pkg_list.extend(packs.split(","))
 
         version = {}
         for package in pkg_list:
             try:
-                version["%s-release" % package] = pkg_resources.require(package)[0].version
-                # @TODO git versions for each?
+                if pack == "all":
+                    pack_deps = pkg_resources.require(package)
+                    version.update({p.project_name: p.version for p in pack_deps})
+                else:
+                    version[package] = pkg_resources.require(package)[0].version
+                # @TODO git versions for current?
             except pkg_resources.DistributionNotFound:
                 pass
 
@@ -391,6 +399,9 @@ class ServiceGateway(object):
                 version.update({k: v for (k, v) in sys_attrs.iteritems() if "version" in k.lower()})
         except Exception as ex:
             log.exception("Could not determine system directory attributes")
+
+        if pack and pack != "all":
+            version = {k: v for (k, v) in version.iteritems() if k == pack}
 
         return self.gateway_json_response(version)
 
@@ -988,5 +999,6 @@ def delete_attachment(attachment_id):
 
 # ROUTE: Get version information about this copy of ScionCC
 @sg_blueprint.route("/version")
-def get_version_info():
-    return sg_instance.get_version_info()
+@sg_blueprint.route("/version/<pack>")
+def get_version_info(pack=None):
+    return sg_instance.get_version_info(pack)

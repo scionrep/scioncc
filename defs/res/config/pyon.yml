@@ -352,6 +352,7 @@ service:
     require_login: True      # Must provide session or token and no anonymous access allowed
     token_from_session: False  # If True, allow a valid token from session instead
     no_login_whitelist: []   # List of service operations that can be accessed anonymously: request/svc/op
+    version_packages: scioncc   # Comma separated list of package names to show version for
     swagger_spec:
       enable: True           # Support generation of Swagger v2 service interfaces
       info:
