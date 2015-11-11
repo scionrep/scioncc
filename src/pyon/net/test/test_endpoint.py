@@ -646,6 +646,7 @@ class TestRPCResponseEndpoint(PyonTestCase, RecvMockMixin):
 
         assert_called_once_with_header(self, ch.send, {'status_code': 400,
                                                        'error_message': 'Unknown op name: no_exist',
+                                                       'error_id': '',
                                                        'conv-id': sentinel.conv_id,
                                                        'conv-seq': 2,
                                                        'protocol': '',
@@ -673,6 +674,7 @@ class TestRPCResponseEndpoint(PyonTestCase, RecvMockMixin):
         # test to make sure send got called with our error
         assert_called_once_with_header(self, ch.send, {'status_code': 400,
                                                        'error_message': 'Argument not_named not present in op signature',
+                                                       'error_id': '',
                                                        'conv-id': sentinel.conv_id,
                                                        'conv-seq': 2,
                                                        'protocol': '',
@@ -695,6 +697,7 @@ class TestRPCResponseEndpoint(PyonTestCase, RecvMockMixin):
             self.assertEquals(retval, sentinel.sent)
             assert_called_once_with_header(self, e.send, {'status_code': -1,
                                                           'error_message':'',
+                                                          'error_id': '',
                                                           'conv-id': '',
                                                           'conv-seq': 2,
                                                           'protocol':'',
@@ -724,6 +727,7 @@ Routing method for next test, raises an IonException.
 
         assert_called_once_with_header(self, e.send, {'status_code': 401,
                                                       'error_message': str(sentinel.unauth),
+                                                      'error_id': '',
                                                       'conv-id': sentinel.conv_id,
                                                       'conv-seq': 2,
                                                       'protocol':'',

@@ -28,6 +28,9 @@ class IonException(ApplicationException):
     def __init__(self, *args, **kwargs):
         self.exc_id = kwargs.pop("exc_id", None)
         super(IonException, self).__init__(*args, **kwargs)
+        cause = kwargs.get("cause", None)
+        if not self.exc_id and cause and hasattr(cause, "exc_id"):
+            self.exc_id = cause.exc_id
 
     def get_status_code(self):
         return self.status_code
@@ -193,12 +196,14 @@ class ExceptionFactory(object):
                 if hasattr(obj, "status_code"):
                     self._exception_map[str(obj.status_code)] = obj
 
-    def create_exception(self, code, message, stacks=None):
+    def create_exception(self, code, message, exc_id, stacks=None):
         """ Build IonException from code, message, and optionally one or more stack traces """
         if str(code) in self._exception_map:
             new_exc = self._exception_map[str(code)](message)
         else:
             new_exc = self._default(message)
+        if exc_id and hasattr(new_exc, exc_id):
+            new_exc.exc_id = exc_id
         # WARNING: previously, adding stacks here caused a memory leak
         if stacks:
             for label, stack in stacks:

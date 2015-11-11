@@ -962,8 +962,9 @@ class RPCRequestEndpointUnit(RequestEndpointUnit):
                 new_label = 'in remote call to %s' % (headers.get('receiver', '?'))  # res_headers['receiver']
                 top_stack = stacks[0][1]
                 stacks[0] = (new_label, top_stack)
-            log.info("RPCRequestEndpointUnit received an error (%d): %s", res_headers['status_code'], res_headers['error_message'])
-            ex = self.exception_factory.create_exception(res_headers["status_code"], res_headers["error_message"], stacks=stacks)
+            code, msg, exc_id = res_headers['status_code'], res_headers['error_message'], res_headers.get('error_id', "")
+            log.info("RPCRequestEndpointUnit received an error (%d): %s %s", code, msg, exc_id)
+            ex = self.exception_factory.create_exception(code, msg, exc_id, stacks=stacks)
             raise ex
 
         return res, res_headers
@@ -1250,16 +1251,19 @@ class RPCResponseEndpointUnit(ResponseEndpointUnit):
         return to_val
 
     def _create_error_response(self, ex=None, code=500, msg=None):
+        exc_id = ""
         if ex is not None:
             if isinstance(ex, IonException):
                 code = ex.get_status_code()
                 # Force str - otherwise pika aborts due to bad headers
                 msg = str(ex.get_error_message())
+                exc_id = str(ex.get_exception_id() or "")
             else:
                 msg = "%s (%s)" % (str(ex.message), type(ex))
 
         headers = {"status_code": code,
                    "error_message": msg,
+                   "error_id": exc_id,
                    "performative": "failure"}
         return headers
 

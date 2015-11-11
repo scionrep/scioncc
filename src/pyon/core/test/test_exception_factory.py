@@ -13,9 +13,10 @@ class TestExceptionUtils(TestCase):
         self.subject = None
 
     def testCreateException(self):
-        ex = self.subject.create_exception(553, 'test message')
+        ex = self.subject.create_exception(553, 'test message', '11.22')
         self.assertEqual(553, ex.status_code)
         self.assertEqual('test message', ex.message)
+        self.assertEqual('11.22', ex.exc_id)
         self.assertTrue(isinstance(ex, ContainerStartupError))
 
         try:
