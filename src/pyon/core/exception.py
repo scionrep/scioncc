@@ -202,7 +202,7 @@ class ExceptionFactory(object):
             new_exc = self._exception_map[str(code)](message)
         else:
             new_exc = self._default(message)
-        if exc_id and hasattr(new_exc, exc_id):
+        if exc_id and hasattr(new_exc, "exc_id"):
             new_exc.exc_id = exc_id
         # WARNING: previously, adding stacks here caused a memory leak
         if stacks:
