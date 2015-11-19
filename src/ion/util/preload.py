@@ -4,6 +4,7 @@
 
 __author__ = 'Michael Meisinger'
 
+import json
 import yaml
 import re
 import os
@@ -58,12 +59,23 @@ class Preloader(object):
         self.bulk_associations = {}     # Keeps association objects to be bulk inserted/updated
         self.bulk_existing = set()      # This keeps the ids of the bulk objects to update instead of delete
 
+    def _read_preload_file(self, filename, safe_load=False):
+        is_json = filename.lower().endswith(".json")
+        with open(filename, "r") as f:
+            if is_json:
+                content_obj = json.load(f)
+                return content_obj
+            file_content = f.read()
+        if safe_load:
+            content_obj = yaml.safe_load(file_content)
+        else:
+            content_obj = yaml.load(file_content)
+        return content_obj
+
     def preload_master(self, filename, skip_steps=None):
         """Executes a preload master file"""
         log.info("Preloading from master file: %s", filename)
-        with open(filename, "r") as f:
-            master_yml = f.read()
-        master_cfg = yaml.load(master_yml)
+        master_cfg = self._read_preload_file(filename)
         if not "preload_type" in master_cfg or master_cfg["preload_type"] != "steps":
             raise BadRequest("Invalid preload steps file")
 
@@ -82,9 +94,7 @@ class Preloader(object):
 
     def _execute_step(self, step, filename, skip_steps):
         """Executes a preload step file"""
-        with open(filename, "r") as f:
-            step_yml = f.read()
-        step_cfg = yaml.safe_load(step_yml)
+        step_cfg = self._read_preload_file(filename, safe_load=True)
         if not "preload_type" in step_cfg or step_cfg["preload_type"] not in ("actions", "steps"):
             raise BadRequest("Invalid preload actions file")
         if skip_steps and step_cfg["preload_type"] == "actions" and step_cfg.get("requires", ""):
