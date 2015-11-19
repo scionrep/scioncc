@@ -13,7 +13,7 @@ from pyon.core import MSG_HEADER_ACTOR, MSG_HEADER_ROLES, MSG_HEADER_VALID
 from pyon.core.bootstrap import get_service_registry
 from pyon.core.governance import get_system_actor
 from pyon.ion.identifier import create_unique_resource_id, create_unique_association_id
-from pyon.ion.resource import get_restype_lcsm
+from pyon.ion.resource import get_restype_lcsm, create_access_args
 from pyon.public import CFG, log, BadRequest, Inconsistent, NotFound, IonObject, RT, OT, AS, LCS, named_any, get_safe, get_ion_ts, PRED
 from ion.util.parse_utils import get_typed_value
 
@@ -150,7 +150,8 @@ class Preloader(object):
         """
         log.debug("Loading prior preloaded resources for reference")
 
-        res_objs, res_keys = self.rr.find_resources_ext(alt_id_ns="PRE", id_only=False)
+        access_args = create_access_args("SUPERUSER", ["SUPERUSER"])
+        res_objs, res_keys = self.rr.find_resources_ext(alt_id_ns="PRE", id_only=False, access_args=access_args)
         res_preload_ids = [key['alt_id'] for key in res_keys]
         res_ids = [obj._id for obj in res_objs]
 
@@ -164,7 +165,7 @@ class Preloader(object):
         existing_resources = dict(zip(res_preload_ids, res_objs))
 
         if len(existing_resources) != len(res_objs):
-            raise BadRequest("Stored preload IDs are NOT UNIQUE!!! Cannot link to old resources")
+            log.error("Stored preload IDs are NOT UNIQUE!!! This causes random links to existing resources")
 
         res_id_mapping = dict(zip(res_preload_ids, res_ids))
         self.resource_ids.update(res_id_mapping)
