@@ -81,7 +81,7 @@ setup(  name='scioncc',
             'httplib2==0.9.1',
             'zope.interface==4.1.1',
             'psycopg2==2.5.4',
-            'numpy==1.9.2   ',
+            'numpy==1.9.2',
             'python-daemon==2.0.5',
             'ipython==0.13.0',
             'readline==6.2.4.1',
@@ -93,11 +93,10 @@ setup(  name='scioncc',
             'python-dateutil==2.4.2',
             'pytz',
             'bcrypt==1.0.1',           # For password authentication
-            'lovely.buildouthttp==0.6.1',    # For buildout (getting password protected eggs)
             'pyzmq==2.2.0',            # For IPython manhole
             'gevent_zeromq==0.2.5',
             'flask-oauthlib==0.9.1',
-            'requests-oauthlib==0.4.2',
+            'pyproj==1.9.4',           # For geospatial calculations
 
             # Pin dependent libraries
             'cffi==0.9.2',
@@ -107,27 +106,17 @@ setup(  name='scioncc',
             # Test support
             'nose==1.1.2',
             'mock==0.8',
-            'webtest==2.0.17',         # For service gateway test
-            'coverage==4.0a5',         # Code coverage
+            'coverage==4.0',         # Code coverage
 
             # Check if all these are needed
             'graypy==0.2.11',          # For production logging
             'ntplib==0.3.3',
-            'pyproj==1.9.4'            # For geospatial calculations
             #'M2Crypto==0.22.3',        # For X.509 certificates (currently unused)
         ],
         extras_require={
-            'scidata': [
-                'Pydap==3.3.RC1',
-                'netCDF4==1.0.9',
-            ],
             'utils': [
                 'xlrd==0.9.3',         # For Excel file read (dev tools)
                 'xlwt==0.7.5',         # For Excel file write (dev tools)
-            ],
-            'parsing': [
-                'lxml==3.4.2',
-                'beautifulsoup4==4.3.2',
             ],
         }
      )
