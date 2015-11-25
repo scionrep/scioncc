@@ -155,7 +155,7 @@ class DatastoreQueryBuilder(DatastoreQueryConst):
         if not argname or argname in ("id_only", "profile", "datastore", "ds_sub", "format", "limit", "skip"):
             raise BadRequest("Invalid query arg")
         self.query["query_args"][argname] = value
-        
+
     def set_order_by(self, order_by):
         self.query["order_by"] = order_by if order_by is not None else {}
 

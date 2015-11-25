@@ -289,8 +289,9 @@ def get_datetime_str(ts, show_millis=False, local_time=True):
     """
     dt = get_datetime(ts, local_time)
     dts = str(dt)
-    if show_millis:
-        dts += "." + ts[-3:]
+    period_idx = dts.rfind(".")
+    if period_idx != -1:
+        dts = dts[:period_idx+4] if show_millis else dts[:period_idx]
     return dts
 
 def parse_ion_ts(ts):
