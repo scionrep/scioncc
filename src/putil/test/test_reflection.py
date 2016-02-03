@@ -5,6 +5,7 @@ import unittest
 import os
 import shutil
 from putil.reflection import EggCache
+import pyon # To pull in SSL patch
 
 
 
