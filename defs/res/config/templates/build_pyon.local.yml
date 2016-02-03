@@ -1,0 +1,72 @@
+# -----------------------------------------------------------------------------
+# Application system configuration template
+# for ScionCC build server to build and run tests
+# -----------------------------------------------------------------------------
+
+system:
+  load_policy: False
+  name: scioncc
+  web_ui_url: %WEB_UI_URL%
+
+server:
+  amqp:
+    # The normal container broker connection
+    type: amqp_91
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    vhost: /
+    heartbeat: 30
+  rabbit_manage:
+    # REST access to RabbitMQ management plugin
+    type: rabbit_mgmt
+    host: localhost
+    port: 15672
+    username: guest
+    password: guest
+  postgresql:
+    type: postgresql
+    host: localhost
+    port: 5432
+    username: ion
+    password: %PG_PASSWORD%
+    admin_username: postgres
+    admin_password: %PG_ADMIN_PASSWORD%
+    default_database: postgres
+    database: ion
+    connection_pool_max: 5
+
+container:
+  messaging:
+    timeout:
+      receive: 30
+  objects:
+    validate:
+      interceptor: True
+      setattr: True
+  execution_engine:
+    name: default
+    deployment:
+      region: default
+      availability_zone: default
+      sub_zone: default
+    heartbeat:
+      enabled: True
+      publish_interval: 10
+    child_configs:
+      UI:
+        name_pattern: "Container-child-[1]"
+        name: ui
+      App:
+        name_pattern: "Container-child-[245678]"
+        name: app
+      Default:
+        name_pattern: "Container-child-[3]"
+        name: default
+  process:
+    log_exceptions: False
+    max_replicas: 0
+    use_process_dispatcher: False
+  filesystem:
+    root: /tmp/scion
