@@ -5,7 +5,7 @@
 
 system:
   load_policy: False
-  name: scioncc
+  name: %SYSNAME%
   web_ui_url: %WEB_UI_URL%
 
 server:
@@ -70,3 +70,11 @@ container:
     use_process_dispatcher: False
   filesystem:
     root: /tmp/scion
+
+process:
+  ui_server:
+    server:
+      port: %SERVICE_GWY_PORT%
+  admin_ui:
+    web_server:
+      port: %ADMIN_UI_PORT%
