@@ -88,7 +88,13 @@ class FileSystem(object):
             fsalias = fsname.upper()
             if fsalias in except_list:
                 continue
-            if os.path.exists(fsdir):
+            if not fsdir:
+                FileSystem.FS_DIRECTORY[fsalias] = os.path.join(FileSystem.root, fsname)
+                FileSystem.FS[fsalias] = fsalias
+                if not os.path.exists(FS_DIRECTORY[fsalias]):
+                    log.debug('Making path: %s', FS_DIRECTORY[fsalias])
+                    self.__makedirs(FS_DIRECTORY[fsalias])
+            elif os.path.exists(fsdir):
                 FileSystem.FS_DIRECTORY[fsalias] = fsdir
                 FileSystem.FS[fsalias] = fsalias
             else:
