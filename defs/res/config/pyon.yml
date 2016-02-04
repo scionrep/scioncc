@@ -192,7 +192,7 @@ container:
   org_name: ION  # The default is the Scion root Org
 
   filesystem:
-    root: /tmp/scion              # Content root (subject to force_clean).
+    root: /tmp                    # Content root parent (content root is subject to force_clean).
                                   # Entries for standard aliases (lower case) can map to local directories.
                                   # Define non-standard aliases and mappings on same level (if
 
