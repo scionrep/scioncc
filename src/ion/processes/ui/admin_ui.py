@@ -1009,7 +1009,7 @@ def build_command(text, link, args=None, confirm=None, variant="", block=True, l
     else:
         if confirm:
             confirm = "return confirm('%s');" % confirm
-        fragments.append("%s" % build_link(text, _link(link), confirm))
+        fragments.append("%s" % build_link(text, link, confirm))
     if block:
         fragments.insert(0, "<div>")
         fragments.append("</div>")
