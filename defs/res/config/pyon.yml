@@ -192,8 +192,9 @@ container:
   org_name: ION  # The default is the Scion root Org
 
   filesystem:
-    force_clean: False
-    root: /tmp/scion
+    root: /tmp/scion              # Content root (subject to force_clean).
+                                  # Entries for standard aliases (lower case) can map to local directories.
+                                  # Define non-standard aliases and mappings on same level.
 
   tracer:                         # Configures the tracer development tool (records messages and db access)
     enabled: False                # Toggle switch

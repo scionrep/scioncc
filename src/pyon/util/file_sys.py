@@ -1,6 +1,6 @@
 """ Utility for managing relative file system paths """
 
-__author__ = "Luke Campbell"
+__author__ = "Luke Campbell, Michael Meisinger"
 
 import errno
 import StringIO
@@ -19,9 +19,9 @@ from pyon.util.containers import DotDict
 class FileSystemError(Exception):
     """
     Client filesystem request failed
-    Does this seem wrong to anyone else?!
     """
     status_code = 411
+
     def get_status_code(self):
         return self.status_code
 
@@ -34,7 +34,7 @@ class FileSystemError(Exception):
 
 class FileSystem(object):
     # These are static, and shared throughout the container, do not operate on a per-instance basis.
-    FS_DIRECTORY_LIST = ['RESOURCE', 'TEMP', 'LIBRARY', 'CACHE', 'RUN', 'USERS', 'LOG', 'FILESTORE']
+    FS_DIRECTORY_LIST = ['TEMP', 'CACHE', 'FILESTORE']
     FS_DIRECTORY = DotDict(zip(FS_DIRECTORY_LIST, FS_DIRECTORY_LIST))
 
     FS = DotDict(zip(FS_DIRECTORY_LIST, FS_DIRECTORY_LIST))
@@ -46,32 +46,53 @@ class FileSystem(object):
         if not cls._instance:
             cls._instance = super(FileSystem, cls).__new__(cls, *args, **kwargs)
         return cls._instance
-    
+
+    @staticmethod
+    def _get_fs_root(config):
+        # Return the root dir for the container FS
+        # Note that if different users run scion, be aware of common root file permissions
+        return os.path.join(config.get_safe('container.filesystem.root', '/tmp/scion'), "scion_" + get_sys_name())
+
     @classmethod 
     def _clean(cls, config):
+        """ Force cleans the FS root, but not any other mappings """
         if not cls.root:
-            cls.root = os.path.join(config.get_safe('container.filesystem.root', '/tmp/scion'), get_sys_name())
+            cls.root = cls._get_fs_root(config)
         log.info('Removing %s', cls.root)
         if os.path.exists(cls.root):
             shutil.rmtree(cls.root)
 
     def __init__(self, CFG):
         if not FileSystem.root:
-            FileSystem.root = os.path.join(CFG.get_safe('container.filesystem.root', '/tmp/scion'), get_sys_name())
+            FileSystem.root = self._get_fs_root(CFG)
+
+        fs_cfg = CFG.get_safe('container.filesystem') or {}
 
         for k, v in FileSystem.FS_DIRECTORY.iteritems():
-            s = v.lower()  # Lower case string
-            conf = CFG.get_safe('container.filesystem.%s' % s, None)
-            if conf:
-                FileSystem.FS_DIRECTORY[k] = conf
+            fsname = v.lower()  # Lower case string
+            fsdir = fs_cfg.get(fsname, None)
+            if fsdir:
+                FileSystem.FS_DIRECTORY[k] = fsdir
             else:
-                FileSystem.FS_DIRECTORY[k] = os.path.join(FileSystem.root, s)
+                FileSystem.FS_DIRECTORY[k] = os.path.join(FileSystem.root, fsname)
             # Check to make sure you're within your rights to access this
             if not FileSystem._sandbox(FileSystem.FS_DIRECTORY[k]):
-                raise OSError('You are attempting to perform an operation beyond the scope of your permission. (%s is set to \'%s\')' % (k,FileSystem.FS_DIRECTORY[k]))
+                raise OSError('Invalid FileSystem location. (%s is set to \'%s\')' % (k, FileSystem.FS_DIRECTORY[k]))
             if not os.path.exists(FS_DIRECTORY[k]):
                 log.debug('Making path: %s', FS_DIRECTORY[k])
                 self.__makedirs(FS_DIRECTORY[k])
+
+        except_list = ["ROOT"]
+        except_list.extend(FileSystem.FS_DIRECTORY.keys())
+        for fsname, fsdir in fs_cfg.iteritems():
+            fsalias = fsname.upper()
+            if fsalias in except_list:
+                continue
+            if os.path.exists(fsdir):
+                FileSystem.FS_DIRECTORY[fsalias] = fsdir
+                FileSystem.FS[fsalias] = fsalias
+            else:
+                log.warn("FileSystem alias %s maps to non-existing dir: '%s'", fsalias, fsdir)
 
     @classmethod
     def __makedirs(cls,path):

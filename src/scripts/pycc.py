@@ -275,8 +275,6 @@ def main(opts, *args, **kwargs):
             log.info("Queues deleted (%s): %s" % (len(deleted_queues), ", ".join(deleted_queues)))
 
         if opts.force_clean:
-            path = os.path.join(pyon_config.get_safe('container.filesystem.root', '/tmp/scion'), bootstrap.get_sys_name())
-            log.info("force_clean: Removing %s", path)
             from pyon.util.file_sys import FileSystem
             FileSystem._clean(pyon_config)
 
