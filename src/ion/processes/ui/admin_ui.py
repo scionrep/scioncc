@@ -44,6 +44,8 @@ class AdminUI(SimpleProcess):
         self.http_server = None
         self.server_hostname = self.CFG.get_safe(CFG_PREFIX + '.web_server.hostname', DEFAULT_WEB_SERVER_HOSTNAME)
         self.server_port = self.CFG.get_safe(CFG_PREFIX + '.web_server.port', DEFAULT_WEB_SERVER_PORT)
+        self.url_prefix = self.CFG.get_safe(CFG_PREFIX + '.url_prefix') or ""
+
         self.web_server_enabled = True
         self.logging = None
         self.interaction_observer = None
@@ -94,7 +96,7 @@ def _get_resmenu_extension():
     for ext in resmenu_ext:
         if isinstance(ext, basestring):
             ext = ext.split(",")
-        ext_str += "<li>%s: %s</li>\n" % (ext[0], ", ".join("<a href='/list/%s'>%s</a>" % (rex, rex) for rex in ext[1:]))
+        ext_str += "<li>%s: %s</li>\n" % (ext[0], ", ".join("<a href='%s'>%s</a>" % (_link("/list/%s" % rex), rex) for rex in ext[1:]))
     return ext_str
 
 @app.route('/', methods=['GET', 'POST'])
@@ -104,22 +106,24 @@ def process_index():
         from pyon.core.bootstrap import get_sys_name
         default_ds_server = CFG.get_safe("container.datastore.default_server", "postgresql")
 
+        attrs = dict(listurl=_link("/list"), base=_link(""))
+
         fragments = [
             "<h1>SciON Admin UI</h1>",
             "<p><ul>",
-            "<li><a href='/restypes'><b>Browse Resource Registry and Resource Objects</b></a>",
+            "<li><a href='%s'><b>Browse Resource Registry and Resource Objects</b></a>" % _link("/restypes"),
             "<ul>",
-            "<li>Org/Users: <a href='/list/Org'>Org</a>, <a href='/list/UserRole'>UserRole</a>, <a href='/list/ActorIdentity'>ActorIdentity</a></li>",
-            "<li>Computing: <a href='/list/Process'>Process</a>, <a href='/list/ProcessDefinition'>ProcessDefinition</a>, <a href='/list/Service'>Service</a>, <a href='/list/ServiceDefinition'>ServiceDefinition</a>, <a href='/list/CapabilityContainer'>CapabilityContainer</a></li>",
-            "<li>Messaging: <a href='/list/ExchangeSpace'>ExchangeSpace</a>, <a href='/list/ExchangePoint'>ExchangePoint</a>, <a href='/list/ExchangeName'>ExchangeName</a>, <a href='/list/ExchangeBroker'>ExchangeBroker</a></li>",
-            "<li>Governance: <a href='/list/Commitment'>Commitment</a>, <a href='/list/Negotiation'>Negotiation</a>, <a href='/list/Policy'>Policy</a></li>",
+            "<li>Org/Users: <a href='%(listurl)s/Org'>Org</a>, <a href='%(listurl)s/UserRole'>UserRole</a>, <a href='%(listurl)s/ActorIdentity'>ActorIdentity</a></li>" % attrs,
+            "<li>Computing: <a href='%(listurl)s/Process'>Process</a>, <a href='%(listurl)s/ProcessDefinition'>ProcessDefinition</a>, <a href='%(listurl)s/Service'>Service</a>, <a href='%(listurl)s/ServiceDefinition'>ServiceDefinition</a>, <a href='%(listurl)s/CapabilityContainer'>CapabilityContainer</a></li>" % attrs,
+            "<li>Messaging: <a href='%(listurl)s/ExchangeSpace'>ExchangeSpace</a>, <a href='%(listurl)s/ExchangePoint'>ExchangePoint</a>, <a href='%(listurl)s/ExchangeName'>ExchangeName</a>, <a href='%(listurl)s/ExchangeBroker'>ExchangeBroker</a></li>" % attrs,
+            "<li>Governance: <a href='%(listurl)s/Commitment'>Commitment</a>, <a href='%(listurl)s/Negotiation'>Negotiation</a>, <a href='%(listurl)s/Policy'>Policy</a></li>" % attrs,
             _get_resmenu_extension(),
             "</ul></li>",
-            "<li><a href='/syscmds'><b>System Commands</b></a></li>",
-            "<li><a href='/events'><b>Browse Events</b></a></li>",
-            "<li><a href='/dir'><b>Browse SciON Directory</b></a></li>",
-            "<li><a href='/viewobj'><b>View Objects</b></a></li>",
-            "<li><a href='/viewstate'><b>View Process State</b></a></li>",
+            "<li><a href='%s'><b>System Commands</b></a></li>" % _link("/syscmds"),
+            "<li><a href='%s'><b>Browse Events</b></a></li>" % _link("/events"),
+            "<li><a href='%s'><b>Browse SciON Directory</b></a></li>" % _link("/dir"),
+            "<li><a href='%s'><b>View Objects</b></a></li>" % _link("/viewobj"),
+            "<li><a href='%s'><b>View Process State</b></a></li>" % _link("/viewstate"),
             "<li><a href='http://localhost:4000'><b>Application Web UI (if running)</b></a></li>",
             "<li><a href='http://" + CFG.get_safe("server.amqp.host") + ":15672/'><b>RabbitMQ Management UI (if running)</b></a></li>",
             "<li><a href='http://localhost:9001/'><b>Supervisord UI (if running)</b></a></li>",
@@ -154,7 +158,7 @@ def process_list_resource_types():
         ]
 
         for restype in sorted(type_list):
-            fragments.append("<a href='/list/%s'>%s</a>, " % (restype, restype))
+            fragments.append("<a href='%s'>%s</a>, " % (_link("/list/%s" % restype), restype))
 
         fragments.append("</p>")
 
@@ -276,17 +280,17 @@ def build_table_header(objtype):
 def build_table_alt_row(obj):
     fragments = []
     fragments.extend([
-        "<td><a href='/view/%s'>%s</a></td>" % (obj._id,obj._id),
+        "<td><a href='%s'>%s</a></td>" % (_link("/view/%s" % obj._id), obj._id),
         "<td>%s</td>" % obj.name,
         "<td>%s</td>" % obj.description,
-        "<td><a href='/list/%s'>%s</a></td>" % (obj._get_type(),obj._get_type()),
+        "<td><a href='%s'>%s</a></td>" % (_link("/list/%s" % obj.type_), obj.type_),
         "<td>%s</td>" % obj.alt_ids])
     return fragments
 
 def build_table_row(obj, details=True):
     schema = obj._schema
     fragments = []
-    fragments.append("<td><a href='/view/%s'>%s</a></td>" % (obj._id,obj._id))
+    fragments.append("<td><a href='%s'>%s</a></td>" % (_link("/view/%s" % obj._id), obj._id))
     for field in standard_resattrs:
         if field in schema:
             value = get_formatted_value(getattr(obj, field), fieldname=field, fieldtype=schema[field]["type"], details=True)
@@ -350,7 +354,7 @@ def build_nested_obj(obj, prefix, edit=False):
         if field not in standard_resattrs:
             value = getattr(obj, field)
             if schema[field]["type"] in model_classes or isinstance(value, IonObjectBase):
-                value_type = value._get_type() if value else "None"
+                value_type = value.type_ if value else "None"
                 # Nested object case
                 fragments.append("<tr><td>%s%s</td><td>%s</td><td>%s</td>" % (prefix, field, schema[field]["type"], "[%s]" % value_type))
                 if value:
@@ -371,9 +375,9 @@ def build_associations(resid):
     if CFG.get_safe(CFG_PREFIX + '.association_graph', True):
         #----------- Build the visual using javascript --------------#
         fragments.append("<script type='text/javascript' src='http://mbostock.github.com/d3/d3.v2.js'></script>   ")
-        fragments.append("<script type='text/javascript' src='/static/tree-interactive.js'></script>")
+        fragments.append("<script type='text/javascript' src='%s'></script>" % _link("/static/tree-interactive.js"))
         fragments.append("<script type='text/javascript'>build(\"%s\");</script>" % resid)
-    #------------------------------------------------------------#
+        #------------------------------------------------------------#
     fragments.append("<h3>FROM</h3>")
     fragments.append("<p><table>")
     fragments.append("<tr><th>Subject Type</th><th>Subject Name</th><th>Subject ID</th><th>Predicate</th><th>Command</th></tr>")
@@ -600,7 +604,7 @@ def process_edit_resource(resource_id):
         fragments = [
             build_standard_menu(),
             "<h1>Edit %s '%s'</h1>" % (build_type_link(restype), res.name),
-            "<form name='edit' action='/cmd/update?rid=%s' method='post'>" % resid,
+            "<form name='edit' action='%s' method='post'>" % _link("/cmd/update?rid=%s" % resid),
         ]
         fragments.extend(build_editable_resource(res, is_new=False))
         fragments.append("<p><input type='reset'/> <input type='submit' value='Save'/></p>")
@@ -643,7 +647,7 @@ def process_new_resource(restype):
         fragments = [
             build_standard_menu(),
             "<h1>Create New %s</h1>" % (build_type_link(restype)),
-            "<form name='edit' action='/cmd/update?rid=NEW&restype=%s' method='post'>" % restype,
+            "<form name='edit' action='%s' method='post'>" % _link("/cmd/update?rid=NEW&restype=%s" % restype),
         ]
         fragments.extend(build_editable_resource(res, is_new=True))
         fragments.append("<p><input type='reset'/> <input type='submit' value='Create'/></p>")
@@ -739,7 +743,7 @@ def process_dir_path(path):
             else:
                 parent = ""
             fragments.append("<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (
-                build_dir_link(parent,de.key), get_formatted_value(de.ts_updated, fieldname="ts_updated"), get_formatted_value(get_value_dict(de.attributes), fieldtype="dict")))
+                build_dir_link(parent, de.key), get_formatted_value(de.ts_updated, fieldname="ts_updated"), get_formatted_value(get_value_dict(de.attributes), fieldtype="dict")))
 
         fragments.append("</table></p>")
 
@@ -769,7 +773,7 @@ def build_dir_link(parent, key):
     else:
         path = "%s/%s" % (parent, key)
     path = path.replace("/","~")
-    return build_link(key, "/dir/%s" % path)
+    return build_link(key, _link("/dir/%s" % path))
 
 # ----------------------------------------------------------------------------------------
 
@@ -910,7 +914,7 @@ def process_map():
             "        <script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'> </script>",
             "        <script type='text/javascript' src='https://maps.googleapis.com/maps/api/js?sensor=false'></script>",
             "<div id='map_canvas'></div>",
-            "<script type='text/javascript' src='/static/gmap.js'></script>",
+            "<script type='text/javascript' src='%s'></script>" % _link("/static/gmap.js"),
         ]
         content = "\n".join(content)
         return build_page(content)
@@ -941,6 +945,9 @@ def process_tree(resid):
 
 # ----------------------------------------------------------------------------------------
 
+def _link(rel_link):
+    return adminui_instance.url_prefix + rel_link
+
 def is_read_only():
     return CFG.get_safe(CFG_PREFIX + '.read_only', False)
 
@@ -954,6 +961,7 @@ def build_type_link(restype):
     return build_link(restype, "/list/%s" % restype)
 
 def build_link(text, link, onclick=None, confirm=None, iconcls=None, icontext=False):
+    link = _link(link)
     classattr, label = "", text
     if iconcls:
         classattr = "class='smbutton icon %s'" % iconcls
@@ -966,6 +974,7 @@ def build_link(text, link, onclick=None, confirm=None, iconcls=None, icontext=Fa
         return "<a %s title='%s' href='%s'>%s</a>" % (classattr, text, link, label)
 
 def build_command(text, link, args=None, confirm=None, variant="", block=True, link_first=True, iconcls=None, icontext=False):
+    link = _link(link)
     classattr, label = "", text
     if iconcls:
         classattr = "class='smbutton icon %s'" % iconcls
@@ -1007,7 +1016,7 @@ def build_command(text, link, args=None, confirm=None, variant="", block=True, l
     return "".join(fragments)
 
 def build_standard_menu():
-    return "<p><a href='/'>[Home]</a></p>"
+    return "<p><a href='%s'>[Home]</a></p>" % _link("/")
 
 def build_error_page(msg):
     fragments = [
@@ -1025,8 +1034,8 @@ def build_page(content, title=""):
     fragments = [
         "<!doctype html>",
         "<html><head>",
-        "<link type='text/css' rel='stylesheet' href='/static/default.css' />"
-        "<link type='text/css' rel='stylesheet' href='/static/demo.css' />",
+        "<link type='text/css' rel='stylesheet' href='%s' />" % _link("/static/default.css"),
+        "<link type='text/css' rel='stylesheet' href='%s' />" % _link("/static/demo.css"),
         "<script type='text/javascript'>",
         "function linkto(href, arg_name, arg_id) {",
         "var aval = document.getElementById(arg_id).value;",

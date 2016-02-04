@@ -282,6 +282,10 @@ process:
       port: 8080
     association_graph: False    # Show D3 graph of associations
     read_only: False            # Run in read-only mode
+    url_prefix: ""              # URL prefix for any content
+    plugin: ""                  # Admin UI extension class
+    menu:
+      extensions: []            # Extensions to home menu
 
   ui_server:
     server:
