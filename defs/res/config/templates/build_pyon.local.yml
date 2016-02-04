@@ -69,7 +69,7 @@ container:
     max_replicas: 0
     use_process_dispatcher: False
   filesystem:
-    root: /tmp/scion
+    root: /tmp
 
 process:
   ui_server:
