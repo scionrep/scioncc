@@ -9,6 +9,7 @@ import flask, ast, pprint
 from flask import Flask, request, abort
 from gevent.wsgi import WSGIServer
 import json
+import os
 
 from pyon.core.object import IonObjectBase
 from pyon.core.registry import getextends, model_classes
@@ -18,7 +19,8 @@ from interface import objects
 
 
 # Initialize the flask app
-app = Flask(__name__)
+static_dir = os.path.join(os.path.split(os.path.abspath(__file__))[0], "static")
+app = Flask(__name__, static_folder=static_dir, static_url_path="/static")
 
 DEFAULT_WEB_SERVER_HOSTNAME = "localhost"
 DEFAULT_WEB_SERVER_PORT = 8080
