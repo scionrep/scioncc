@@ -775,7 +775,7 @@ def build_dir_link(parent, key):
     else:
         path = "%s/%s" % (parent, key)
     path = path.replace("/","~")
-    return build_link(key, _link("/dir/%s" % path))
+    return build_link(key, "/dir/%s" % path)
 
 # ----------------------------------------------------------------------------------------
 
@@ -963,7 +963,6 @@ def build_type_link(restype):
     return build_link(restype, "/list/%s" % restype)
 
 def build_link(text, link, onclick=None, confirm=None, iconcls=None, icontext=False):
-    link = _link(link)
     classattr, label = "", text
     if iconcls:
         classattr = "class='smbutton icon %s'" % iconcls
@@ -971,19 +970,18 @@ def build_link(text, link, onclick=None, confirm=None, iconcls=None, icontext=Fa
     if confirm:
         onclick = "return confirm('%s');" % confirm
     if onclick:
-        return "<a %s title='%s' href='%s' onclick=\"%s\">%s</a>" % (classattr, text, link, onclick, label)
+        return "<a %s title='%s' href='%s' onclick=\"%s\">%s</a>" % (classattr, text, _link(link), onclick, label)
     else:
-        return "<a %s title='%s' href='%s'>%s</a>" % (classattr, text, link, label)
+        return "<a %s title='%s' href='%s'>%s</a>" % (classattr, text, _link(link), label)
 
 def build_command(text, link, args=None, confirm=None, variant="", block=True, link_first=True, iconcls=None, icontext=False):
-    link = _link(link)
     classattr, label = "", text
     if iconcls:
         classattr = "class='smbutton icon %s'" % iconcls
         label = ("<span class=img></span><span class=txt>%s</span>" % text) if icontext and text else "<span class=img></span>"
     fragments = []
     if args:
-        arg_params = "'%s'" % link
+        arg_params = "'%s'" % _link(link)
         for arg in args:
             arg_type, arg_name, arg_more = arg
             arg_params += ",'%s','%s'" % (arg_name, arg_name+variant)
@@ -1011,7 +1009,7 @@ def build_command(text, link, args=None, confirm=None, variant="", block=True, l
     else:
         if confirm:
             confirm = "return confirm('%s');" % confirm
-        fragments.append("%s" % build_link(text, link, confirm))
+        fragments.append("%s" % build_link(text, _link(link), confirm))
     if block:
         fragments.insert(0, "<div>")
         fragments.append("</div>")
