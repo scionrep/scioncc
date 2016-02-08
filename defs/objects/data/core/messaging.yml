@@ -78,6 +78,21 @@ Granule:
   connection_index: ""
 
 
+# Object containing a self described data packet similar to a Granule
+DataPacket:
+  # Producer information
+  ts_created: ""
+  producer_id: ""
+  stream_name: ""
+  # Origin information
+  resource_id: ""
+  # Content information
+  packet_class: "data"
+  packet_type: ""
+  # Content
+  data: {}
+
+
 # Object containing information related to a remote callback's completion that can be waited on
 AsyncResultMsg:
   # Original request ID

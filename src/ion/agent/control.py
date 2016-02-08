@@ -12,11 +12,11 @@ class AgentControl(object):
 
     def launch_agent(self, resource_id, agent_type, agent_config):
         if agent_type == "data_agent":
-            agent_mod, agent_cls = "ion.agent.data.data_agent", "DataAgent"
+            agent_mod, agent_cls = "ion.agent.data_agent", "DataAgent"
         elif agent_type == "streaming_agent":
-            agent_mod, agent_cls = "ion.agent.data.streaming_agent", "StreamingAgent"
+            agent_mod, agent_cls = "ion.agent.streaming_agent", "StreamingAgent"
         elif agent_type == "instrument_agent":
-            agent_mod, agent_cls = "ion.agent.data.streaming_agent", "StreamingAgent"
+            agent_mod, agent_cls = "ion.agent.streaming_agent", "StreamingAgent"
         else:
             raise BadRequest("Unknown agent type: %s" % agent_type)
 
