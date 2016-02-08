@@ -29,7 +29,7 @@ import socket
 import sys
 from gevent.lock import RLock
 
-from pyon.agent.agent import ResourceAgent
+# from pyon.agent.agent import ResourceAgent
 from pyon.core import (PROCTYPE_SERVICE, PROCTYPE_AGENT, PROCTYPE_IMMEDIATE, PROCTYPE_SIMPLE, PROCTYPE_STANDALONE,
                        PROCTYPE_STREAMPROC)
 from pyon.core.bootstrap import CFG
@@ -586,8 +586,8 @@ class ProcManager(object):
         Attach to service pid.
         """
         process_instance = self._create_app_instance(process_id, name, module, cls, config, proc_attr)
-        if not isinstance(process_instance, ResourceAgent):
-            raise ContainerConfigError("Agent process must extend ResourceAgent")
+        # if not isinstance(process_instance, ResourceAgent):
+        #     raise ContainerConfigError("Agent process must extend ResourceAgent")
         listeners = []
 
         # Set the resource ID if we get it through the config
@@ -606,6 +606,8 @@ class ProcManager(object):
 
         else:
             # Private PID listener
+            if not getattr(process_instance, "resource_id", None):
+                process_instance.resource_id = None
             pid_listener_xo = self.container.create_process_xn(process_instance.id)
             rsvc = self._create_listening_endpoint(node=self.container.node,
                                                    from_name=pid_listener_xo,
@@ -629,9 +631,6 @@ class ProcManager(object):
         # Now call the on_init of the agent.
         self._process_init(process_instance)
 
-        if not process_instance.resource_id:
-            log.warn("New agent pid=%s has no resource_id set" % process_id)
-
         self._process_start(process_instance)
 
         try:
@@ -640,9 +639,6 @@ class ProcManager(object):
             self._process_quit(process_instance)
             self._call_proc_state_changed(process_instance, ProcessStateEnum.FAILED)
             raise
-
-        if not process_instance.resource_id:
-            log.warn("Agent process id=%s does not define resource_id!!" % process_instance.id)
 
         return process_instance
 
@@ -942,13 +938,13 @@ class ProcManager(object):
         elif process_instance._proc_type == PROCTYPE_AGENT:
             if self.container.has_capability(self.container.CCAP.DIRECTORY):
                 # Registration of AGENT process: in Directory
-                caps = process_instance.get_capabilities()
+                caps = process_instance.get_capabilities() if hasattr(process_instance, "get_capabilities") else {}
                 self.container.directory.register("/Agents", process_instance.id,
                         **dict(name=process_instance._proc_name,
                                container=process_instance.container.id,
-                               resource_id=process_instance.resource_id,
-                               agent_id=process_instance.agent_id,
-                               def_id=process_instance.agent_def_id,
+                               resource_id=getattr(process_instance, "resource_id", ""),
+                               agent_id=getattr(process_instance, "agent_id", ""),
+                               def_id=getattr(process_instance, "agent_def_id", ""),
                                capabilities=caps))
 
         self._call_proc_state_changed(process_instance, ProcessStateEnum.RUNNING)

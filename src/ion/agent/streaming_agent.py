@@ -1,11 +1,11 @@
 
 
-from pyon.public import log, RT, BadRequest, StandaloneProcess, named_any
+from pyon.public import log, RT, BadRequest, named_any
 
 from interface.services.agent.istreaming_agent import BaseStreamingAgent
 
 
-class StreamingAgent(StandaloneProcess):
+class StreamingAgent(BaseStreamingAgent):
     # Constants
     AGENTSTATE_NEW = "new"
     AGENTSTATE_INITIALIZED = "initialized"
@@ -13,21 +13,26 @@ class StreamingAgent(StandaloneProcess):
     AGENTSTATE_STREAMING = "streaming"
     AGENTSTATE_ERROR = "error"
 
-    # ION process type.
+    # ION process type
     name = "streaming_agent"
-    process_type = "standalone"
+    process_type = "agent"
 
-    # Instance defaults
+    # Instance defaults (public)
+    resource_type = "streaming_agent"
+    resource_id = None
+    agent_id = None
+    agent_def_id = None
+
+    # Instance defaults (local)
     current_state = AGENTSTATE_NEW
     params = {}
     agent_plugin = None
 
 
     def on_init(self):
-        log.info("Start agent %s pid=%s", self.__class__.__name__, self.id)
+        log.info("Start agent %s pid=%s resource_id=%s", self.__class__.__name__, self.id, self.resource_id)
         self.current_state = self.AGENTSTATE_INITIALIZED
         self.agent_config = self.CFG.get_safe("agent_config") or {}
-        self.resource_id = self.agent_config.get("resource_id", None)
         self.params = {}
         self.agent_plugin = None
         if "plugin" in self.agent_config:
@@ -35,17 +40,12 @@ class StreamingAgent(StandaloneProcess):
             log.info("Instantiate agent plugin '%s'", self.agent_config["plugin"])
             self.agent_plugin = agent_plugin_cls(self, self.agent_config)
 
-        self.container.directory.register("/Agents", self.id,
-                **dict(name=self._proc_name,
-                       container=self.container.id,
-                       resource_id=self.resource_id))
-
     def on_stop(self):
         if self.current_state in (self.AGENTSTATE_STREAMING, self.AGENTSTATE_CONNECTED):
             self.disconnect()
 
     def on_quit(self):
-        self.container.directory.unregister_safe("/Agents", self.id)
+        pass
 
     def connect(self, connect_args=None):
         if self.current_state == self.AGENTSTATE_CONNECTED:
@@ -63,6 +63,8 @@ class StreamingAgent(StandaloneProcess):
         pass
 
     def start_streaming(self, streaming_args=None):
+        if self.current_state == self.AGENTSTATE_STREAMING:
+            return
         if self.current_state == self.AGENTSTATE_INITIALIZED:
             self.connect({})
         if self.current_state != self.AGENTSTATE_CONNECTED:
