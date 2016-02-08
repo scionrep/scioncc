@@ -596,8 +596,7 @@ class ProcManager(object):
             process_instance.resource_id = resource_id
 
             # Resource ID listener
-            resource_id_xo = self.container.create_process_xn(resource_id)
-
+            resource_id_xo = self.container.create_process_xn(resource_id, auto_delete=True)
             alistener = self._create_listening_endpoint(node=self.container.node,
                                                         from_name=resource_id_xo,
                                                         process=process_instance)
@@ -608,7 +607,7 @@ class ProcManager(object):
             # Private PID listener
             if not getattr(process_instance, "resource_id", None):
                 process_instance.resource_id = None
-            pid_listener_xo = self.container.create_process_xn(process_instance.id)
+            pid_listener_xo = self.container.create_process_xn(process_instance.id, auto_delete=True)
             rsvc = self._create_listening_endpoint(node=self.container.node,
                                                    from_name=pid_listener_xo,
                                                    process=process_instance)

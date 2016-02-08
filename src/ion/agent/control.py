@@ -8,7 +8,8 @@ from interface.services.agent.istreaming_agent import StreamingAgentProcessClien
 
 class AgentControl(object):
 
-    def __init__(self):
+    def __init__(self, resource_id=None):
+        self.resource_id = resource_id
         self.process_id = None
 
     def launch_agent(self, resource_id, agent_type, agent_config):
@@ -27,8 +28,18 @@ class AgentControl(object):
         self.process_id = Container.instance.spawn_process(agent_type, agent_mod, agent_cls, config)
         return self.process_id
 
-    def terminate_agent(self, config):
-        Container.instance.terminate_process(self.process_id)
+    def terminate_agent(self):
+        if self.process_id:
+            Container.instance.terminate_process(self.process_id)
+        elif self.resource_id:
+            ac = StreamingAgentClient(self.resource_id)
+            proc_id = ac.get_agent_process_id()
+            if proc_id in Container.instance.proc_manager.procs:
+                Container.instance.terminate_process(proc_id)
+            else:
+                raise BadRequest("Cannot terminate agent locally")
+        else:
+            raise BadRequest("Cannot terminate agent")
 
 
 class StreamingAgentClient(StreamingAgentProcessClient):
@@ -73,6 +84,8 @@ class StreamingAgentClient(StreamingAgentProcessClient):
         if "process" not in kwargs:
             log.warn("Using FakeProcess to allow agent client without process arg")
             kwargs["process"] = StreamingAgentClient.FakeAgentProcess()
+
+        kwargs["declare_name"] = False
 
         # Superclass constructor.
         StreamingAgentProcessClient.__init__(self, *args, **kwargs)

@@ -174,8 +174,11 @@ class ProcessRPCClient(RPCClient):
         if 'to_name' in kwargs and kwargs['to_name'] is not None and not isinstance(kwargs['to_name'], BaseTransport):
             container = (hasattr(self._process, 'container') and self._process.container) or self._get_container_instance()
             if container:
-                # Client creates the service XN
-                kwargs['to_name'] = container.create_service_xn(kwargs['to_name'])
+                declare = kwargs.pop("declare_name", True)
+                if declare:
+                    # NOTE: What if this is a process or agent client? Cannot declare with known properties.
+                    # Client creates the service XN
+                    kwargs['to_name'] = container.create_service_xn(kwargs['to_name'])
             else:
                 log.info('No container at ProcessRPCClient init time, will wait until message send to upgrade to Exchange Object')
 
