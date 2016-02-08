@@ -8,7 +8,7 @@ from pyon.util.context import LocalContextMixin
 from pyon.core.governance import get_actor_header
 
 from interface.services.examples.ihello_service  import HelloServiceProcessClient
-from interface.services.icontainer_agent import ContainerAgentProcessClient
+from interface.services.agent.icontainer_agent import ContainerAgentProcessClient
 
 class FakeProcess(LocalContextMixin):
     name = 'hello_client'

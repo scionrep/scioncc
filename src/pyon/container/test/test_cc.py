@@ -9,7 +9,7 @@ from pyon.container.cc import Container, CCAP
 import signal
 from gevent.event import Event
 from mock import Mock, patch, ANY
-from interface.services.icontainer_agent import ContainerAgentClient
+from interface.services.agent.icontainer_agent import ContainerAgentClient
 from interface.objects import ProcessStateEnum
 
 @attr('UNIT')

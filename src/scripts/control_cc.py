@@ -7,7 +7,7 @@ __author__ = 'Dave Foster <dfoster@asascience.com>'
 import argparse
 import msgpack
 import os
-from interface.services.icontainer_agent import IContainerAgent, ContainerAgentClient
+from interface.services.agent.icontainer_agent import IContainerAgent, ContainerAgentClient
 from pyon.net.messaging import make_node
 from pyon.core.bootstrap import CFG, bootstrap_pyon
 

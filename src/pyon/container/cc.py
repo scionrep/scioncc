@@ -41,7 +41,7 @@ from pyon.util.testing.greenlet_plugin import GreenletLeak
 from pyon.util.file_sys import FileSystem
 
 from interface.objects import ContainerStateEnum
-from interface.services.icontainer_agent import BaseContainerAgent
+from interface.services.agent.icontainer_agent import BaseContainerAgent
 
 # Capability constants for use in:
 # if self.container.has_capability(CCAP.RESOURCE_REGISTRY):

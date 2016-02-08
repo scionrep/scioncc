@@ -11,7 +11,7 @@ from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, get_s
 from pyon.util.async import spawn
 
 from interface.objects import Process, ProcessStateEnum
-from interface.services.icontainer_agent import ContainerAgentClient
+from interface.services.agent.icontainer_agent import ContainerAgentClient
 
 
 class ProcessDispatcherExecutorBase(object):

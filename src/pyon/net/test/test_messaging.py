@@ -16,7 +16,7 @@ from gevent import event, queue
 import time
 from pyon.util.containers import DotDict
 from pika.exceptions import NoFreeChannels
-from interface.services.icontainer_agent import ContainerAgentClient
+from interface.services.agent.icontainer_agent import ContainerAgentClient
 
 @attr('UNIT')
 class TestNodeB(PyonTestCase):

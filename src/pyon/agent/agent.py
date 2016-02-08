@@ -30,8 +30,8 @@ from pyon.core.exception import NotFound
 from pyon.core.exception import ServerError
 
 # Interface imports.
-from interface.services.iresource_agent import BaseResourceAgent
-from interface.services.iresource_agent import ResourceAgentProcessClient
+from interface.services.agent.iresource_agent import BaseResourceAgent
+from interface.services.agent.iresource_agent import ResourceAgentProcessClient
 from interface.objects import CapabilityType
 from interface.objects import ResourceAgentExecutionStatus
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
