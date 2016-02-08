@@ -1,0 +1,93 @@
+name: streaming_agent
+
+docstring: Behaviors for a simple streaming agent
+
+dependencies: []
+
+
+methods:
+
+  connect:
+    docstring: |
+      Instructs the agent to connect to the data source and check validity
+      of all connection params. No data will be provided yet.
+    in:
+      connect_args: {}
+    out:
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  start_streaming:
+    docstring: |
+      Instructs the agent to start streaming in recurring intervals or on arrival of data.
+      If not already connected, will connect automatically.
+    in:
+      streaming_args: {}
+    out:
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  stop_streaming:
+    docstring: |
+      Instructs the agent to stop streaming and remain passive but connected.
+    in:
+    out:
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  acquire_data:
+    docstring: |
+      Instructs the agent to acquire new data if available and publish on the defined channels.
+      If not already connected, will connect automatically.
+    in:
+      streaming_args: {}
+    out:
+      data_stats: {}
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  disconnect:
+    docstring: |
+      Instructs the agent to disconnect and cease all activity.
+      If agent was streaming, will stop streaming first.
+    in:
+    out:
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  get_status:
+    docstring: |
+      Requests status from the agent.
+    in:
+
+    out:
+      agent_status: {}
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  set_params:
+    docstring: |
+      Sets one or multiple parameters in the agent.
+    in:
+      params: {}
+    out:
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
+
+  get_params:
+    docstring: |
+      Returns current values for agent parameters.
+    in:
+      param_list: []
+    out:
+      params: {}
+    throws:
+      BadRequest: arguments invalid or incomplete
+      NotFound: object with specified id does not exist
