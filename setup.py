@@ -118,5 +118,9 @@ setup(  name='scioncc',
                 'xlrd==0.9.3',         # For Excel file read (dev tools)
                 'xlwt==0.7.5',         # For Excel file write (dev tools)
             ],
+            'data': [
+                'h5py==2.5.0',
+                'Cython==0.23.4',
+            ],
         }
      )
