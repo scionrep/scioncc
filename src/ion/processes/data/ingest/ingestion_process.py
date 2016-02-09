@@ -19,12 +19,10 @@ class IngestionProcess(StandaloneProcess):
         self.plugin = named_any(plugin_cls)(self)
         log.info("Started ingestion plugin '%s'", plugin_cls)
 
-        self.persistence_format = CFG.get_safe(CONFIG_KEY + ".persist.persistence_format")
-        if self.persistence_format == "hdf5":
-            from ion.data.persist.hdf5_dataset import DatasetHDF5Persistence
-            self.persistence_factory = DatasetHDF5Persistence.get_persistence
-        else:
-            raise BadRequest("Unknown persistence format: %s" % self.persistence_format)
+        self.persistence_formats = {}
+        self.persistence_objects = {}
+        self.default_persistence_format = CFG.get_safe(CONFIG_KEY + ".persist.persistence_format")
+        self._require_persistence_layer(self.default_persistence_format)
 
         self.stream_sub = StreamSubscriber(process=self, exchange_name=self.exchange_name,
                                            callback=self.process_package)
@@ -43,6 +41,17 @@ class IngestionProcess(StandaloneProcess):
     def on_quit(self):
         self.stream_sub.stop()
 
+    def _require_persistence_layer(self, format_name):
+        if format_name in self.persistence_formats:
+            return self.persistence_formats[format_name]
+        if format_name == "hdf5":
+            from ion.data.persist.hdf5_dataset import DatasetHDF5Persistence
+            persistence_factory = DatasetHDF5Persistence.get_persistence
+            self.persistence_formats[format_name] = persistence_factory
+        else:
+            raise BadRequest("Unknown persistence format: %s" % format_name)
+        return self.persistence_formats[format_name]
+
     def process_package(self, packet, route, stream):
         if not isinstance(packet, DataPacket):
             log.warn("Ingestion received a non DataPacket message")
@@ -56,7 +65,14 @@ class IngestionProcess(StandaloneProcess):
             log.exception("Error during ingestion")
 
     def _persist_packet(self, packet, ds_info):
-        persistence = self.persistence_factory(ds_info["dataset_id"], ds_info["schema"])
+        layer_format = ds_info["schema"]["attributes"].get("persistence", {}).get("format", self.default_persistence_format)
+        ds_persistence = "%s_%s" % (layer_format, ds_info["dataset_id"])
+        if ds_persistence in self.persistence_objects:
+            persistence = self.persistence_objects[ds_persistence]
+        else:
+            persistence_factory = self._require_persistence_layer(layer_format)
+            persistence = persistence_factory(ds_info["dataset_id"], ds_info["schema"], layer_format)
+            self.persistence_objects[ds_persistence] = persistence
 
         persistence.require_dataset()
         persistence.extend_dataset(packet)
