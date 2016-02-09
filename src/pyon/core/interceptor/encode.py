@@ -5,6 +5,7 @@
 import msgpack
 import sys
 import numpy as np
+from ast import literal_eval
 
 from pyon.core.bootstrap import get_obj_registry
 from pyon.core.exception import BadRequest
@@ -68,7 +69,9 @@ def decode_ion(obj):
         return list(obj['o'])
 
     elif objt == EncodeTypes.NPARRAY:
-        return np.array(obj['o'], dtype=np.dtype(obj['d']))
+        #return np.array(obj['o'], dtype=np.dtype(obj['d']))
+        dtype = np.dtype(literal_eval(obj['d']))
+        return np.fromstring(obj['o'], dtype=dtype)
 
     elif objt == EncodeTypes.COMPLEX:
         return complex(obj['o'][0], obj['o'][1])
@@ -109,7 +112,8 @@ def encode_ion(obj):
         return {'t': EncodeTypes.SET, 'o': tuple(obj)}
 
     if isinstance(obj, np.ndarray):
-        return {'t': EncodeTypes.NPARRAY, 'o': obj.tolist(), 'd': obj.dtype.str}
+        #return {'t': EncodeTypes.NPARRAY, 'o': obj.tolist(), 'd': obj.dtype.str}
+        return {'t': EncodeTypes.NPARRAY, 'o': obj.tostring(), 'd': repr(obj.dtype)[6:-1]}
 
     if isinstance(obj, complex):
         return {'t': EncodeTypes.COMPLEX, 'o': (obj.real, obj.imag)}

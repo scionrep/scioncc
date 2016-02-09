@@ -34,7 +34,7 @@ class FileSystemError(Exception):
 
 class FileSystem(object):
     # These are static, and shared throughout the container, do not operate on a per-instance basis.
-    FS_DIRECTORY_LIST = ['TEMP', 'CACHE', 'FILESTORE']
+    FS_DIRECTORY_LIST = ['TEMP', 'CACHE', 'FILESTORE', 'SCIDATA']
     FS_DIRECTORY = DotDict(zip(FS_DIRECTORY_LIST, FS_DIRECTORY_LIST))
 
     FS = DotDict(zip(FS_DIRECTORY_LIST, FS_DIRECTORY_LIST))

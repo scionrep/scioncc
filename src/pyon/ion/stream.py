@@ -42,17 +42,12 @@ class StreamPublisher(Publisher):
             raise BadRequest("No valid stream information provided.")
 
         self.container = process.container
-        self.xp_name = get_streaming_xp(self.stream_route.exchange_point)
+        self.xp_name = get_streaming_xp(self.stream_route.exchange_point)   # Fully qualified
 
-        if self.container and self.container.has_capability(self.container.CCAP.EXCHANGE_MANAGER):
-            self.xp = self.container.ex_manager.create_xp(self.stream_route.exchange_point or DEFAULT_DATA_XP)
-            self.xp_route = self.xp.create_route(self.stream_route.routing_key)
-        else:
-            self.xp = self.xp_name
-            self.xp_route = self.stream_route.routing_key
+        self.xp = self.container.ex_manager.create_xp(self.stream_route.exchange_point or DEFAULT_DATA_XP)
+        self.xp_route = self.xp.create_route(self.stream_route.routing_key)
 
-        to_name = (self.xp_name, self.stream_route.routing_key)
-        Publisher.__init__(self, to_name=to_name, **kwargs)
+        Publisher.__init__(self, to_name=self.xp_route, **kwargs)
 
     def publish(self, msg, *args, **kwargs):
         """
@@ -78,7 +73,7 @@ class StreamSubscriber(Subscriber):
     The callback should accept three parameters:
       message      The incoming message
       stream_route The route from where the message came.
-      stream_id    The identifier of the stream.
+      stream_name  The identifier of the stream.
     """
     def __init__(self, process, exchange_name=None, stream=None, exchange_point=None, callback=None):
         """
@@ -155,7 +150,7 @@ class StreamSubscriber(Subscriber):
         Begins consuming on the queue.
         """
         if self.started:
-            raise BadRequest("Already started")
+            raise BadRequest("Subscriber already started")
         self.started = True
         self.greenlet = gevent.spawn(self.listen)
         self.greenlet._glname = "StreamSubscriber"
@@ -163,99 +158,6 @@ class StreamSubscriber(Subscriber):
     def stop(self):
         """
         Ceases consuming on the queue.
-        """
-        if not self.started:
-            raise BadRequest("Subscriber is not running.")
-        self.close()
-        self.greenlet.join(timeout=10)
-        self.greenlet.kill()
-        self.started = False
-
-
-class StandaloneStreamPublisher(Publisher):
-    """
-    StandaloneStreamPublisher is a Publishing endpoint which uses streams but
-    does not belong to a process.
-
-    This endpoint is intended for testing and debugging not to be used in service
-    or process implementations.
-    """
-    def __init__(self, stream_id, stream_route):
-        """
-        Creates a new StandaloneStreamPublisher
-        @param stream_id    The stream identifier
-        @param stream_route The StreamRoute to publish on.
-        """
-        super(StandaloneStreamPublisher, self).__init__()
-        from pyon.container.cc import Container
-        self.stream_id = stream_id
-        if not isinstance(stream_route, StreamRoute):
-            raise BadRequest('stream route is not valid')
-        self.stream_route = stream_route
-
-        self.xp = Container.instance.ex_manager.create_xp(stream_route.exchange_point)
-        self.xp_route = self.xp.create_route(stream_route.routing_key)
-
-
-    def publish(self, msg, stream_id='', stream_route=None):
-        """
-        Encapsulates and publishes the message on the specified stream/route or
-        the one specified at instantiation.
-        @param msg          Outgoing message
-        @param stream_id    Stream Identifier
-        @param stream_route Stream Route
-        """
-        from pyon.container.cc import Container
-        stream_id = stream_id or self.stream_id
-        xp = self.xp
-        xp_route = self.xp_route
-        if stream_route:
-            xp = Container.instance.ex_manager.create_xp(stream_route.exchange_point)
-            xp_route = xp.create_route(stream_route.routing_key)
-        stream_route = stream_route or self.stream_route
-        super(StandaloneStreamPublisher, self).publish(msg, to_name=xp_route, headers={'exchange_point': stream_route.exchange_point, 'stream': stream_id or self.stream_id})
-
-
-class StandaloneStreamSubscriber(Subscriber):
-    """
-    StandaloneStreamSubscriber is a Subscribing endpoint which uses Streams but
-    does not belong to a process.
-
-    This endpoint is intended for testing and debugging not to be used in service
-    or process implementations.
-    """
-    def __init__(self, exchange_name, callback):
-        """
-        Creates a new StandaloneStreamSubscriber
-        @param exchange_name The name of the queue to listen on.
-        @param callback      The callback to execute on receipt of a packet
-        """
-        from pyon.container.cc import Container
-        self.xn = Container.instance.ex_manager.create_queue_xn(exchange_name)
-        self.callback = callback
-        self.started = False
-        super(StandaloneStreamSubscriber, self).__init__(name=self.xn, callback=self.preprocess)
-
-    def preprocess(self, msg, headers):
-        """
-        Performs de-encapsulation of incoming packets and calls the callback.
-        @param msg     The incoming packet.
-        @param headers The headers of the incoming message.
-        """
-        route = StreamRoute(headers['exchange_point'], headers['routing_key'])
-        self.callback(msg, route, headers['stream'])
-
-    def start(self):
-        """
-        Begin consuming on the queue.
-        """
-        self.started = True
-        self.greenlet = gevent.spawn(self.listen)
-        self.greenlet._glname = "StandaloneStreamSubscriber"
-
-    def stop(self):
-        """
-        Cease consuming on the queue.
         """
         if not self.started:
             raise BadRequest("Subscriber is not running.")

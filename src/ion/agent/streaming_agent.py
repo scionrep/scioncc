@@ -1,6 +1,8 @@
+""" Simple agent that streams data and can be extended by plugins. """
 
+__author__ = 'Michael Meisinger'
 
-from pyon.public import log, RT, BadRequest, named_any
+from pyon.public import log, RT, BadRequest, named_any, StreamPublisher
 
 from interface.services.agent.istreaming_agent import BaseStreamingAgent
 
@@ -27,6 +29,7 @@ class StreamingAgent(BaseStreamingAgent):
     current_state = AGENTSTATE_NEW
     params = {}
     agent_plugin = None
+    stream_name = None
 
 
     def on_init(self):
@@ -35,10 +38,15 @@ class StreamingAgent(BaseStreamingAgent):
         self.agent_config = self.CFG.get_safe("agent_config") or {}
         self.params = {}
         self.agent_plugin = None
+        self.stream_name = self.agent_config.get("stream_name", None) or "stream_" + self.resource_id
         if "plugin" in self.agent_config:
             agent_plugin_cls = named_any(self.agent_config["plugin"])
             log.info("Instantiate agent plugin '%s'", self.agent_config["plugin"])
             self.agent_plugin = agent_plugin_cls(self, self.agent_config)
+        if self.agent_config.get("auto_streaming", False) is True:
+            self.connect()
+            self.start_streaming()
+
 
     def on_stop(self):
         if self.current_state in (self.AGENTSTATE_STREAMING, self.AGENTSTATE_CONNECTED):
@@ -53,6 +61,7 @@ class StreamingAgent(BaseStreamingAgent):
         elif self.current_state != self.AGENTSTATE_INITIALIZED:
             raise BadRequest("Illegal agent state: %s" % self.current_state)
         try:
+            self.stream_pub = StreamPublisher(process=self, stream=self.stream_name)
             res = self.on_connect(connect_args)
         except Exception:
             self.current_state = self.AGENTSTATE_ERROR
@@ -115,6 +124,8 @@ class StreamingAgent(BaseStreamingAgent):
             self.stop_streaming()
         try:
             res = self.on_disconnect()
+            self.stream_pub.close()
+            self.stream_pub = None
         except Exception:
             self.current_state = self.AGENTSTATE_ERROR
             raise

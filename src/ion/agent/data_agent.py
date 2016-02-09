@@ -1,12 +1,16 @@
+""" Agent acquiring data from web or file data sources and streaming packets. """
+
+__author__ = 'Michael Meisinger'
 
 from gevent.event import Event
 
 from pyon.public import BadRequest, EventPublisher, log, NotFound, OT, RT, get_safe
 from pyon.util.async import spawn
 
-
 from ion.agent.streaming_agent import StreamingAgent, AgentPlugin
+from ion.data.packet.packet_builder import DataPacketBuilder
 
+from interface.objects import DataPacket
 
 class DataAgent(StreamingAgent):
     agent_plugin = None
@@ -34,7 +38,10 @@ class DataAgent(StreamingAgent):
             try:
                 if self.agent_plugin:
                     sample = self.agent_plugin.acquire_samples()
-                    log.info("Sample %s", sample)
+                    #log.info("Sample %s", sample)
+                    packet = DataPacketBuilder.build_packet_from_samples(sample,
+                                    resource_id=self.resource_id, stream_name=self.stream_name)
+                    self.stream_pub.publish(packet)
             except Exception as ex:
                 log.exception("Error in sampling greenlet")
 

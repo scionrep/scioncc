@@ -312,6 +312,12 @@ process:
       url_prefix: /service
     extensions: []   # A list of fully qualified class names implementing the UIExtension interface
 
+  ingestion_process:
+    stream_subscriptions:           # List of either stream names (str) or [XP, stream_name] tuples
+    - basic_streams
+    plugin: ""                      # Classname for ingestion plugin
+    persist:
+      persistence_format: hdf5
 
 # ----------------------------------------------------------------------------------
 # The "service" root entry

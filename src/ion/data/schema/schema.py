@@ -1,4 +1,6 @@
-""" Tools for parsing data schema definitions """
+""" Tools for parsing data schema definitions. """
+
+__author__ = 'Michael Meisinger'
 
 import os
 import yaml

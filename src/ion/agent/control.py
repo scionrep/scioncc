@@ -1,5 +1,6 @@
 """ Support for controlling agents """
 
+__author__ = 'Michael Meisinger'
 
 from pyon.public import log, RT, BadRequest, Container, NotFound
 from ion.core.process.proc_util import ProcessStateGate
