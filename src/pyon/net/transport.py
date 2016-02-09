@@ -51,7 +51,7 @@ class NameTrio(object):
         elif isinstance(queue, tuple):
             self._exchange, self._queue, self._binding = list(queue) + ([None] * (3 - len(queue)))
         else:
-            self._exchange, self._queue,self._binding = exchange, queue, binding
+            self._exchange, self._queue, self._binding = exchange, queue, binding
 
     @property
     def exchange(self):

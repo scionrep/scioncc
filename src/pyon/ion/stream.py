@@ -1,115 +1,145 @@
 #!/usr/bin/env python
 
-"""Stream-based publishing and subscribing"""
+""" Stream-based publishing and subscribing """
 
-__author__ = 'Luke Campbell <LCampbell@ASAScience.com>'
+__author__ = 'Luke Campbell <LCampbell@ASAScience.com>, Michael Meisinger'
 
 import gevent
 
+from pyon.core.bootstrap import get_sys_name, CFG
 from pyon.core.exception import BadRequest
 from pyon.net.endpoint import Publisher, Subscriber
+from pyon.ion.identifier import create_simple_unique_id
 from pyon.ion.service import BaseService
 from pyon.util.log import log
 
 from interface.objects import StreamRoute
 
+DEFAULT_SYSTEM_XS = "system"
+DEFAULT_DATA_XP = "data"
+
 
 class StreamPublisher(Publisher):
     """
-    StreamPublisher maintains the "stream" concept and properly encapsulates outgoing messages in the streaming
-    packet. StreamPublisher is intended to be used in an ION process.
+    Publishes outgoing messages on "streams", while setting proper message headers.
     """
 
-    def __init__(self, process=None, stream_id='', stream_route=None, exchange_point='', routing_key=''):
+    def __init__(self, process, stream, **kwargs):
         """
-        Creates a StreamPublisher which publishes to the specified stream by default and is attached to the
-        specified process.
-        @param process        The process which the subscriber is to be attached.
-        @param stream_id      Stream identifier for the publishing stream.
-        @param stream_route   A StreamRoute corresponding to the stream_id
-        @param exchange_point The name of the exchange point, to be used in lieu of stream_route or stream_id
-        @param routing_key    The routing key to be used in lieu of stream_route or stream_id
+        Creates a StreamPublisher which publishes to the specified stream
+        and is attached to the specified process.
+        @param process   The IonProcess to attach to.
+        @param stream    Name of the stream or StreamRoute object
         """
         super(StreamPublisher, self).__init__()
         if not isinstance(process, BaseService):
-            raise BadRequest('No valid process provided.')
-        #--------------------------------------------------------------------------------
-        # The important part of publishing is the stream_route and there are three ways
-        # to the stream route
-        #   - The Route is obtained from Pubsub Management with a stream id.
-        #   - The Route is obtained by combining exchange_point and the routing_key
-        #     but all other information is lost (credentials, etc.)
-        #   - The Route is obtained by being provided directly to __init__
-        #--------------------------------------------------------------------------------
-        self.stream_id = stream_id
-        if stream_id:
-            # Regardless of what's passed in for stream_route look it up, prevents mismatching
-            pass
-
-        elif not stream_route:
-            self.stream_route = None
-            if exchange_point and routing_key:
-                self.stream_route = StreamRoute(exchange_point=exchange_point, routing_key=routing_key)
-            else:
-                # Create stream
-                self.stream_id = stream_id
-                self.stream_route = stream_route
+            raise BadRequest("No valid process provided.")
+        if isinstance(stream, basestring):
+            self.stream_route = StreamRoute(routing_key=stream)
+        elif isinstance(stream, StreamRoute):
+            self.stream_route = stream
         else:
-            self.stream_route = stream_route
-        if not isinstance(self.stream_route, StreamRoute):
-            raise BadRequest('No valid stream route provided to publisher.')
+            raise BadRequest("No valid stream information provided.")
 
         self.container = process.container
-        self.xp = self.container.ex_manager.create_xp(self.stream_route.exchange_point)
-        self.xp_route = self.xp.create_route(self.stream_route.routing_key)
+        self.xp_name = get_streaming_xp(self.stream_route.exchange_point)
 
-    def publish(self, msg, stream_id='', stream_route=None):
+        if self.container and self.container.has_capability(self.container.CCAP.EXCHANGE_MANAGER):
+            self.xp = self.container.ex_manager.create_xp(self.stream_route.exchange_point or DEFAULT_DATA_XP)
+            self.xp_route = self.xp.create_route(self.stream_route.routing_key)
+        else:
+            self.xp = self.xp_name
+            self.xp_route = self.stream_route.routing_key
+
+        to_name = (self.xp_name, self.stream_route.routing_key)
+        Publisher.__init__(self, to_name=to_name, **kwargs)
+
+    def publish(self, msg, *args, **kwargs):
         """
         Encapsulates and publishes a message; the message is sent to either the specified
         stream/route or the stream/route specified at instantiation
         """
-        xp = self.xp
-        xp_route = self.xp_route
-        log.trace('Exchange: %s', xp.exchange)
-        if stream_route:
-            xp = self.container.ex_manager.create_xp(stream_route.exchange_point)
-            xp_route = xp.create_route(stream_route.routing_key)
-        else:
-            stream_route = self.stream_route
-        log.trace('Publishing (%s,%s)', xp.exchange, stream_route.routing_key)
-        super(StreamPublisher, self).publish(msg, to_name=xp_route,
-                                             headers={'exchange_point': stream_route.exchange_point,
-                                                      'stream': stream_id or self.stream_id})
+        pub_hdrs = self._get_publish_headers(msg, kwargs)
+        super(StreamPublisher, self).publish(msg, to_name=self._send_name, headers=pub_hdrs)
+
+    def _get_publish_headers(self, msg, kwargs):
+        headers = {}
+        if "headers" in kwargs:
+            headers.update(kwargs["headers"])
+        headers.update({'exchange_point': self.xp_name,
+                        'stream': self.stream_route.routing_key})
+        return headers
 
 
 class StreamSubscriber(Subscriber):
     """
-    StreamSubscriber is a subscribing class to be attached to an ION process; it adheres to the
-    stream pubsub framework.
+    StreamSubscriber is a subscribing class to be attached to an ION process.
 
     The callback should accept three parameters:
       message      The incoming message
       stream_route The route from where the message came.
       stream_id    The identifier of the stream.
-
-    Ex:
-      def receive(msg, route, stream_id):
-          pass
     """
-    def __init__(self, process, exchange_name, callback=None):
+    def __init__(self, process, exchange_name=None, stream=None, exchange_point=None, callback=None):
         """
         Creates a new StreamSubscriber which will listen on the specified queue (exchange_name).
-        @param process       The Ion Process to attach to.
-        @param exchange_name The subscribing queue name.
-        @param callback      The callback to execute upon receipt of a packet.
+        @param process        The IonProcess to attach to.
+        @param exchange_name  The subscribing queue name.
+        @param stream         (optional) Name of the stream or StreamRoute object, to subscribe to
+        @param callback       The callback to execute upon receipt of a packet.
         """
         if not isinstance(process, BaseService):
-            raise BadRequest('No valid process was provided.')
+            raise BadRequest("No valid process provided.")
+
+        self.queue_name = exchange_name or ("subsc_" + create_simple_unique_id())
+        self.streams = []
+
         self.container = process.container
-        self.xn = self.container.ex_manager.create_queue_xn(exchange_name)
+        exchange_point = exchange_point or DEFAULT_DATA_XP
+        self.xp_name = get_streaming_xp(exchange_point)
+        self.xp = self.container.ex_manager.create_xp(exchange_point)
+
+        self.xn = self.container.ex_manager.create_queue_xn(exchange_name, xs=self.xp)
         self.started = False
         self.callback = callback or process.call_process
+
         super(StreamSubscriber, self).__init__(from_name=self.xn, callback=self.preprocess)
+
+        if stream:
+            self.add_stream_subscription(stream)
+
+    def add_stream_subscription(self, stream):
+        if isinstance(stream, basestring):
+            stream_route = StreamRoute(routing_key=stream)
+        elif isinstance(stream, StreamRoute):
+            stream_route = stream
+        else:
+            raise BadRequest("No valid stream information provided.")
+
+        xp = self.container.ex_manager.create_xp(stream_route.exchange_point or DEFAULT_DATA_XP)
+        self.xn.bind(stream_route.routing_key, xp)
+
+        self.streams.append(stream_route)
+
+    def remove_stream_subscription(self, stream):
+        if isinstance(stream, basestring):
+            stream_route = StreamRoute(routing_key=stream)
+        elif isinstance(stream, StreamRoute):
+            stream_route = stream
+        else:
+            raise BadRequest("No valid stream information provided.")
+        existing_st = None
+        for st in self.streams:
+            if st.routing_key == stream_route.routing_key and st.exchange_point == stream_route.exchange_point:
+                self.streams.remove(st)
+                existing_st = st
+                break
+        if existing_st:
+            xp = get_streaming_xp(stream_route.exchange_point)
+            self.xn.unbind(existing_st.routing_key, xp)
+        else:
+            raise BadRequest("Stream was not a subscription")
+
 
     def preprocess(self, msg, headers):
         """
@@ -124,6 +154,8 @@ class StreamSubscriber(Subscriber):
         """
         Begins consuming on the queue.
         """
+        if self.started:
+            raise BadRequest("Already started")
         self.started = True
         self.greenlet = gevent.spawn(self.listen)
         self.greenlet._glname = "StreamSubscriber"
@@ -232,3 +264,8 @@ class StandaloneStreamSubscriber(Subscriber):
         self.greenlet.kill()
         self.started = False
 
+
+def get_streaming_xp(streaming_xp_name=None):
+    root_xs = CFG.get_safe("exchange.core.system_xs", DEFAULT_SYSTEM_XS)
+    events_xp = streaming_xp_name or CFG.get_safe("exchange.core.data_streams", DEFAULT_DATA_XP)
+    return "%s.%s.%s" % (get_sys_name(), root_xs, events_xp)

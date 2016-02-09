@@ -5,10 +5,10 @@ __author__ = 'Luke Campbell <LCampbell@ASAScience.com>'
 from gevent.event import Event
 from nose.plugins.attrib import attr
 
-from pyon.util.int_test import IonIntegrationTestCase
-
+from pyon.core.bootstrap import get_sys_name
 from pyon.ion.stream import StreamSubscriber, StreamPublisher
 from pyon.ion.process import SimpleProcess
+from pyon.util.int_test import IonIntegrationTestCase
 
 from interface.objects import StreamRoute
 
@@ -31,25 +31,58 @@ class StreamPubsubTest(IonIntegrationTestCase):
 
     def test_stream_pub_sub(self):
         self.verified = Event()
-        self.route = StreamRoute(exchange_point='xp_test', routing_key='route')
+        #self.route = StreamRoute(exchange_point='xp_test', routing_key='route')
+        self.route = StreamRoute(routing_key='stream_name')
+
         def verify(message, route, stream):
-            self.assertEquals(message,'test')
-            self.assertEquals(route, self.route)
-            self.assertEquals(stream, '')
+            self.assertEquals(message, 'test')
+            self.assertEquals(route.routing_key, self.route.routing_key)
+            self.assertTrue(route.exchange_point.startswith(get_sys_name()))
+            self.assertEquals(stream, 'stream_name')
             self.verified.set()
 
         sub_proc = SimpleProcess()
         sub_proc.container = self.container
 
-        sub1 = StreamSubscriber(process=sub_proc, exchange_name='sub1', callback=verify)
+        sub1 = StreamSubscriber(process=sub_proc, exchange_name='stream_name', callback=verify)
+        sub1.add_stream_subscription("stream_name")
         sub1.start()
         self.queue_cleanup.append('sub1')
 
+        pub_proc = SimpleProcess()
+        pub_proc.container = self.container
+
+        pub1 = StreamPublisher(process=pub_proc, stream=self.route)
+        sub1.xn.bind(self.route.routing_key, pub1.xp)
+
+        pub1.publish('test')
+
+        self.assertTrue(self.verified.wait(2))
+
+    def test_stream_pub_sub_xp(self):
+        self.verified = Event()
+        self.route = StreamRoute(exchange_point='xp_test', routing_key='stream_name')
+
+        def verify(message, route, stream):
+            self.assertEquals(message, 'test')
+            self.assertEquals(route.routing_key, self.route.routing_key)
+            self.assertTrue(route.exchange_point.endswith(self.route.exchange_point))
+            self.assertEquals(stream, 'stream_name')
+            self.verified.set()
+
+        sub_proc = SimpleProcess()
+        sub_proc.container = self.container
+
+        sub1 = StreamSubscriber(process=sub_proc, exchange_name='stream_name', exchange_point="xp_test", callback=verify)
+        sub1.add_stream_subscription(self.route)
+        sub1.start()
+        self.queue_cleanup.append('sub1')
 
         pub_proc = SimpleProcess()
         pub_proc.container = self.container
-        pub1 = StreamPublisher(process=pub_proc,stream_route=self.route)
-        sub1.xn.bind(self.route.routing_key,pub1.xp) 
+
+        pub1 = StreamPublisher(process=pub_proc, stream=self.route)
+        sub1.xn.bind(self.route.routing_key, pub1.xp)
 
         pub1.publish('test')
 

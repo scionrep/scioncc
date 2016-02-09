@@ -923,6 +923,7 @@ class ExchangeName(XOTransport, NameTrio):
     _xn_durable     = None
     _xn_auto_delete = None
     _declared_queue = None
+    _xs = None
 
     def __init__(self, exchange_manager, privileged_transport, node, name, xs, durable=None, auto_delete=None):
         XOTransport.__init__(self,
@@ -965,7 +966,7 @@ class ExchangeName(XOTransport, NameTrio):
 
     @property
     def exchange(self):
-        return self._xs.exchange
+        return self._xs.exchange if self._xs else ""
 
     @property
     def queue(self):
@@ -1028,6 +1029,7 @@ class ExchangePoint(ExchangeName):
         }
 
     xn_type = "XN_XP"
+    _xs = None
 
     def __init__(self, exchange_manager, privileged_transport, node, name, xs, xptype=None):
         xptype = xptype or 'ttree'
@@ -1043,7 +1045,7 @@ class ExchangePoint(ExchangeName):
 
     @property
     def exchange(self):
-        return "%s.%s" % (self._xs.exchange, self._exchange)
+        return "%s.%s" % (self._xs.exchange if self._xs else "", self._exchange)
 
     @property
     def queue(self):
