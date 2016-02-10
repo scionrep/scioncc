@@ -71,7 +71,7 @@ def decode_ion(obj):
     elif objt == EncodeTypes.NPARRAY:
         #return np.array(obj['o'], dtype=np.dtype(obj['d']))
         dtype = np.dtype(literal_eval(obj['d']))
-        return np.fromstring(obj['o'], dtype=dtype)
+        return np.fromstring(obj['o'], dtype=dtype).reshape(obj['s'])
 
     elif objt == EncodeTypes.COMPLEX:
         return complex(obj['o'][0], obj['o'][1])
@@ -113,7 +113,7 @@ def encode_ion(obj):
 
     if isinstance(obj, np.ndarray):
         #return {'t': EncodeTypes.NPARRAY, 'o': obj.tolist(), 'd': obj.dtype.str}
-        return {'t': EncodeTypes.NPARRAY, 'o': obj.tostring(), 'd': repr(obj.dtype)[6:-1]}
+        return {'t': EncodeTypes.NPARRAY, 'o': obj.tostring(), 'd': repr(obj.dtype)[6:-1], 's':obj.shape}
 
     if isinstance(obj, complex):
         return {'t': EncodeTypes.COMPLEX, 'o': (obj.real, obj.imag)}
