@@ -5,7 +5,7 @@ __author__ = 'Michael Meisinger'
 import os
 import numpy as np
 
-from pyon.public import log, StandaloneProcess, BadRequest, CFG, StreamSubscriber, named_any, Container
+from pyon.public import log, BadRequest, CFG, Container
 from pyon.util.ion_time import IonTime
 from ion.util.hdf_utils import HDFLockingFile
 
@@ -24,6 +24,11 @@ DS_BASE_PATH = "SCIDATA/datasets"
 DEFAULT_ROW_INCREMENT = 1000
 DEFAULT_TIME_VARIABLE = "time"
 DS_VARIABLES = "data"
+
+DS_TIMEIDX_PATH = "index/time_idx"
+DS_TIMEINGEST_PATH = "index/time_ingest"
+INTERNAL_ROW_INCREMENT = 1000
+DEFAULT_TIME_INDEX_STEP = 1000
 
 
 class DatasetHDF5Persistence(object):
@@ -54,12 +59,15 @@ class DatasetHDF5Persistence(object):
         self.var_defs = self.dataset_schema["variables"]
         self.var_defs_map = {vi["name"]: vi for vi in self.var_defs}
 
+        self.time_idx_step = int(self.persistence_attrs.get("time_index_step", DEFAULT_TIME_INDEX_STEP))
         self.time_var = self.persistence_attrs.get("time_variable", DEFAULT_TIME_VARIABLE)
         # Mapping of variable name to column position
         self.var_index = {}
         for position, var_info in enumerate(self.var_defs):
             var_name = var_info["name"]
             self.var_index[var_name] = position
+        if self.time_var not in self.var_defs_map:
+            raise BadRequest("No time variable present")
 
     def _get_ds_filename(self):
         local_fn = "%s%s.hdf5" % (DS_FILE_PREFIX, self.dataset_id)
@@ -78,6 +86,7 @@ class DatasetHDF5Persistence(object):
         try:
             data_file.attrs["dataset_id"] = self.dataset_id
             data_file.attrs["layout"] = self.ds_layout
+            data_file.attrs["format"] = "scion_hdf5_v1"
 
             data_file.create_group("vars")
             initial_shape = (self.ds_increment, )
@@ -93,7 +102,8 @@ class DatasetHDF5Persistence(object):
                     dset.attrs["position"] = position
                     dset.attrs["description"] = str(var_info.get("description", "") or "")
                     dset.attrs["unit"] = str(var_info.get("unit", "") or "")
-                    dset.attrs["last_row"] = 0
+                    if var_name == self.time_var:
+                        dset.attrs["cur_row"] = 0
 
             elif self.ds_layout == DS_LAYOUT_COMBINED:
                 dtype_parts = []
@@ -106,45 +116,74 @@ class DatasetHDF5Persistence(object):
                 dset = data_file.create_dataset("vars/%s" % DS_VARIABLES, initial_shape,
                                                 dtype=np.dtype(dtype_parts), maxshape=(None, ))
                 dset.attrs["dtype_repr"] = repr(dset.dtype)[6:-1]
-                dset.attrs["last_row"] = 0
+                dset.attrs["cur_row"] = 0
+
+            # Internal time index
+            data_file.create_group("index")
+            dtype_tidx = [("time", "u8")]
+            ds_tidx = data_file.create_dataset(DS_TIMEIDX_PATH, (INTERNAL_ROW_INCREMENT, ),
+                                               dtype=dtype_tidx, maxshape=(None, ))
+            ds_tidx.attrs["cur_row"] = 0
+            ds_tidx.attrs["description"] = "Index of every %s-th time value" % self.time_idx_step
+            ds_tidx.attrs["step"] = self.time_idx_step
+
+            # Internal ingest time
+            dtype_tingest = [("time", "u8"), ("row", "u4"), ("count", "u4")]
+            ds_tingest = data_file.create_dataset(DS_TIMEINGEST_PATH, (INTERNAL_ROW_INCREMENT, ),
+                                                  dtype=dtype_tingest, maxshape=(None, ))
+            ds_tingest.attrs["cur_row"] = 0
+            ds_tingest.attrs["description"] = "Maintains ingest times"
+
         finally:
             data_file.close()
 
         return ds_filename, True
 
-    def _resize_dataset(self, var_ds, num_rows):
+    def _resize_dataset(self, var_ds, num_rows, row_increment=None):
+        row_increment = row_increment or self.ds_increment
         cur_size = len(var_ds)
-        new_size = cur_size + (int(num_rows / self.ds_increment) + 1) * self.ds_increment
+        new_size = cur_size + (int(num_rows / row_increment) + 1) * row_increment
         log.debug("Resizing dataset %s from %s to %s", var_ds, cur_size, new_size)
         var_ds.resize(new_size, axis=0)
 
     def extend_dataset(self, packet):
-        num_rows = len(packet.data["data"])
+        ingest_ts = IonTime().to_ntp64()
+        num_rows, cur_idx, time_idx_rows = len(packet.data["data"]), 0, []
         ds_filename = self._get_ds_filename()
         data_file = HDFLockingFile(ds_filename, "r+", retry_count=10, retry_wait=0.5)
         try:
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-                for var_idx, var_name in enumerate(packet.data["cols"]):
-                    ds_path = "vars/%s" % var_name
-                    if ds_path not in data_file:
-                        log.warn("Variable '%s' not in dataset - ignored", var_name)
-                        continue
-                    var_ds = data_file[ds_path]
-                    cur_size = len(var_ds)
-                    cur_idx = var_ds.attrs["last_row"]
+                # Fill time var and get index values
+                if self.time_var not in packet.data["cols"]:
+                    raise BadRequest("Packet has no time")
+                var_ds = data_file["vars/%s" % self.time_var]
+                cur_size, cur_idx = len(var_ds), var_ds.attrs["cur_row"]
+                if cur_idx + num_rows > cur_size:
+                    self._resize_dataset(var_ds, num_rows)
+                data_slice = packet.data["data"][:][self.time_var]
+                var_ds[cur_idx:cur_idx+num_rows] = data_slice
+                var_ds.attrs["cur_row"] += num_rows
+
+                # Fill other variables with values from packet or NaN
+                for var_name in self.var_defs_map.keys():
+                    var_ds = data_file["vars/%s" % var_name]
                     if cur_idx + num_rows > cur_size:
                         self._resize_dataset(var_ds, num_rows)
-                    data_slice = packet.data["data"][:][var_name]
-                    var_ds[cur_idx:cur_idx+num_rows] = data_slice
-                    var_ds.attrs["last_row"] += num_rows
+                    if var_name in packet.data["cols"]:
+                        data_slice = packet.data["data"][:][var_name]
+                        var_ds[cur_idx:cur_idx+num_rows] = data_slice
+                    else:
+                        # Leave the initial fill value (zeros)
+                        pass
+                        #var_ds[cur_idx:cur_idx+num_rows] = [None]*num_rows
+
+                extra_vars = set(packet.data["cols"]) - set(self.var_defs_map.keys())
+                if extra_vars:
+                    log.warn("Data packet had extra vars not in dataset: %s", extra_vars)
 
             elif self.ds_layout == DS_LAYOUT_COMBINED:
-                ds_path = "vars/%s" % DS_VARIABLES
-                if ds_path not in data_file:
-                    raise BadRequest("Cannot find combined dataset")
-                var_ds = data_file[ds_path]
-                cur_size = len(var_ds)
-                cur_idx = var_ds.attrs["last_row"]
+                var_ds = data_file["vars/%s" % DS_VARIABLES]
+                cur_size, cur_idx = len(var_ds), var_ds.attrs["cur_row"]
                 if cur_idx + num_rows > cur_size:
                     self._resize_dataset(var_ds, num_rows)
                 ds_var_names = [var_info["name"] for var_info in self.var_defs]
@@ -153,11 +192,34 @@ class DatasetHDF5Persistence(object):
                     row_data = packet.data["data"][row_idx]
                     row_vals = tuple(row_data[vn] if vn in pvi else None for vn in ds_var_names)
                     var_ds[cur_idx+row_idx] = row_vals
-                var_ds.attrs["last_row"] += num_rows
+                var_ds.attrs["cur_row"] += num_rows
+
+            # Update time_ingest (ts, begin row, count)
+            ds_tingest = data_file[DS_TIMEINGEST_PATH]
+            if ds_tingest.attrs["cur_row"] + 1 > len(ds_tingest):
+                self._resize_dataset(ds_tingest, 1, INTERNAL_ROW_INCREMENT)
+            ds_tingest[ds_tingest.attrs["cur_row"]] = (np.fromstring(ingest_ts, dtype="u8"), cur_idx, num_rows)
+            ds_tingest.attrs["cur_row"] += 1
+
+            # Update time_idx (every nth row's time)
+            new_idx_row = (cur_idx + num_rows + self.time_idx_step - 1) / self.time_idx_step
+            old_idx_row = (cur_idx + self.time_idx_step - 1) / self.time_idx_step
+            num_tidx_rows = new_idx_row - old_idx_row
+            time_ds = data_file["vars/%s" % (self.time_var if self.ds_layout == DS_LAYOUT_INDIVIDUAL else DS_VARIABLES)]
+            time_idx_rows = [time_ds[idx_row*self.time_idx_step] for idx_row in xrange(old_idx_row, new_idx_row)]
+            if time_idx_rows:
+                ds_tidx = data_file[DS_TIMEIDX_PATH]
+                tidx_cur_row = ds_tidx.attrs["cur_row"]
+                if tidx_cur_row + num_tidx_rows > len(ds_tidx):
+                    self._resize_dataset(ds_tidx, num_tidx_rows, INTERNAL_ROW_INCREMENT)
+                ds_tidx[tidx_cur_row:tidx_cur_row+num_tidx_rows] = time_idx_rows
+                ds_tidx.attrs["cur_row"] += num_tidx_rows
 
             #HDF5Tools.dump_hdf5(data_file, with_data=True)
         finally:
             data_file.close()
+
+    # -------------------------------------------------------------------------
 
     def get_data(self, data_filter=None):
         data_filter = data_filter or {}
@@ -171,13 +233,14 @@ class DatasetHDF5Persistence(object):
             time_format = data_filter.get("time_format", "unix_millis")
             max_rows = data_filter.get("max_rows", 999999999)
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
+                time_ds = data_file["vars/%s" % self.time_var]
+                cur_idx = time_ds.attrs["cur_row"]
                 for var_name in read_vars:
                     ds_path = "vars/%s" % var_name
                     if ds_path not in data_file:
                         log.warn("Variable '%s' not in dataset - ignored", var_name)
                         continue
                     var_ds = data_file[ds_path]
-                    cur_idx = var_ds.attrs["last_row"]
                     data_array = var_ds[max(cur_idx-max_rows, 0):cur_idx]
                     if var_name == self.time_var and self.var_defs_map[var_name].get("base_type", "") == "ntp_time":
                         if time_format == "unix_millis":
