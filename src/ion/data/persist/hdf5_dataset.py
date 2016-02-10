@@ -6,6 +6,7 @@ import os
 import numpy as np
 
 from pyon.public import log, StandaloneProcess, BadRequest, CFG, StreamSubscriber, named_any, Container
+from pyon.util.ion_time import IonTime
 from ion.util.hdf_utils import HDFLockingFile
 
 try:
@@ -40,7 +41,7 @@ class DatasetHDF5Persistence(object):
         self.container = Container.instance
         self._parse_schema()
 
-        log.info("Create new persistence layer %s for dataset_id=%s", self.format_name, self.dataset_id)
+        log.debug("Create new persistence layer %s for dataset_id=%s", self.format_name, self.dataset_id)
 
     def _parse_schema(self):
         # Dataset global attributes
@@ -50,11 +51,13 @@ class DatasetHDF5Persistence(object):
             log.warn("Illegal dataset persistence layout %s - using %s", self.ds_layout, DS_LAYOUT_INDIVIDUAL)
             self.ds_layout = DS_LAYOUT_INDIVIDUAL
         self.ds_increment = int(self.persistence_attrs.get("row_increment", DEFAULT_ROW_INCREMENT))
+        self.var_defs = self.dataset_schema["variables"]
+        self.var_defs_map = {vi["name"]: vi for vi in self.var_defs}
 
         self.time_var = self.persistence_attrs.get("time_variable", DEFAULT_TIME_VARIABLE)
         # Mapping of variable name to column position
         self.var_index = {}
-        for position, var_info in enumerate(self.dataset_schema["variables"]):
+        for position, var_info in enumerate(self.var_defs):
             var_name = var_info["name"]
             self.var_index[var_name] = position
 
@@ -80,7 +83,7 @@ class DatasetHDF5Persistence(object):
             initial_shape = (self.ds_increment, )
 
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-                for position, var_info in enumerate(self.dataset_schema["variables"]):
+                for position, var_info in enumerate(self.var_defs):
                     var_name = var_info["name"]
                     base_type = var_info.get("base_type", "float")
                     dtype = var_info.get("storage_dtype", "f8")
@@ -94,7 +97,7 @@ class DatasetHDF5Persistence(object):
 
             elif self.ds_layout == DS_LAYOUT_COMBINED:
                 dtype_parts = []
-                for var_info in self.dataset_schema["variables"]:
+                for var_info in self.var_defs:
                     var_name = var_info["name"]
                     base_type = var_info.get("base_type", "float")
                     dtype = var_info.get("storage_dtype", "f8")
@@ -144,7 +147,7 @@ class DatasetHDF5Persistence(object):
                 cur_idx = var_ds.attrs["last_row"]
                 if cur_idx + num_rows > cur_size:
                     self._resize_dataset(var_ds, num_rows)
-                ds_var_names = [var_info["name"] for var_info in self.dataset_schema["variables"]]
+                ds_var_names = [var_info["name"] for var_info in self.var_defs]
                 pvi = {col_name: col_idx for col_idx, col_name in enumerate(packet.data["cols"]) if col_name in ds_var_names}
                 for row_idx in xrange(num_rows):
                     row_data = packet.data["data"][row_idx]
@@ -153,6 +156,51 @@ class DatasetHDF5Persistence(object):
                 var_ds.attrs["last_row"] += num_rows
 
             #HDF5Tools.dump_hdf5(data_file, with_data=True)
+        finally:
+            data_file.close()
+
+    def get_data(self, data_filter=None):
+        data_filter = data_filter or {}
+        ds_filename = self._get_ds_filename()
+        if not os.path.exists(ds_filename):
+            return {}
+        data_file = HDFLockingFile(ds_filename, "r", retry_count=10, retry_wait=0.2)
+        try:
+            res_data = {}
+            read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
+            time_format = data_filter.get("time_format", "unix_millis")
+            max_rows = data_filter.get("max_rows", 999999999)
+            if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
+                for var_name in read_vars:
+                    ds_path = "vars/%s" % var_name
+                    if ds_path not in data_file:
+                        log.warn("Variable '%s' not in dataset - ignored", var_name)
+                        continue
+                    var_ds = data_file[ds_path]
+                    cur_idx = var_ds.attrs["last_row"]
+                    data_array = var_ds[max(cur_idx-max_rows, 0):cur_idx]
+                    if var_name == self.time_var and self.var_defs_map[var_name].get("base_type", "") == "ntp_time":
+                        if time_format == "unix_millis":
+                            data_array = [int(1000*IonTime.from_ntp64(dv.tostring()).to_unix()) for dv in data_array]
+                        else:
+                            data_array = data_array.tolist()
+                    else:
+                        data_array = data_array.tolist()
+
+                    res_data[var_name] = data_array
+
+                if data_filter.get("transpose_time", False) is True:
+                    time_series = res_data.pop(self.time_var)
+                    for var_name, var_series in res_data.iteritems():
+                        res_data[var_name] = [(tv, dv) for (tv, dv) in zip(time_series, var_series)]
+
+                # Downsample: http://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+
+            elif self.ds_layout == DS_LAYOUT_COMBINED:
+                raise NotImplementedError()
+
+            return res_data
+
         finally:
             data_file.close()
 
