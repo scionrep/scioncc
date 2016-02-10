@@ -6,6 +6,7 @@ import os
 import numpy as np
 
 from pyon.public import log, StandaloneProcess, BadRequest, CFG, StreamSubscriber, named_any, Container
+from ion.util.hdf_utils import HDFLockingFile
 
 try:
     import h5py
@@ -67,43 +68,45 @@ class DatasetHDF5Persistence(object):
         if os.path.exists(ds_filename):
             return ds_filename, False
 
-        log.info("Creating new HDF5 dataset for id=%s", self.dataset_id)
+        log.info("Creating new HDF5 file for dataset_id=%s, file='%s'", self.dataset_id, ds_filename)
         os.makedirs(os.path.split(ds_filename)[0])
 
-        data_file = h5py.File(ds_filename, "w")
-        data_file.attrs["dataset_id"] = self.dataset_id
-        data_file.attrs["layout"] = self.ds_layout
+        data_file = HDFLockingFile(ds_filename, "w", retry_count=10, retry_wait=0.5)
+        try:
+            data_file.attrs["dataset_id"] = self.dataset_id
+            data_file.attrs["layout"] = self.ds_layout
 
-        data_file.create_group("vars")
-        initial_shape = (self.ds_increment, )
+            data_file.create_group("vars")
+            initial_shape = (self.ds_increment, )
 
-        if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-            for position, var_info in enumerate(self.dataset_schema["variables"]):
-                var_name = var_info["name"]
-                base_type = var_info.get("base_type", "float")
-                dtype = var_info.get("storage_dtype", "f8")
-                dset = data_file.create_dataset("vars/%s" % var_name, initial_shape,
-                                                dtype=dtype, maxshape=(None, ))
-                dset.attrs["base_type"] = str(base_type)
-                dset.attrs["position"] = position
-                dset.attrs["description"] = str(var_info.get("description", "") or "")
-                dset.attrs["unit"] = str(var_info.get("unit", "") or "")
+            if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
+                for position, var_info in enumerate(self.dataset_schema["variables"]):
+                    var_name = var_info["name"]
+                    base_type = var_info.get("base_type", "float")
+                    dtype = var_info.get("storage_dtype", "f8")
+                    dset = data_file.create_dataset("vars/%s" % var_name, initial_shape,
+                                                    dtype=dtype, maxshape=(None, ))
+                    dset.attrs["base_type"] = str(base_type)
+                    dset.attrs["position"] = position
+                    dset.attrs["description"] = str(var_info.get("description", "") or "")
+                    dset.attrs["unit"] = str(var_info.get("unit", "") or "")
+                    dset.attrs["last_row"] = 0
+
+            elif self.ds_layout == DS_LAYOUT_COMBINED:
+                dtype_parts = []
+                for var_info in self.dataset_schema["variables"]:
+                    var_name = var_info["name"]
+                    base_type = var_info.get("base_type", "float")
+                    dtype = var_info.get("storage_dtype", "f8")
+                    dtype_parts.append((var_name, dtype))
+
+                dset = data_file.create_dataset("vars/%s" % DS_VARIABLES, initial_shape,
+                                                dtype=np.dtype(dtype_parts), maxshape=(None, ))
+                dset.attrs["dtype_repr"] = repr(dset.dtype)[6:-1]
                 dset.attrs["last_row"] = 0
+        finally:
+            data_file.close()
 
-        elif self.ds_layout == DS_LAYOUT_COMBINED:
-            dtype_parts = []
-            for var_info in self.dataset_schema["variables"]:
-                var_name = var_info["name"]
-                base_type = var_info.get("base_type", "float")
-                dtype = var_info.get("storage_dtype", "f8")
-                dtype_parts.append((var_name, dtype))
-
-            dset = data_file.create_dataset("vars/%s" % DS_VARIABLES, initial_shape,
-                                            dtype=np.dtype(dtype_parts), maxshape=(None, ))
-            dset.attrs["dtype_repr"] = repr(dset.dtype)[6:-1]
-            dset.attrs["last_row"] = 0
-
-        data_file.close()
         return ds_filename, True
 
     def _resize_dataset(self, var_ds, num_rows):
@@ -115,43 +118,43 @@ class DatasetHDF5Persistence(object):
     def extend_dataset(self, packet):
         num_rows = len(packet.data["data"])
         ds_filename = self._get_ds_filename()
-        data_file = h5py.File(ds_filename, "r+")
+        data_file = HDFLockingFile(ds_filename, "r+", retry_count=10, retry_wait=0.5)
+        try:
+            if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
+                for var_idx, var_name in enumerate(packet.data["cols"]):
+                    ds_path = "vars/%s" % var_name
+                    if ds_path not in data_file:
+                        log.warn("Variable '%s' not in dataset - ignored", var_name)
+                        continue
+                    var_ds = data_file[ds_path]
+                    cur_size = len(var_ds)
+                    cur_idx = var_ds.attrs["last_row"]
+                    if cur_idx + num_rows > cur_size:
+                        self._resize_dataset(var_ds, num_rows)
+                    data_slice = packet.data["data"][:][var_name]
+                    var_ds[cur_idx:cur_idx+num_rows] = data_slice
+                    var_ds.attrs["last_row"] += num_rows
 
-        if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-            for var_idx, var_name in enumerate(packet.data["cols"]):
-                ds_path = "vars/%s" % var_name
+            elif self.ds_layout == DS_LAYOUT_COMBINED:
+                ds_path = "vars/%s" % DS_VARIABLES
                 if ds_path not in data_file:
-                    log.warn("Variable '%s' not in dataset - ignored", var_name)
-                    continue
+                    raise BadRequest("Cannot find combined dataset")
                 var_ds = data_file[ds_path]
                 cur_size = len(var_ds)
                 cur_idx = var_ds.attrs["last_row"]
                 if cur_idx + num_rows > cur_size:
                     self._resize_dataset(var_ds, num_rows)
-                data_slice = packet.data["data"][:][var_name]
-                var_ds[cur_idx:cur_idx+num_rows] = data_slice
+                ds_var_names = [var_info["name"] for var_info in self.dataset_schema["variables"]]
+                pvi = {col_name: col_idx for col_idx, col_name in enumerate(packet.data["cols"]) if col_name in ds_var_names}
+                for row_idx in xrange(num_rows):
+                    row_data = packet.data["data"][row_idx]
+                    row_vals = tuple(row_data[vn] if vn in pvi else None for vn in ds_var_names)
+                    var_ds[cur_idx+row_idx] = row_vals
                 var_ds.attrs["last_row"] += num_rows
 
-        elif self.ds_layout == DS_LAYOUT_COMBINED:
-            ds_path = "vars/%s" % DS_VARIABLES
-            if ds_path not in data_file:
-                raise BadRequest("Cannot find combined dataset")
-            var_ds = data_file[ds_path]
-            cur_size = len(var_ds)
-            cur_idx = var_ds.attrs["last_row"]
-            if cur_idx + num_rows > cur_size:
-                self._resize_dataset(var_ds, num_rows)
-            ds_var_names = [var_info["name"] for var_info in self.dataset_schema["variables"]]
-            pvi = {col_name: col_idx for col_idx, col_name in enumerate(packet.data["cols"]) if col_name in ds_var_names}
-            for row_idx in xrange(num_rows):
-                row_data = packet.data["data"][row_idx]
-                row_vals = tuple(row_data[vn] if vn in pvi else None for vn in ds_var_names)
-                var_ds[cur_idx+row_idx] = row_vals
-            var_ds.attrs["last_row"] += num_rows
-
-        HDF5Tools.dump_hdf5(data_file, with_data=True)
-
-        data_file.close()
+            #HDF5Tools.dump_hdf5(data_file, with_data=True)
+        finally:
+            data_file.close()
 
 
 class HDF5Tools(object):
@@ -160,7 +163,7 @@ class HDF5Tools(object):
         should_close = False
         if isinstance(data_file, basestring) and os.path.exists(data_file):
             filename = data_file
-            data_file = h5py.File(data_file, "r")
+            data_file = HDFLockingFile(data_file, "r", retry_count=10, retry_wait=0.5)
             should_close = True
             print "HDF5", filename, data_file
 
