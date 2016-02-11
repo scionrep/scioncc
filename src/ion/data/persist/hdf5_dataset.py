@@ -232,6 +232,7 @@ class DatasetHDF5Persistence(object):
             read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
             time_format = data_filter.get("time_format", "unix_millis")
             max_rows = data_filter.get("max_rows", 999999999)
+            time_slice = None
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
                 time_ds = data_file["vars/%s" % self.time_var]
                 cur_idx = time_ds.attrs["cur_row"]
@@ -249,6 +250,8 @@ class DatasetHDF5Persistence(object):
                             data_array = data_array.tolist()
                     else:
                         data_array = data_array.tolist()
+                    if var_name == self.time_var:
+                        time_slice = data_array
 
                     res_data[var_name] = data_array
 
@@ -261,6 +264,21 @@ class DatasetHDF5Persistence(object):
 
             elif self.ds_layout == DS_LAYOUT_COMBINED:
                 raise NotImplementedError()
+
+            start_time = data_filter.get("start_time", None)
+            start_time_include = data_filter.get("start_time_include", True) is True
+            if time_slice and res_data and start_time:
+                start_time = int(start_time)
+                time_idx = len(time_slice)
+                for idx, tv in enumerate(time_slice):
+                    if tv == start_time and start_time_include:
+                        time_idx = idx
+                        break
+                    elif tv > start_time:
+                        time_idx = idx
+                        break
+                for var_name, var_series in res_data.iteritems():
+                    res_data[var_name] = var_series[time_idx:]
 
             return res_data
 
