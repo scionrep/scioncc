@@ -80,7 +80,16 @@ class DatasetHDF5Persistence(object):
             return ds_filename, False
 
         log.info("Creating new HDF5 file for dataset_id=%s, file='%s'", self.dataset_id, ds_filename)
-        os.makedirs(os.path.split(ds_filename)[0])
+        dir_path = os.path.split(ds_filename)[0]
+        try:
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+        except OSError as exc:
+            import errno
+            if exc.errno == errno.EEXIST and os.path.isdir(dir_path):
+                pass
+            else:
+                raise
 
         data_file = HDFLockingFile(ds_filename, "w", retry_count=10, retry_wait=0.5)
         try:
