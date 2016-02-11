@@ -31,7 +31,6 @@ class StreamPubsubTest(IonIntegrationTestCase):
 
     def test_stream_pub_sub(self):
         self.verified = Event()
-        #self.route = StreamRoute(exchange_point='xp_test', routing_key='route')
         self.route = StreamRoute(routing_key='stream_name')
 
         def verify(message, route, stream):
@@ -47,7 +46,7 @@ class StreamPubsubTest(IonIntegrationTestCase):
         sub1 = StreamSubscriber(process=sub_proc, exchange_name='stream_name', callback=verify)
         sub1.add_stream_subscription("stream_name")
         sub1.start()
-        self.queue_cleanup.append('sub1')
+        self.queue_cleanup.append('data.stream_name')
 
         pub_proc = SimpleProcess()
         pub_proc.container = self.container
@@ -76,7 +75,8 @@ class StreamPubsubTest(IonIntegrationTestCase):
         sub1 = StreamSubscriber(process=sub_proc, exchange_name='stream_name', exchange_point="xp_test", callback=verify)
         sub1.add_stream_subscription(self.route)
         sub1.start()
-        self.queue_cleanup.append('sub1')
+        self.queue_cleanup.append('xp_test.stream_name')
+        self.exchange_cleanup.append('xp_test')
 
         pub_proc = SimpleProcess()
         pub_proc.container = self.container
