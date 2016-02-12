@@ -429,12 +429,13 @@ def main(opts, *args, **kwargs):
             return 0
 
         # install the gevent inputhook
+        # See also https://github.com/ipython/ipython/pull/1654
         from IPython.lib.inputhook import inputhook_manager
         inputhook_manager.set_inputhook(inputhook_gevent)
         inputhook_manager._current_gui = 'gevent'
 
         # First import the embeddable shell class
-        from IPython.frontend.terminal.embed import InteractiveShellEmbed
+        from IPython.terminal.embed import InteractiveShellEmbed
         from mock import patch
 
         # Update namespace of interactive shell
@@ -449,13 +450,14 @@ def main(opts, *args, **kwargs):
         with patch("IPython.core.interactiveshell.InteractiveShell.init_virtualenv"):
             for tries in range(3):
                 try:
-                    ipshell = InteractiveShellEmbed(config=ipy_config,
-                        banner1 = """           _____      _ ____  _   __   ____________
+                    ipshell = InteractiveShellEmbed(
+                        banner1="""           _____      _ ____  _   __   ____________
           / ___/_____(_) __ \/ | / /  / ____/ ____/
           \__ \/ ___/ / / / /  |/ /  / /   / /     
          ___/ / /__/ / /_/ / /|  /  / /___/ /___   
         /____/\___/_/\____/_/ |_/   \____/\____/""",   
-                        exit_msg = 'Leaving SciON CC shell, shutting down container.')
+                        exit_msg='Leaving SciON CC shell, shutting down container.',
+                        **ipy_config)
 
                     ipshell('SciON CC IPython shell. PID: %s. Type ionhelp() for help' % os.getpid())
                     break
@@ -472,56 +474,49 @@ def main(opts, *args, **kwargs):
             import random
             gevent.sleep(random.random() * 3.0)  # Introduce a random delay to make conflict less likely
 
-        from gevent_zeromq import monkey_patch
-        monkey_patch()
+        # Monkey patch zmq:
+        # There used to be gevent-zeromq, but it got included without monkey patch into zmq.
+        # Redo monkey patching, so that IPython's implicit use of zmq is green.
+        import zmq.green as gzmq
+        import zmq as ozmq
+        ozmq.Socket = gzmq.Socket
+        ozmq.Context = gzmq.Context
+        ozmq.Poller = gzmq.Poller
+        oioloop = __import__('zmq.eventloop.ioloop')
+        oioloop.Poller = gzmq.Poller
 
-        # patch in device:
-        # gevent-zeromq does not support devices, which block in the C layer.
-        # we need to support the "heartbeat" which is a simple bounceback, so we
-        # simulate it using the following method.
-        import zmq
-        orig_device = zmq.device
+        # Patch device:
+        # zmq.green.device still blocks in the C layer. We need to support the "heartbeat"
+        # which is a simple bounceback, so we simulate it using the following method.
+        orig_device = gzmq.device
 
         def device_patch(dev_type, insock, outsock, *args):
-            if dev_type == zmq.FORWARDER:
+            if dev_type == ozmq.FORWARDER:
                 while True:
                     m = insock.recv()
                     outsock.send(m)
             else:
-                orig_device.device(dev_type, insock, outsock, *args)
+                orig_device(dev_type, insock, outsock, *args)
+        ozmq.device = device_patch
+        gzmq.device = device_patch
 
-        zmq.device = device_patch
-
-        # patch in auto-completion support
-        # added in https://github.com/ipython/ipython/commit/f4be28f06c2b23cd8e4a3653b9e84bde593e4c86
-        # we effectively make the same patches via monkeypatching
-        from IPython.core.interactiveshell import InteractiveShell
-        from IPython.zmq.ipkernel import IPKernelApp
-        old_start = IPKernelApp.start
-        old_set_completer_frame = InteractiveShell.set_completer_frame
-
-        def new_start(appself):
-            # restore old set_completer_frame that gets no-op'd out in ZmqInteractiveShell.__init__
-            bound_scf = old_set_completer_frame.__get__(appself.shell, InteractiveShell)
-            appself.shell.set_completer_frame = bound_scf
-            appself.shell.set_completer_frame()
-            old_start(appself)
-
-        IPKernelApp.start = new_start
+        from IPython.kernel.zmq import kernelapp
+        kernelapp._ctrl_c_message = "Ctrl-C is disabled. To end the process, use Ctrl-\\ or kill"
 
         from IPython import embed_kernel
+
         ipy_config = _setup_ipython_config()
 
         # set specific manhole options
-        import tempfile#, shutil
+        import tempfile
         from mock import patch
         temp_dir = tempfile.mkdtemp()
-        ipy_config.Application.ipython_dir = temp_dir
+        ipy_config["config"].Application.ipython_dir = temp_dir
 
         with patch("IPython.core.interactiveshell.InteractiveShell.init_virtualenv"):
             for tries in range(3):
                 try:
-                    embed_kernel(local_ns=shell_api, config=ipy_config)      # blocks until INT signal
+                    embed_kernel(local_ns=shell_api, **ipy_config)      # blocks until INT signal
                     break
                 except Exception as ex:
                     log.debug("Failed IPython initialize attempt (try #%s): %s", tries, str(ex))
@@ -530,13 +525,14 @@ def main(opts, *args, **kwargs):
                     gevent.sleep(random.random() * 0.5)
                 except:
                     try:
-                        if os.path.exists(ipy_config.KernelApp.connection_file):
-                            os.remove(ipy_config.KernelApp.connection_file)
+                        if os.path.exists(ipy_config["connection_file"]):
+                            os.remove(ipy_config["connection_file"])
                     except Exception:
                         pass
                     raise
 
         # @TODO: race condition here versus ipython, this will leave junk in tmp dir
+        #import shutil
         #try:
         #    shutil.rmtree(temp_dir)
         #except shutil.Error:
@@ -545,14 +541,16 @@ def main(opts, *args, **kwargs):
     def _setup_ipython_config():
         from IPython.config.loader import Config
         ipy_config = Config()
-        ipy_config.KernelApp.connection_file = os.path.join(os.path.abspath(os.curdir), "manhole-%s.json" % os.getpid())
+        conn_file = os.path.join(os.path.abspath(os.curdir), "manhole-%s.json" % os.getpid())
+        ipy_config.KernelApp.connection_file = conn_file
         ipy_config.PromptManager.in_template = '><> '
         ipy_config.PromptManager.in2_template = '... '
         ipy_config.PromptManager.out_template = '--> '
         ipy_config.InteractiveShellEmbed.confirm_exit = False
         #ipy_config.Application.log_level = 10      # uncomment for debug level ipython logging
 
-        return ipy_config
+        res_args = dict(config=ipy_config, connection_file=conn_file)
+        return res_args
 
     # main() -----> ENTER
     # ----------------------------------------------------------------------------------

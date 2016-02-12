@@ -80,22 +80,21 @@ setup(  name='scioncc',
             'pika==0.9.5',             # NEED THIS VERSION. Messaging stack tweaked to this version
             'httplib2==0.9.1',
             'zope.interface==4.1.1',
-            'psycopg2==2.5.4',
+            'psycopg2==2.5.4',         # PostgreSQL driver
             'numpy==1.9.2',
             'python-daemon==2.0.5',
-            'ipython==0.13.0',
-            'readline==6.2.4.1',
+            'ipython==3.2.3',
+            'readline==6.2.4.1',       # For IPython shell
             'ndg-xacml==0.5.1',        # For policy rule engine
-            'requests==2.5.3',
-            'psutil==2.1.3',
-            'Flask==0.10.1',
+            'psutil==2.1.3',           # For host and process stats
             'flask-socketio==0.4.1',
+            'flask-oauthlib==0.9.1',
+            'Flask==0.10.1',
+            'requests==2.5.3',
             'python-dateutil==2.4.2',
             'pytz',
             'bcrypt==1.0.1',           # For password authentication
-            'pyzmq==2.2.0',            # For IPython manhole
-            'gevent_zeromq==0.2.5',    # For old pyzmq patching
-            'flask-oauthlib==0.9.1',
+            'pyzmq==15.2.0',           # For IPython manhole
             'pyproj==1.9.4',           # For geospatial calculations
 
             # Pin dependent libraries
@@ -106,17 +105,17 @@ setup(  name='scioncc',
             # Test support
             'nose==1.1.2',
             'mock==0.8',
-            'coverage==4.0',         # Code coverage
+            'coverage==4.0',            # Code coverage
 
             # Check if all these are needed
-            'graypy==0.2.11',          # For production logging
+            'graypy==0.2.11',           # For production logging
             'ntplib==0.3.3',
-            #'M2Crypto==0.22.3',        # For X.509 certificates (currently unused)
+            #'M2Crypto==0.22.3',         # For X.509 certificates (currently unused)
         ],
         extras_require={
             'utils': [
-                'xlrd==0.9.3',         # For Excel file read (dev tools)
-                'xlwt==0.7.5',         # For Excel file write (dev tools)
+                'xlrd==0.9.3',          # For Excel file read (dev tools)
+                'xlwt==0.7.5',          # For Excel file write (dev tools)
             ],
             'data': [
                 'h5py==2.5.0',

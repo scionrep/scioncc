@@ -92,9 +92,12 @@ def main():
                 "--PromptManager.in2_template=... ",
                 "--PromptManager.out_template=--> ",
                 "--TerminalInteractiveShell.banner1=%s" % manhole_logo,
-                "--TerminalInteractiveShell.banner2=ION Container Manhole, connected to %s\n" % mhpid]
+                "--TerminalInteractiveShell.banner2=SciON Container Manhole, connected to %s\n(press Ctrl-D to detach, quit() to exit container)\n" % mhpid]
 
-    ipy_entry = load_entry_point('ipython', 'console_scripts', 'ipython')()
+    # HACK: Mock out client shutdown to avoid default shutdown on Ctrl-D
+    from mock import patch
+    with patch("IPython.kernel.client.KernelClient.shutdown"):
+        ipy_entry = load_entry_point('ipython', 'console_scripts', 'ipython')()
     sys.exit(ipy_entry)
 
 if __name__ == '__main__':

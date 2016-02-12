@@ -109,6 +109,15 @@ IPython shell. Introspect running services or perform any Python programming ste
 Exit with Ctrl-D or quit()
 
 
+MANHOLE
+=======
+
+After startup with bin/pycc -n, the capability container maintains an embedded
+IPython kernel. Connect with bin/manhole and use similar to IPython shell.
+Detach from shell with Ctrl-D or stop the container with quit().
+    > bin/manhole
+
+
 DEVELOPMENT
 ===========
 
@@ -136,7 +145,7 @@ RabbitMQ management interface (login as guest/guest):
 Database inspection using psql tool (example):
     psql postgres
     \l
-    \c agprox_ion
+    \c scion_ion
     \dt+
     \d ion_resources
     select id,type_,name from ion_resources;
