@@ -37,6 +37,7 @@
             <fileset dir="." includes="*.pyc"/>
             <fileset dir="${src}" includes="**/*.pyc"/>
             <fileset dir="logs" includes="*"/>
+            <fileset dir="." includes="cc-pid-*"/>
         </delete>
         <delete dir="interface"/>
         <delete dir="${build}"/>
