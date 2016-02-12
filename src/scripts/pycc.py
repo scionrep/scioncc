@@ -23,7 +23,7 @@ from putil.script_util import parse_args
 
 log = None
 
-version = "3.1"     # TODO: extract version info from the code (tag/commit)
+version = "3.2"     # TODO: extract version info from the code (tag/commit)
 description = '''
 SciON Capability Container v%s
 ''' % version

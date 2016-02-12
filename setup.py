@@ -77,7 +77,7 @@ setup(  name='scioncc',
             'pyyaml==3.10',
             'simplejson==3.6.5',
             'msgpack-python==0.1.13',  # TBD: Check if this specific version is needed
-            'pika==0.9.5',             # Messaging stack is tested and working with issues of this version
+            'pika==0.9.5',             # NEED THIS VERSION. Messaging stack tweaked to this version
             'httplib2==0.9.1',
             'zope.interface==4.1.1',
             'psycopg2==2.5.4',
@@ -94,7 +94,7 @@ setup(  name='scioncc',
             'pytz',
             'bcrypt==1.0.1',           # For password authentication
             'pyzmq==2.2.0',            # For IPython manhole
-            'gevent_zeromq==0.2.5',
+            'gevent_zeromq==0.2.5',    # For old pyzmq patching
             'flask-oauthlib==0.9.1',
             'pyproj==1.9.4',           # For geospatial calculations
 

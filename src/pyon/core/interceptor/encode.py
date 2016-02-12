@@ -36,7 +36,7 @@ obj_registry = None
 
 
 def decode_ion(obj):
-    """msgpack object hook to decode granule (numpy) types and IonObjects.
+    """msgpack object hook to decode IonObjects and numpy types.
     This works for nested IonObjects as well"""
 
     # NOTE: Just matching on dict with "type_" is a bit weak

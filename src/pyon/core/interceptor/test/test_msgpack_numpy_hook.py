@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 
-'''
-@author David Stuebe
-@file pyon/core/interceptor/test/test_msgpack_numpy_hook.py
-@description test for raw msgpack hook
-'''
-
+__author__ = 'David Stuebe'
 
 from nose.tools import *
 import unittest
@@ -23,7 +18,8 @@ from pyon.core.interceptor.encode import encode_ion, decode_ion
 def sha1(buf):
     return hashlib.sha1(buf).hexdigest().upper()
 
-count =0
+count = 0
+
 
 class PackRunBase(object):
 
@@ -105,10 +101,7 @@ class PackRunBase(object):
 
         print 'Binary Size: "%d", Time: %s' % (len(msg), toc)
 
-        #try:
         assert_true((array == new_array).all())
-        #except (AttributeError, ValueError):
-        #    pass
 
         if type is not 'object':
             # Do a second check - based on sha1...
@@ -120,12 +113,3 @@ class NumpyMsgPackTestCase(unittest.TestCase, PackRunBase ):
     def __init__(self,*args, **kwargs):
         unittest.TestCase.__init__(self,*args, **kwargs)
         PackRunBase.__init__(self,*args, **kwargs)
-
-
-
-if __name__ == '__main__':
-
-    pb = PackRunBase()
-
-    pb.test_all()
-

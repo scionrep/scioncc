@@ -5,8 +5,7 @@
 __author__ = 'Michael Meisinger'
 
 import calendar
-import dateutil
-import dateutil.parser
+import datetime
 import pprint
 
 from pyon.datastore.datastore import DataStore
@@ -39,6 +38,8 @@ COL_MAP = {"_all": DQ.RA_NAME,
            "geospatial_point_center": DQ.RA_GEOM,
            "geospatial_bounds": DQ.RA_GEOM_LOC,
            }
+
+ISO8601_DATE_SIMPLE = "%Y-%m-%dT%H:%M:%S"
 
 
 class DatastoreDiscovery(object):
@@ -181,8 +182,9 @@ class DatastoreDiscovery(object):
         to_time = time.get("to", None)
         if not (from_time and to_time):
             return
-        from_time_val = calendar.timegm(dateutil.parser.parse(from_time).timetuple())
-        to_time_val = calendar.timegm(dateutil.parser.parse(to_time).timetuple())
+        datetime.datetime.strptime(from_time, ISO8601_DATE_SIMPLE)
+        from_time_val = calendar.timegm(datetime.datetime.strptime(from_time, ISO8601_DATE_SIMPLE).timetuple())
+        to_time_val = calendar.timegm(datetime.datetime.strptime(to_time, ISO8601_DATE_SIMPLE).timetuple())
 
         range_op = query_exp.get("cmpop", None)
         basic_col = COL_MAP.get(field, None)

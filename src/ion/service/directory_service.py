@@ -3,9 +3,7 @@
 __author__ = 'Thomas R. Lennan, Michael Meisinger'
 
 
-from pyon.core.exception import BadRequest
-from pyon.ion.directory import Directory
-from pyon.public import RT, log
+from pyon.public import RT, log, BadRequest
 
 from interface.services.core.idirectory_service import BaseDirectoryService
 
@@ -27,7 +25,8 @@ class DirectoryService(BaseDirectoryService):
         except Exception:
             pass
 
-    def register(self, parent='/', key='', attributes={}):
+    def register(self, parent='/', key='', attributes=None):
+        attributes = attributes or {}
         return self.directory.register(parent, key, **attributes)
 
     def unregister(self, parent='/', key=''):
