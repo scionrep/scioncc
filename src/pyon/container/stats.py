@@ -46,7 +46,7 @@ class ContainerStatsManager(object):
             raise ContainerConfigError("Unknown stats group: %s" % group)
         if group == "SVCREQ":
             # Special treatment because service gateway may be started late
-            from ion.services.service_gateway import sg_instance
+            from ion.service.service_gateway import sg_instance
             if sg_instance and not sg_instance.request_callback:
                 sg_instance.register_request_callback(self._sg_callback)
         cbs = self._stats_callbacks[group]
@@ -78,7 +78,7 @@ class ContainerStatsManager(object):
         from pyon.datastore.postgresql.base_store import set_db_stats_callback
         set_db_stats_callback(self._db_callback)
 
-        from ion.services.service_gateway import sg_instance
+        from ion.service.service_gateway import sg_instance
         if sg_instance:
             # This container may not run the service gateway
             sg_instance.register_request_callback(self._sg_callback)
@@ -87,7 +87,7 @@ class ContainerStatsManager(object):
         set_process_stats_callback(self._proc_callback)
 
     def _deactivate_collection(self):
-        from ion.services.service_gateway import sg_instance
+        from ion.service.service_gateway import sg_instance
         if sg_instance:
             # This container may not run the service gateway
             sg_instance.register_request_callback(None)

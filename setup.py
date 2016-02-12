@@ -51,7 +51,7 @@ setup(  name='scioncc',
                      'defs': 'defs'},
         include_package_data=True,
         package_data={
-            '': ['*.yml', '*.txt'] + get_data_dirs("defs", ["*.yml", "*.sql", "*.xml"]) + get_data_dirs("src/ion/processes/ui", ["*.css", "*.js"]),
+            '': ['*.yml', '*.txt'] + get_data_dirs("defs", ["*.yml", "*.sql", "*.xml"]) + get_data_dirs("src/ion/process/ui", ["*.css", "*.js"]),
         },
         entry_points={
              'nose.plugins.0.10': [
