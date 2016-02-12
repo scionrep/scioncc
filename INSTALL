@@ -15,7 +15,7 @@ Use a fresh Ubuntu 14.04 VM with latest patches:
 
 Execute dependencies install script (from repo root dir - only if you are comfortable):
     Make sure no errors occur.
-    > sudo sh misc/install/install_ubuntu.sh
+    > sudo sh misc/install/ubuntu/install_ubuntu.sh
     NOTE: PostgreSQL 9.3 can be installed if desired (manual steps)
 
 Set postgres superuser password and create users (replace xxxxx with a good password):
@@ -41,6 +41,19 @@ Configure virtualenv:
     > source .profile
 
     Note: virtualenvwrapper is not required
+
+
+LINUX (CENTOS):
+---------------
+
+Use a fresh Centos 7 VM with latest patches:
+    > sudo yum update -y
+
+Execute dependencies install script (from repo root dir - only if you are comfortable):
+    Make sure no errors occur.
+    > sudo sh misc/install/centos/install_centos.sh
+
+Follow instructions of Ubuntu install above.
 
 
 MAC OS:

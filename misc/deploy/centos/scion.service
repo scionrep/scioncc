@@ -1,0 +1,12 @@
+[Unit]
+Description=SciON Service
+After=network.target
+
+[Service]
+Type=simple
+User=scion
+ExecStart=/bin/bash /home/scion/app/start_scion.sh
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

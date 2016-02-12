@@ -1,0 +1,12 @@
+Deployment instructions for Centos 7:
+
+Prerequisites:
+    - Create user scion
+    - Code repository in ~app/scion_app (or change systemd config)
+    - virtualenv scion created in ~/app/scion_app/venv
+
+Copy Centos systemd service config
+    sudo cp scion.service /etc/systemd/system/scion.service
+
+Copy start_scion.sh script to ~/app:
+    cp start_scion.sh ~/app/
