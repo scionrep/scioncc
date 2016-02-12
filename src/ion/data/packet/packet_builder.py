@@ -2,7 +2,10 @@
 
 __author__ = 'Michael Meisinger'
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from pyon.public import log, get_ion_ts
 

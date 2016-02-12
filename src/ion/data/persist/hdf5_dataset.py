@@ -3,12 +3,15 @@
 __author__ = 'Michael Meisinger'
 
 import os
-import numpy as np
 
 from pyon.public import log, BadRequest, CFG, Container
 from pyon.util.ion_time import IonTime
 from ion.util.hdf_utils import HDFLockingFile
 
+try:
+    import numpy as np
+except ImportError:
+    np = None
 try:
     import h5py
 except ImportError:

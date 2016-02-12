@@ -1,15 +1,16 @@
-#!/usr/bin/env python
-'''
-@author: Luke Campbell <LCampbell@ASAScience.com>
-@file pyon/util/ion_time.py
-@date Fri Jul 20 10:26:55 EDT 2012
-@description Utilities for dealing with NTP time stamps
-'''
-import numpy as np
+""" Utilities for dealing with NTP time stamps """
+
+__author__ = 'Luke Campbell <LCampbell@ASAScience.com>'
+
 import time
 import datetime
 import struct
 import numbers
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 
 class IonDate(datetime.date):
     def __new__(cls,*args):
@@ -24,13 +25,14 @@ class IonDate(datetime.date):
                 return datetime.date.__new__(cls,dt.year, dt.month, dt.day)
         raise TypeError('Required arguments are (int,int,int) or (str) in the "YYYY-MM-DD" pattern')
 
+
 class IonTime(object):
     '''
     Utility wrapper for handling time in ntpv4
     Everything is in ZULU Time
     '''
-    FRAC = np.float32(4294967296.)
-    JAN_1970 = np.uint32(2208988800)
+    FRAC = np.float32(4294967296.) if np else None
+    JAN_1970 = np.uint32(2208988800) if np else None
     EPOCH = datetime.datetime(1900,1,1)
 
     ntpv4_timestamp = '! 2I'

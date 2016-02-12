@@ -4,7 +4,6 @@
 
 import msgpack
 import sys
-import numpy as np
 from ast import literal_eval
 
 from pyon.core.bootstrap import get_obj_registry
@@ -14,10 +13,16 @@ from pyon.core.object import IonObjectBase, IonMessageObjectBase
 from pyon.util.containers import get_safe, DotDict
 from pyon.util.log import log
 
-numpy_floats = (np.float, np.float16, np.float32, np.float64)
-numpy_ints = (np.int, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)
-numpy_bool = (np.bool, )
-numpy_complex = (np.complex, np.complex64, np.complex128)
+try:
+    import numpy as np
+    has_numpy = True
+
+    numpy_floats = (np.float, np.float16, np.float32, np.float64)
+    numpy_ints = (np.int, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)
+    numpy_bool = (np.bool, )
+    numpy_complex = (np.complex, np.complex64, np.complex128)
+except ImportError:
+    has_numpy = False
 
 
 class EncodeTypes(object):
@@ -69,6 +74,8 @@ def decode_ion(obj):
         return list(obj['o'])
 
     elif objt == EncodeTypes.NPARRAY:
+        if not has_numpy:
+            raise BadRequest("Missing numpy")
         #return np.array(obj['o'], dtype=np.dtype(obj['d']))
         dtype = np.dtype(literal_eval(obj['d']))
         return np.fromstring(obj['o'], dtype=dtype).reshape(obj['s'])
@@ -77,6 +84,8 @@ def decode_ion(obj):
         return complex(obj['o'][0], obj['o'][1])
 
     elif objt == EncodeTypes.DTYPE:
+        if not has_numpy:
+            raise BadRequest("Missing numpy")
         return np.dtype(obj['o'])
 
     elif objt == EncodeTypes.SLICE:
@@ -86,6 +95,8 @@ def decode_ion(obj):
         return set(obj['o'])
 
     elif objt == EncodeTypes.NPVAL:
+        if not has_numpy:
+            raise BadRequest("Missing numpy")
         dt = np.dtype(obj['d'])
         return dt.type(obj['o'])
 
@@ -111,14 +122,14 @@ def encode_ion(obj):
     if isinstance(obj, set):
         return {'t': EncodeTypes.SET, 'o': tuple(obj)}
 
-    if isinstance(obj, np.ndarray):
+    if has_numpy and isinstance(obj, np.ndarray):
         #return {'t': EncodeTypes.NPARRAY, 'o': obj.tolist(), 'd': obj.dtype.str}
         return {'t': EncodeTypes.NPARRAY, 'o': obj.tostring(), 'd': repr(obj.dtype)[6:-1], 's':obj.shape}
 
     if isinstance(obj, complex):
         return {'t': EncodeTypes.COMPLEX, 'o': (obj.real, obj.imag)}
 
-    if isinstance(obj, np.number):
+    if has_numpy and isinstance(obj, np.number):
         if isinstance(obj, numpy_floats):
             return {'t': EncodeTypes.NPVAL, 'o': float(obj.astype(float)), 'd': obj.dtype.str}
         elif isinstance(obj, numpy_ints):
@@ -129,7 +140,7 @@ def encode_ion(obj):
     if isinstance(obj, slice):
         return {'t': EncodeTypes.SLICE, 'o': (obj.start, obj.stop, obj.step)}
 
-    if isinstance(obj, np.dtype):
+    if has_numpy and isinstance(obj, np.dtype):
         return {'t': EncodeTypes.DTYPE, 'o': obj.str}
 
     # Must raise type error for any unknown object

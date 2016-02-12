@@ -1,17 +1,15 @@
-#!/usr/bin/env python
-'''
-@author: Luke Campbell <LCampbell@ASAScience.com>
-@file pyon/util/test/test_ion_time.py
-@date Fri Jul 20 10:26:55 EDT 2012
-@description Utilities for dealing with NTP time stamps
-'''
+__author__ = 'Luke Campbell <LCampbell@ASAScience.com>'
 
 from pyon.util.unit_test import PyonTestCase
 from pyon.util.ion_time import IonTime
 from nose.plugins.attrib import attr
 import time
-import numpy as np
 import datetime
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 
 @attr('UNIT')
 class IonTimeUnitTest(PyonTestCase):
