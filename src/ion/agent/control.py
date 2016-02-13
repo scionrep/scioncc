@@ -7,6 +7,7 @@ from ion.core.process.proc_util import ProcessStateGate
 
 from interface.services.agent.istreaming_agent import StreamingAgentProcessClient
 
+
 class AgentControl(object):
 
     def __init__(self, resource_id=None):
@@ -14,6 +15,9 @@ class AgentControl(object):
         self.process_id = None
 
     def launch_agent(self, resource_id, agent_type, agent_config):
+        if StreamingAgentClient.is_agent_active(resource_id):
+            raise BadRequest("Agent already active for resource_id=%s" % resource_id)
+
         if agent_type == "data_agent":
             agent_mod, agent_cls = "ion.agent.data_agent", "DataAgent"
         elif agent_type == "streaming_agent":
@@ -26,7 +30,8 @@ class AgentControl(object):
         agent_config = agent_config.copy() if agent_config else {}
         config = dict(agent_config=agent_config, agent=dict(resource_id=resource_id))
 
-        self.process_id = Container.instance.spawn_process(agent_type, agent_mod, agent_cls, config)
+        agent_name = agent_type + "_" + resource_id
+        self.process_id = Container.instance.spawn_process(agent_name, agent_mod, agent_cls, config)
         return self.process_id
 
     def terminate_agent(self):
@@ -147,6 +152,14 @@ class StreamingAgentClient(StreamingAgentProcessClient):
         Returns the process id for the agent process representing this instance's resource
         """
         return self.agent_process_id
+
+    @classmethod
+    def is_agent_active(cls, resource_id):
+        try:
+            agent_pid = cls._get_agent_process_id(resource_id)
+            return bool(agent_pid)
+        except NotFound:
+            return False
 
     def get_agent_directory_entry(self):
         """
