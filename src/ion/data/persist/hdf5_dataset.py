@@ -5,8 +5,8 @@ __author__ = 'Michael Meisinger'
 import os
 
 from pyon.public import log, BadRequest, CFG, Container
-from pyon.util.ion_time import IonTime
 from ion.util.hdf_utils import HDFLockingFile
+from ion.util.ntp_time import NTP4Time
 
 try:
     import numpy as np
@@ -19,8 +19,8 @@ except ImportError:
     h5py = None
 
 
-DS_LAYOUT_COMBINED = "vars_combined"
-DS_LAYOUT_INDIVIDUAL = "vars_individual"
+DS_LAYOUT_COMBINED = "vars_combined"        # All vars in 1 table, structured type
+DS_LAYOUT_INDIVIDUAL = "vars_individual"    # Each var in separate table, time co-indexed
 
 DS_FILE_PREFIX = "ds_"
 DS_BASE_PATH = "SCIDATA/datasets"
@@ -78,6 +78,10 @@ class DatasetHDF5Persistence(object):
         return ds_filename
 
     def require_dataset(self):
+        """
+        Ensures a dataset HDF5 file exists and creates it if necessary usign the dataset
+        schema definition.
+        """
         ds_filename = self._get_ds_filename()
         if os.path.exists(ds_filename):
             return ds_filename, False
@@ -132,7 +136,7 @@ class DatasetHDF5Persistence(object):
 
             # Internal time index
             data_file.create_group("index")
-            dtype_tidx = [("time", "u8")]
+            dtype_tidx = [("time", "i8")]
             ds_tidx = data_file.create_dataset(DS_TIMEIDX_PATH, (INTERNAL_ROW_INCREMENT, ),
                                                dtype=dtype_tidx, maxshape=(None, ))
             ds_tidx.attrs["cur_row"] = 0
@@ -140,7 +144,7 @@ class DatasetHDF5Persistence(object):
             ds_tidx.attrs["step"] = self.time_idx_step
 
             # Internal ingest time
-            dtype_tingest = [("time", "u8"), ("row", "u4"), ("count", "u4")]
+            dtype_tingest = [("time", "i8"), ("row", "u4"), ("count", "u4")]
             ds_tingest = data_file.create_dataset(DS_TIMEINGEST_PATH, (INTERNAL_ROW_INCREMENT, ),
                                                   dtype=dtype_tingest, maxshape=(None, ))
             ds_tingest.attrs["cur_row"] = 0
@@ -152,6 +156,7 @@ class DatasetHDF5Persistence(object):
         return ds_filename, True
 
     def _resize_dataset(self, var_ds, num_rows, row_increment=None):
+        """ Performs a resize operation on a dataset table """
         row_increment = row_increment or self.ds_increment
         cur_size = len(var_ds)
         new_size = cur_size + (int(num_rows / row_increment) + 1) * row_increment
@@ -159,24 +164,23 @@ class DatasetHDF5Persistence(object):
         var_ds.resize(new_size, axis=0)
 
     def extend_dataset(self, packet):
-        ingest_ts = IonTime().to_ntp64()
+        """
+        Adds values from a data packet to the dataset and updates indexes and metadata
+        """
+        ingest_ts = NTP4Time.utcnow()
         num_rows, cur_idx, time_idx_rows = len(packet.data["data"]), 0, []
         ds_filename = self._get_ds_filename()
         data_file = HDFLockingFile(ds_filename, "r+", retry_count=10, retry_wait=0.5)
         try:
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-                # Fill time var and get index values
+                # Get index values from time var
                 if self.time_var not in packet.data["cols"]:
                     raise BadRequest("Packet has no time")
                 var_ds = data_file["vars/%s" % self.time_var]
                 cur_size, cur_idx = len(var_ds), var_ds.attrs["cur_row"]
-                if cur_idx + num_rows > cur_size:
-                    self._resize_dataset(var_ds, num_rows)
-                data_slice = packet.data["data"][:][self.time_var]
-                var_ds[cur_idx:cur_idx+num_rows] = data_slice
                 var_ds.attrs["cur_row"] += num_rows
 
-                # Fill other variables with values from packet or NaN
+                # Fill variables with values from packet or NaN
                 for var_name in self.var_defs_map.keys():
                     var_ds = data_file["vars/%s" % var_name]
                     if cur_idx + num_rows > cur_size:
@@ -186,8 +190,8 @@ class DatasetHDF5Persistence(object):
                         var_ds[cur_idx:cur_idx+num_rows] = data_slice
                     else:
                         # Leave the initial fill value (zeros)
-                        pass
                         #var_ds[cur_idx:cur_idx+num_rows] = [None]*num_rows
+                        pass
 
                 extra_vars = set(packet.data["cols"]) - set(self.var_defs_map.keys())
                 if extra_vars:
@@ -210,7 +214,7 @@ class DatasetHDF5Persistence(object):
             ds_tingest = data_file[DS_TIMEINGEST_PATH]
             if ds_tingest.attrs["cur_row"] + 1 > len(ds_tingest):
                 self._resize_dataset(ds_tingest, 1, INTERNAL_ROW_INCREMENT)
-            ds_tingest[ds_tingest.attrs["cur_row"]] = (np.fromstring(ingest_ts, dtype="u8"), cur_idx, num_rows)
+            ds_tingest[ds_tingest.attrs["cur_row"]] = (ingest_ts.to_np_value(), cur_idx, num_rows)
             ds_tingest.attrs["cur_row"] += 1
 
             # Update time_idx (every nth row's time)
@@ -257,7 +261,7 @@ class DatasetHDF5Persistence(object):
                     data_array = var_ds[max(cur_idx-max_rows, 0):cur_idx]
                     if var_name == self.time_var and self.var_defs_map[var_name].get("base_type", "") == "ntp_time":
                         if time_format == "unix_millis":
-                            data_array = [int(1000*IonTime.from_ntp64(dv.tostring()).to_unix()) for dv in data_array]
+                            data_array = [int(1000*NTP4Time.from_ntp64(dv.tostring()).to_unix()) for dv in data_array]
                         else:
                             data_array = data_array.tolist()
                     else:
