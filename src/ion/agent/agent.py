@@ -1,13 +1,6 @@
-#!/usr/bin/env python
-"""
-@package pyon.agent.common_agent
-@file pyon/agent/common_agent.py
-@author Edward Hunter
-@brief Common base class for ION resource agents.
-"""
+""" Common base class for ION resource agents. """
 
 __author__ = 'Edward Hunter'
-
 
 
 # Pyon imports.
@@ -37,10 +30,10 @@ from interface.objects import ResourceAgentExecutionStatus
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
 
 #Agent imports
-from pyon.agent.instrument_fsm import InstrumentFSM, ThreadSafeFSM
-from pyon.agent.instrument_fsm import FSMStateError
-from pyon.agent.instrument_fsm import FSMCommandUnknownError
-from pyon.agent.common import BaseEnum
+from ion.agent.instrument_fsm import InstrumentFSM, ThreadSafeFSM
+from ion.agent.instrument_fsm import FSMStateError
+from ion.agent.instrument_fsm import FSMCommandUnknownError
+from ion.agent.common import BaseEnum
 
 
 class UserAgent():

@@ -29,7 +29,6 @@ import socket
 import sys
 from gevent.lock import RLock
 
-# from pyon.agent.agent import ResourceAgent
 from pyon.core import (PROCTYPE_SERVICE, PROCTYPE_AGENT, PROCTYPE_IMMEDIATE, PROCTYPE_SIMPLE, PROCTYPE_STANDALONE,
                        PROCTYPE_STREAMPROC)
 from pyon.core.bootstrap import CFG

@@ -5,7 +5,7 @@ __author__ = 'Michael Meisinger'
 from unittest import SkipTest
 from nose.plugins.attrib import attr
 
-from pyon.agent.agent import ResourceAgentClient, ResourceAgent
+from ion.agent.agent import ResourceAgentClient, ResourceAgent
 from pyon.public import IonObject
 from pyon.util.int_test import IonIntegrationTestCase
 
@@ -23,7 +23,7 @@ class TestResourceAgentClient(IonIntegrationTestCase):
         idev_id, _ = self.container.resource_registry.create(idev)
 
         config = dict(agent=dict(resource_id=idev_id))
-        pid1 = self.container.spawn_process('agent1', 'pyon.agent.test.test_agent', 'SampleAgent', config)
+        pid1 = self.container.spawn_process('agent1', 'ion.agent.test.test_agent', 'SampleAgent', config)
 
         rac = ResourceAgentClient(idev_id)
         rac_pid = rac.get_agent_process_id()

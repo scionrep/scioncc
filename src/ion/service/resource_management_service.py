@@ -4,7 +4,7 @@ __author__ = 'Michael Meisinger, Luke Campbell'
 
 import re
 
-from pyon.agent.agent import ResourceAgentClient
+from ion.agent.agent import ResourceAgentClient
 from pyon.core.bootstrap import get_service_registry
 from pyon.datastore.datastore_query import QUERY_EXP_KEY, DQ
 from pyon.public import log, IonObject, Unauthorized, ResourceQuery, PRED, CFG, RT, log, BadRequest, NotFound

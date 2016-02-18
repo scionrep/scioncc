@@ -8,7 +8,7 @@ from nose.plugins.attrib import attr
 from gevent.event import AsyncResult, Event
 import gevent
 
-from pyon.agent.agent import ResourceAgent
+from ion.agent.agent import ResourceAgent
 from pyon.container.procs import ProcManager
 from pyon.core.exception import BadRequest, NotFound
 from pyon.ion.endpoint import ProcessRPCServer
@@ -20,6 +20,7 @@ from pyon.util.int_test import IonIntegrationTestCase
 from pyon.util.unit_test import PyonTestCase
 
 from interface.objects import ProcessStateEnum
+
 
 class FakeContainer(object):
     def __init__(self):
