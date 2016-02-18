@@ -72,32 +72,36 @@ setup(  name='scioncc',
         install_requires=[
             # NOTE: Install order is bottom to top! Lower level dependencies need to be down
             'setuptools',
-            'greenlet==0.4.7',
-            'gevent==1.0.2',
-            'pyyaml==3.10',
-            'simplejson==3.6.5',
-            'msgpack-python==0.1.13',  # TBD: Check if this specific version is needed
-            'pika==0.9.5',             # NEED THIS VERSION. Messaging stack tweaked to this version
-            'httplib2==0.9.1',
-            'zope.interface==4.1.1',
-            'psycopg2==2.5.4',         # PostgreSQL driver
+            # Advanced packages
+            'pyproj==1.9.4',           # For geospatial calculations
             'numpy==1.9.2',
-            'python-daemon==2.0.5',
-            'ipython==3.2.3',
-            'readline==6.2.4.1',       # For IPython shell
-            'ndg-xacml==0.5.1',        # For policy rule engine
-            'psutil==2.1.3',           # For host and process stats
+
+            # HTTP packages
             'flask-socketio==0.4.1',
             'flask-oauthlib==0.9.1',
             'Flask==0.10.1',
             'requests==2.5.3',
-            'python-dateutil==2.4.2',
-            'pytz',
-            'bcrypt==1.0.1',           # For password authentication
-            'pyzmq==15.2.0',           # For IPython manhole
-            'pyproj==1.9.4',           # For geospatial calculations
 
-            # Pin dependent libraries
+            # Basic container packages
+            'ipython==3.2.3',
+            'readline==6.2.4.1',       # For IPython shell
+            'ndg-xacml==0.5.1',        # For policy rule engine
+            'psutil==2.1.3',           # For host and process stats
+            'python-dateutil==2.4.2',
+            'bcrypt==1.0.1',           # For password authentication
+            'python-daemon==2.0.5',
+            'simplejson==3.6.5',
+            'msgpack-python==0.4.7',
+            'pyyaml==3.10',
+            'pika==0.9.5',             # NEED THIS VERSION. Messaging stack tweaked to this version
+            'zope.interface==4.1.1',
+            'psycopg2==2.5.4',         # PostgreSQL driver
+            'gevent==1.0.2',
+            'greenlet==0.4.9',
+
+            # Pin dependent libraries (better in buildout/versions?)
+            'httplib2==0.9.2',
+            'pyzmq==15.2.0',           # For IPython manhole
             'cffi==0.9.2',
             'oauthlib==0.7.2',
             'six==1.9.0',
@@ -106,16 +110,14 @@ setup(  name='scioncc',
             'nose==1.1.2',
             'mock==0.8',
             'coverage==4.0',            # Code coverage
-
-            # Check if all these are needed
-            'graypy==0.2.11',           # For production logging
-            'ntplib==0.3.3',
-            #'M2Crypto==0.22.3',         # For X.509 certificates (currently unused)
         ],
         extras_require={
             'utils': [
                 'xlrd==0.9.3',          # For Excel file read (dev tools)
                 'xlwt==0.7.5',          # For Excel file write (dev tools)
+            ],
+            'logging': [
+                'graypy==0.2.11',       # For production logging
             ],
             'data': [
                 'h5py==2.5.0',
