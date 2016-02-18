@@ -76,32 +76,33 @@ setup(  name='scioncc',
             'pyproj==1.9.4',           # For geospatial calculations
             'numpy==1.9.2',
 
-            # HTTP packages
+            # HTTP related packages
             'flask-socketio==0.4.1',
             'flask-oauthlib==0.9.1',
             'Flask==0.10.1',
             'requests==2.5.3',
 
             # Basic container packages
+            'graypy==0.2.11',           # For production logging (used by standard logger config)
             'ipython==3.2.3',
-            'readline==6.2.4.1',       # For IPython shell
-            'ndg-xacml==0.5.1',        # For policy rule engine
-            'psutil==2.1.3',           # For host and process stats
+            'readline==6.2.4.1',        # For IPython shell
+            'ndg-xacml==0.5.1',         # For policy rule engine
+            'psutil==2.1.3',            # For host and process stats
             'python-dateutil==2.4.2',
-            'bcrypt==1.0.1',           # For password authentication
+            'bcrypt==1.0.1',            # For password authentication
             'python-daemon==2.0.5',
             'simplejson==3.6.5',
             'msgpack-python==0.4.7',
             'pyyaml==3.10',
-            'pika==0.9.5',             # NEED THIS VERSION. Messaging stack tweaked to this version
+            'pika==0.9.5',              # NEED THIS VERSION. Messaging stack tweaked to this version
             'zope.interface==4.1.1',
-            'psycopg2==2.5.4',         # PostgreSQL driver
+            'psycopg2==2.5.4',          # PostgreSQL driver
             'gevent==1.0.2',
             'greenlet==0.4.9',
 
             # Pin dependent libraries (better in buildout/versions?)
             'httplib2==0.9.2',
-            'pyzmq==15.2.0',           # For IPython manhole
+            'pyzmq==15.2.0',            # For IPython manhole
             'cffi==0.9.2',
             'oauthlib==0.7.2',
             'six==1.9.0',
@@ -115,9 +116,6 @@ setup(  name='scioncc',
             'utils': [
                 'xlrd==0.9.3',          # For Excel file read (dev tools)
                 'xlwt==0.7.5',          # For Excel file write (dev tools)
-            ],
-            'logging': [
-                'graypy==0.2.11',       # For production logging
             ],
             'data': [
                 'h5py==2.5.0',

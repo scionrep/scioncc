@@ -41,7 +41,7 @@ class DataStore(object):
 class DatastoreFactory(object):
     """Helps to create instances of datastores"""
 
-    DS_BASE = "base"    # A standalone variant                                    of
+    DS_BASE = "base"    # A standalone variant
     DS_FULL = "full"    # A datastore that requires pyon initialization
 
     @classmethod

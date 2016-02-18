@@ -19,7 +19,7 @@ x509_extensions = v3_ca\n\
 countryName             = US\n\
 stateOrProvinceName     = California\n\
 localityName            = La Jolla\n\
-0.organizationName      = Ocean Observatory Initiative\n\
+0.organizationName      = Scientific Observatory Network\n\
 commonName              = COMMONNAME\n\
 emailAddress            = EMAILADDRESS\n\
 \n\

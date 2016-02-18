@@ -2,11 +2,11 @@
 
 __author__ = 'Adam R. Smith'
 
-
 import yaml
 
 from pyon.util.containers import DotDict, dict_merge
 from pyon.core.exception import ConfigNotFound
+
 
 class Config(object):
     """

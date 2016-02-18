@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+""" General purpose util classes and functions """
 
 __author__ = 'Adam R. Smith, Michael Meisinger'
 
@@ -40,6 +40,7 @@ class DotNotationGetItem(object):
     def __contains__(self, item):
         return hasattr(self, item)
 
+
 class DotList(DotNotationGetItem, list):
     """ Partner class for DotDict; see that for docs. Both are needed to fully support JSON/YAML blocks. """
 
@@ -54,6 +55,7 @@ class DotList(DotNotationGetItem, list):
         for val in super(DotList, self).__iter__():
             val, converted = self._convert(val)
             yield val
+
 
 class DotDict(DotNotationGetItem, dict):
     """
@@ -415,4 +417,3 @@ def recursive_encode(obj, encoding="utf8"):
         raise RuntimeError("unknown type: %s" % type(obj))
 
     return obj
-

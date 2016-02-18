@@ -1,0 +1,44 @@
+===========================================================
+Scientific Observatory Network (SciON)
+
+History of changes
+===========================================================
+
+Version 3.2.0, released Feb 2016
+
+* Transactions available for the resource registry
+* Revised package structure
+* Simplified agent process type
+* Data persistence, ingestion and retrieval capabilities
+* Code and dependencies cleanup
+
+Version 3.1.0, internal, June 2015
+
+* Container can spawn multiple child processes
+* Includes a process management service with process dispatcher component
+
+Version 3.0.0, internal, September 2014
+
+* Forked as ScionCC and added core services from OOI coi-services repository
+* Simplification and rework of many core classes
+* Included definitions into repository and removed all submodules
+* Ability to package as egg
+
+Version 2.1, internal, November 2013
+
+* Datastore based on PostreSQL
+
+Version 2.0, internal
+
+* Named Pyon
+* Complete rewrite using gevent, YML interfaces
+* generate_interfaces and pycc
+* Datastore based on CouchDB
+* Resource registry, object store, directory, events store
+* Messaging subsystem with multiple patterns of interactions
+
+Version 1.0, internal
+
+* Container developed as ioncore-python
+* Based on Twisted and Google ProtocolBuffers
+* Datastore based on Cassandra

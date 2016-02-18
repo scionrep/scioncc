@@ -1,16 +1,13 @@
-#!/usr/bin/env python
+""" Breakpoint utility using IPython shell """
 
-'''
-@author Luke Campbell (Originally Dave Foster)
-@file extern/pyon/pyon/util/breakpoint.py
-@description Breakpoint utility
-'''
+__author__ = 'Luke Campbell (Originally Dave Foster)'
 
 import functools
 import inspect
 import traceback
 import time
 import sys
+
 
 def breakpoint(scope=None, global_scope=None):
     from IPython.config.loader import Config
@@ -47,7 +44,7 @@ def breakpoint(scope=None, global_scope=None):
     inputhook_manager._current_gui = 'gevent'
 
     # First import the embeddable shell class
-    from IPython.frontend.terminal.embed import InteractiveShellEmbed
+    from IPython.terminal.embed import InteractiveShellEmbed
     from mock import patch
     if scope is not None:
         from pyon.container.shell_api import get_shell_api
@@ -112,8 +109,10 @@ def get_stack(message=None, stack_first_frame=1, max_frames=15):
             stack_str = message + "\n" + stack_str
         return stack_str
 
+
 _global_profile_t0 = time.time()
 _global_profile_level = 0
+
 
 def time_profile(func):
     @functools.wraps(func)
@@ -126,9 +125,11 @@ def time_profile(func):
         _global_profile_level += 1
         retval = func(*args, **kwargs)
         _global_profile_level -= 1
-        sys.stdout.write('%sExecution Time: %s\n%sTotal Time: %s\n' % (indent, time.time() - t0, indent, time.time() - _global_profile_t0))
+        sys.stdout.write('%sExecution Time: %s\n%sTotal Time: %s\n' % (indent, time.time() - t0, indent,
+                                                                       time.time() - _global_profile_t0))
         return retval
     return wrapper
+
 
 class TimeIt:
     def __init__(self, message):
@@ -149,5 +150,5 @@ class TimeIt:
 
         _global_profile_level -= 1
         indent = ''.join(['    ' for i in xrange(_global_profile_level)])
-        sys.stdout.write('%sExecution Time: %s\n%sTotal Time: %s\n' % (indent, time.time() - self.t0, indent, time.time() - _global_profile_t0))
-        
+        sys.stdout.write('%sExecution Time: %s\n%sTotal Time: %s\n' % (indent, time.time() - self.t0, indent,
+                                                                       time.time() - _global_profile_t0))

@@ -6,6 +6,7 @@ Recipe found at: http://pyyaml.org/attachment/ticket/161/use_ordered_dict.py
 """
 
 import yaml
+from yaml.constructor import ConstructorError
 import collections
 
 
