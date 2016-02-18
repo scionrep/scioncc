@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-'''
-@author Luke Campbell
-@file ion/util/package.py
-@description Process Egg Packager
-'''
+""" Process Egg Packager """
 
+__author__ = 'Luke Campbell'
 
 from setuptools import setup
 from shutil import copytree, move, rmtree
@@ -19,10 +16,11 @@ from tempfile import mkdtemp
 
 tempdir_name = mkdtemp()
 
+
 def fix_imports(path, package, versioned_package):
-    '''
+    """
     Iterates through each module in a package-root and updates the import clauses to include the namespaced version
-    '''
+    """
     q = [path]
     while q:
         pkg = q.pop()
@@ -37,9 +35,9 @@ def fix_imports(path, package, versioned_package):
                 q.append(module_path)
 
 def replace_imports(source_path, package, versioned_package):
-    '''
+    """
     Replace a source file's imports with a versioned namespace
-    '''
+    """
     print package
     print versioned_package
     print 'Modifying', source_path
@@ -51,10 +49,10 @@ def replace_imports(source_path, package, versioned_package):
         f.write(source_buffer)
 
 def make_package(roots, version):
-    '''
+    """
     Copies the named packages into the temporary directory then applies a namespaced version
     to all the specified packages
-    '''
+    """
     versioned_packages = []
     for p in roots:
         path, name = os.path.split(p)
@@ -69,10 +67,10 @@ def make_package(roots, version):
     return packages
 
 def main(name, version, roots=None):
-    '''
+    """
     Copies each package root folder into a temporary folder, then updates the source files
     to include the namespaced version and builds an egg.
-    '''
+    """
     if roots is None:
         roots = find_roots()
 
@@ -98,18 +96,18 @@ def main(name, version, roots=None):
     rmtree(tempdir_name)
 
 def build_egg(setup_args):
-    '''
+    """
     Creates a templated setup.py file and uses it to build the distributable egg
-    '''
+    """
     with open(os.path.join(tempdir_name, 'setup.py'), 'w') as f:
-        f.write('''
+        f.write("""
 from setuptools import setup
 
 kwds = %(kwds)s
 
 setup(
     **kwds
-)''' % {'kwds' : setup_args})
+)""" % {'kwds' : setup_args})
     command = 'python %s bdist_egg' % os.path.join(tempdir_name, 'setup.py')
     p = Popen(command.split(), cwd=tempdir_name)
     p.wait()
@@ -124,9 +122,9 @@ setup(
     move(egg_path, cwd)
 
 def find_roots(path):
-    '''
+    """
     Determines the packages that exist in ./
-    '''
+    """
     roots = []
     for impt,name,is_pkg in walk_packages([path]):
         if is_pkg and impt.path == path:
@@ -134,9 +132,9 @@ def find_roots(path):
     return roots
 
 def find_packages(path, roots):
-    '''
+    """
     Recursively finds all packages in a list of paths
-    '''
+    """
 
     if not path.endswith('/'):
         path = path + '/'
