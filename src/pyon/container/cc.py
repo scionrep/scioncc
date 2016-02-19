@@ -395,6 +395,10 @@ class SignalHandlerCapability(ContainerCapability):
                 log.info("In TERM signal handler, triggering exit (%s)", self.container.id)
                 self.container._cleanup_pid()      # cleanup the pidfile first
             finally:
+                if self.container._status == TERMINATING:
+                    log.info("Ignoring SIGTERM while container is terminating")
+                    return
+
                 # This will raise SystemExit in serve_forever and IPython cores
                 # Thereby pycc will be able to shutdown the container
                 sys.exit(signal.SIGTERM)
