@@ -25,8 +25,12 @@ class DataAgent(StreamingAgent):
         self.sampling_gl_quit = Event()
         self.sampling_interval = self.agent_config.get("sampling_interval", 5)
         self.sampling_gl = spawn(self._sample_data_loop, self.sampling_interval)
+        if self.agent_plugin and hasattr(self.agent_plugin, 'on_start_streaming'):
+            self.agent_plugin.on_start_streaming()
 
     def on_stop_streaming(self):
+        if self.agent_plugin and hasattr(self.agent_plugin, 'on_stop_streaming'):
+            self.agent_plugin.on_stop_streaming()
         self.sampling_gl_quit.set()
         self.sampling_gl.join(timeout=3)
         self.sampling_gl.kill()
