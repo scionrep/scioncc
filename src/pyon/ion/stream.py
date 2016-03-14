@@ -94,7 +94,7 @@ class StreamSubscriber(Subscriber):
         self.xp_name = get_streaming_xp(exchange_point)
         self.xp = self.container.ex_manager.create_xp(exchange_point)
 
-        self.xn = self.container.ex_manager.create_queue_xn(exchange_name, xs=self.xp)
+        self.xn = self.container.ex_manager.create_queue_xn(self.queue_name, xs=self.xp)
         self.started = False
         self.callback = callback or process.call_process
 
