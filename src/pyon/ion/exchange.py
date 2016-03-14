@@ -972,7 +972,9 @@ class ExchangeName(XOTransport, NameTrio):
     def queue(self):
         # make sure prefixed with sysname?
         queue = self._queue
-        if self._queue and not self.exchange in self._queue:
+        if isinstance(self._queue, NameTrio):
+            queue = ".".join([self._queue.exchange, self._queue.queue])
+        elif self._queue and self.exchange not in self._queue:
             queue = ".".join([self.exchange, self._queue])
 
         return queue

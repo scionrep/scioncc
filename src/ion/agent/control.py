@@ -55,6 +55,7 @@ class StreamingAgentClient(StreamingAgentProcessClient):
     class FakeAgentProcess(object):
         name = "streaming_agent"
         id = ""
+        container = Container.instance
 
     def __init__(self, resource_id, *args, **kwargs):
         """

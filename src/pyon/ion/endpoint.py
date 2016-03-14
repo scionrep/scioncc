@@ -170,12 +170,12 @@ class ProcessRPCClient(RPCClient):
 
     def __init__(self, process=None, **kwargs):
         self._process = process
+        self._declare_name = kwargs.pop("declare_name", True)  # MM: Prevent senders from declaring with wrong AMQP properties
 
         if 'to_name' in kwargs and kwargs['to_name'] is not None and not isinstance(kwargs['to_name'], BaseTransport):
             container = (hasattr(self._process, 'container') and self._process.container) or self._get_container_instance()
             if container:
-                declare = kwargs.pop("declare_name", True)
-                if declare:
+                if self._declare_name:
                     # NOTE: What if this is a process or agent client? Cannot declare with known properties.
                     # Client creates the service XN
                     kwargs['to_name'] = container.create_service_xn(kwargs['to_name'])
@@ -194,7 +194,8 @@ class ProcessRPCClient(RPCClient):
             if not container:
                 raise StandardError("No container found, can not upgrade to ExchangeObject")
 
-            self._send_name = container.create_service_xn(self._send_name)
+            if self._declare_name:
+                self._send_name = container.create_service_xn(self._send_name)
 
         # upgrade one timers too
         if to_name is not None and not isinstance(to_name, BaseTransport):
@@ -202,7 +203,8 @@ class ProcessRPCClient(RPCClient):
             if not container:
                 raise StandardError("No container found, can not upgrade to ExchangeObject")
 
-            to_name = container.create_service_xn(to_name)
+            if self._declare_name:
+                to_name = container.create_service_xn(to_name)
 
         newkwargs = kwargs.copy()
         newkwargs['process'] = self._process
