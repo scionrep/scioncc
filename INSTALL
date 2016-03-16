@@ -9,7 +9,7 @@ PREREQUISITES
 LINUX (UBUNTU):
 ---------------
 
-Use a fresh Ubuntu 14.04 VM with latest patches:
+Use a fresh Ubuntu 14.04 (server) VM with latest patches:
     > sudo apt-get update
     > sudo apt-get upgrade -y
 
