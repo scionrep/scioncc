@@ -26,7 +26,7 @@ class DataAgent(StreamingAgent):
         self.sampling_interval = self.agent_config.get("sampling_interval", 5)
         self.sampling_gl = spawn(self._sample_data_loop, self.sampling_interval)
         if self.agent_plugin and hasattr(self.agent_plugin, 'on_start_streaming'):
-            self.agent_plugin.on_start_streaming()
+            self.agent_plugin.on_start_streaming(streaming_args)
 
     def on_stop_streaming(self):
         if self.agent_plugin and hasattr(self.agent_plugin, 'on_stop_streaming'):
@@ -42,10 +42,11 @@ class DataAgent(StreamingAgent):
             try:
                 if self.agent_plugin:
                     sample = self.agent_plugin.acquire_samples()
-                    #log.info("Sample %s", sample)
-                    packet = DataPacketBuilder.build_packet_from_samples(sample,
+                    if sample:
+                        #log.info("Sample %s", sample)
+                        packet = DataPacketBuilder.build_packet_from_samples(sample,
                                     resource_id=self.resource_id, stream_name=self.stream_name)
-                    self.stream_pub.publish(packet)
+                        self.stream_pub.publish(packet)
             except Exception as ex:
                 log.exception("Error in sampling greenlet")
 
