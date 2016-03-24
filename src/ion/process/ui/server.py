@@ -452,7 +452,7 @@ def save_token(token, request, *args, **kwargs):
     token_obj = SecurityToken(token_type=TokenTypeEnum.OAUTH_ACCESS, token_string=access_token_str,
                               expires=expires, status="OPEN", actor_id=actor_id,
                               attributes=dict(access_token=access_token_str, refresh_token=refresh_token_str,
-                                              scopes=scopes, client_id=flask.g.client_id, ts_created=current_time))
+                                              scopes=scopes, client_id=request.client.client_id, ts_created=current_time))
     token_id = "access_token_%s" % access_token_str
     ui_instance.container.object_store.create(token_obj, token_id)
 
@@ -460,7 +460,7 @@ def save_token(token, request, *args, **kwargs):
     token_obj = SecurityToken(token_type=TokenTypeEnum.OAUTH_REFRESH, token_string=refresh_token_str,
                               expires=expires, status="OPEN", actor_id=actor_id,
                               attributes=dict(access_token=access_token_str, refresh_token=refresh_token_str,
-                                              scopes=scopes, client_id=flask.g.client_id, ts_created=current_time))
+                                              scopes=scopes, client_id=request.client.client_id, ts_created=current_time))
     token_id = "refresh_token_%s" % refresh_token_str
     ui_instance.container.object_store.create(token_obj, token_id)
 
