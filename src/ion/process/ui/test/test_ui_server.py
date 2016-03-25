@@ -349,3 +349,49 @@ class TestUIServer(IonIntegrationTestCase):
             resp = session.get(self.ui_base_url + "/auth/session")
             resp_json = self._assert_json_response(resp, None)
             self.assertEqual(resp_json["result"]["actor_id"], "")
+
+    def test_ui_oauth2_refresh_token(self):
+        actor_identity_obj = ActorIdentity(name="John Doe")
+        actor_id = self.idm_client.create_actor_identity(actor_identity_obj)
+        actor_name = "jdoe"
+        actor_password = "mypasswd"
+        self.idm_client.set_actor_credentials(
+            actor_id, actor_name, actor_password)
+
+        actor_details = UserIdentityDetails()
+        actor_details.contact.individual_names_given = "John"
+        actor_details.contact.individual_name_family = "Doe"
+        self.idm_client.define_identity_details(actor_id, actor_details)
+
+        client_obj = ActorIdentity(
+            name="UI Client",
+            details=OAuthClientIdentityDetails(default_scopes="scioncc"))
+        client_actor_id = self.idm_client.create_actor_identity(client_obj)
+        client_id = "ui"
+        self.idm_client.set_actor_credentials(
+            client_actor_id, "client:"+client_id, "client_secret")
+
+        session = requests.session()
+
+        log.info("------------ Get token")
+        auth_params = {
+            "client_id": client_id,
+            "grant_type": "password",
+            "username": actor_name,
+            "password": actor_password}
+        resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+        access_token = resp.json()
+
+        log.info("------------ Refresh token")
+        auth_params = {
+            "client_id": client_id,
+            "grant_type": "refresh_token",
+            "refresh_token": access_token["refresh_token"]}
+        resp = session.post(self.ui_base_url + "/oauth/token", data=auth_params)
+        updated_token = resp.json()
+
+        self.assertIsNotNone(updated_token)
+        self.assertNotIn("error", updated_token)
+        for item in ["access_token", "token_type",
+                     "expires_in", "refresh_token", "scope"]:
+            self.assertIn(item, updated_token)
