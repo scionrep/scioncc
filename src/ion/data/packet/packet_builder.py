@@ -24,6 +24,8 @@ class DataPacketBuilder(object):
         for coldef in samples["cols"]:
             if coldef == "time":
                 dtype_parts.append((coldef, "i8"))
+            elif "coltypes" in samples and coldef in samples["coltypes"]:
+                dtype_parts.append((coldef, samples["coltypes"][coldef]))
             else:
                 dtype_parts.append((coldef, "f8"))
         dt = np.dtype(dtype_parts)

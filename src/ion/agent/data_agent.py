@@ -19,7 +19,8 @@ class DataAgent(StreamingAgent):
     sampling_interval = 5
 
     def on_connect(self, connect_args=None):
-        pass
+        if self.agent_plugin and hasattr(self.agent_plugin, 'on_connect'):
+            self.agent_plugin.on_connect(connect_args)
 
     def on_start_streaming(self, streaming_args=None):
         self.sampling_gl_quit = Event()
@@ -36,6 +37,19 @@ class DataAgent(StreamingAgent):
         self.sampling_gl.kill()
         self.sampling_gl = None
         self.sampling_gl_quit = None
+
+    def on_acquire_data(self, streaming_args=None):
+        if self.agent_plugin and hasattr(self.agent_plugin, 'on_acquire_data'):
+            self.agent_plugin.on_acquire_data(streaming_args)
+
+    def on_disconnect(self):
+        if self.agent_plugin and hasattr(self.agent_plugin, 'on_disconnect'):
+            self.agent_plugin.on_disconnect()
+
+    def on_get_status(self, agent_status):
+        if self.agent_plugin and hasattr(self.agent_plugin, 'on_get_status'):
+            return self.agent_plugin.on_get_status(agent_status)
+        return agent_status
 
     def _sample_data_loop(self, sample_interval):
         while not self.sampling_gl_quit.wait(timeout=sample_interval):
