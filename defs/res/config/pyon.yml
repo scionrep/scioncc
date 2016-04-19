@@ -360,6 +360,7 @@ service:
     service_whitelist: []    # Names of services accessible via the gateway. If empty, all are accessible
     service_blacklist: []    # Names of services not accessible via the gateway. Applies after white list
     user_cache_size: 2000    # The number of user's whos role data is cached in the gateway
+    max_content_length: 52428800    # Number of bytes in request max (unlimited if empty or 0)
     develop_mode: True
     set_cors: True           # Set CORS headers (only in development mode)
     strict_types: True       # Only accept types according to operation parameter schema, or try to coerce?

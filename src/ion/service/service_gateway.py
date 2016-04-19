@@ -107,6 +107,7 @@ class ServiceGateway(object):
 
         # Get the user_cache_size
         self.user_cache_size = self.config.get_safe(CFG_PREFIX + ".user_cache_size", DEFAULT_USER_CACHE_SIZE)
+        self.max_content_length = self.config.get_safe(CFG_PREFIX + ".max_content_length")
 
         # Initialize an LRU Cache to keep user roles cached for performance reasons
         #maxSize = maximum number of elements to keep in cache
@@ -637,6 +638,15 @@ class ServiceGateway(object):
                 # No args found in body
                 request_args = {GATEWAY_ARG_PARAMS: {}}
 
+            # Extract file args
+            for file_arg in request.files:
+                try:
+                    file_handle = request.files[file_arg]
+                    arg_val = file_handle.read()
+                    request_args[GATEWAY_ARG_PARAMS][file_arg] = arg_val
+                except Exception as ex:
+                    log.exception("Error reading request file argument %s", file_arg)
+
         elif request.method == "GET":
             str_args = True
             REQ_ARGS_SPECIAL = {"authtoken", "timeout", "headers"}
@@ -911,6 +921,14 @@ class ServiceGateway(object):
         # Q: Should HTTP status be the error code of the exception?
         resp.status_code = status_code
         return resp
+
+
+# Setting Flask app config when blueprint is initialized
+@sg_blueprint.record
+def record_params(setup_state):
+    app = setup_state.app
+    if sg_instance.max_content_length:
+        app.config["MAX_CONTENT_LENGTH"] = int(sg_instance.max_content_length)
 
 
 # -------------------------------------------------------------------------

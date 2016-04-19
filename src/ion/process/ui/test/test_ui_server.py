@@ -127,6 +127,17 @@ class TestUIServer(IonIntegrationTestCase):
         resp_json = self._assert_json_response(resp, None)
         self.assertIn("type_", resp_json["result"])
 
+        # Request as POST with params directly as form data with files content
+        payload = dict(id_only=True)
+        files = dict(restype=("restype", "ActorIdentity"))
+        resp = session.post(self.sg_base_url + "/request/resource_registry/find_resources", data=payload, files=files)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn(actor_id, resp_json["result"][0])
+
+        resp = session.get(self.sg_base_url + "/request/resource_registry/read/" + actor_id)
+        resp_json = self._assert_json_response(resp, None)
+        self.assertIn("type_", resp_json["result"])
+
         # TEST: REST API
         resp = session.get(self.sg_base_url + "/rest/identity_management/actor_identity")
         resp_json = self._assert_json_response(resp, None)
