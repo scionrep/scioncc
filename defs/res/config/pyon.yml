@@ -10,8 +10,11 @@
 # The "system" root entry defines settings for the distributed SciON system that this
 # container starts or joins. A system comprises all containers with the same sysname.
 system:
-  # Set to define sysname in tests. Otherwise set via pycc --sysname or use default
+  # Set to define sysname. Alternatively set via pycc --sysname or use default
   name:
+
+  # Set to define sysname to use in tests. If empty, use normal sysname or generate one.
+  name_testing:
 
   # Name of the Org that bootstraps the system and acts as "Super-Org"
   root_org: ION
