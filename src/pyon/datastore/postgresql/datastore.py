@@ -745,7 +745,8 @@ class PostgresPyonDataStore(PostgresDataStore):
             exec_query = pqb.get_query()
             cur.execute(exec_query, pqb.get_values())
             rows = cur.fetchall()
-            log.info("find_by_query() QUERY: %s (%s rows)", cur.query, cur.rowcount)
+            query_str = cur.query if len(cur.query) < 2000 else cur.query[:1000] + "...[" + str(len(cur.query) - 1200) + "]..." + cur.query[-200:]
+            log.info("find_by_query() QUERY: %s (%s rows)", query_str, cur.rowcount)
             query_res = {}
             query["_result"] = query_res
             query_res["statement_gen"] = exec_query
