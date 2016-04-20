@@ -271,6 +271,9 @@ class DatasetHDF5Persistence(object):
 
                     res_data[var_name] = data_array
 
+                # At this point we have dict with variable to data array mapping with target (unix) timestamps
+                self._expand_packed_rows(res_data, data_filter)
+
                 if data_filter.get("transpose_time", False) is True:
                     time_series = res_data.pop(self.time_var)
                     for var_name, var_series in res_data.iteritems():
@@ -301,6 +304,54 @@ class DatasetHDF5Persistence(object):
         finally:
             data_file.close()
 
+    def _expand_packed_rows(self, res_data, data_filter):
+        """ Expand packed data representations """
+        need_expand, num_steps, step_increment, expand_cols = False, 0, 0, {}
+        for var_def in self.var_defs:
+            packing_cfg = var_def.get("packing", {})
+            packing_type = packing_cfg.get("type", "")
+            if not packing_type:
+                continue
+            if packing_type == "fixed_sampling_rate":
+                dtype = np.dtype(var_def["storage_dtype"])
+                if len(dtype.shape) > 1:
+                    raise BadRequest("Unsupported higher order dtype shape")
+                elif len(dtype.shape) == 1 and dtype.shape[0] > 1:
+                    if need_expand:
+                        # Check compatibility
+                        if dtype.shape[0] != num_steps:
+                            raise BadRequest("Cannot expand multiple variables with different pack size")
+                        row_period = packing_cfg["samples_period"]
+                        if step_increment != row_period / num_steps:
+                            raise BadRequest("Cannot expand multiple variables with different step increment")
+                    else:
+                        need_expand = True
+                        num_steps = dtype.shape[0]
+                        row_period = packing_cfg["samples_period"]
+                        step_increment = row_period / num_steps
+                    expand_cols[var_def["name"]] = dict(basedt=np.dtype(dtype.base))
+            else:
+                raise BadRequest("Unsupported packing type")
+        if not need_expand:
+            return
+        log.info("Row expansion num_steps=%s step_incr=%s", num_steps, step_increment)
+        for var_name, data_array in res_data.iteritems():
+            if var_name in expand_cols:
+                new_array = np.zeros(len(data_array) * num_steps, dtype=expand_cols[var_name]["basedt"])
+                for i, val in enumerate(data_array):
+                    new_array[i*num_steps:(i+1)*num_steps] = val
+            elif var_name == self.time_var:
+                dtype = self.var_defs_map[var_name]["storage_dtype"]
+                new_array = np.zeros(len(data_array) * num_steps, dtype=dtype)
+                # This assumes unix_millis time format
+                for i, val in enumerate(data_array):
+                    new_array[i*num_steps:(i+1)*num_steps] = np.array([val + j*step_increment*1000 for j in xrange(num_steps)], dtype=dtype)
+            else:
+                dtype = self.var_defs_map[var_name]["storage_dtype"]
+                new_array = np.zeros(len(data_array) * num_steps, dtype=dtype)
+                for i, val in enumerate(data_array):
+                    new_array[i*num_steps:(i+1)*num_steps] = np.array([val]*num_steps, dtype=dtype)
+            res_data[var_name] = new_array
 
 class HDF5Tools(object):
     @classmethod
