@@ -13,6 +13,12 @@ MediaResponse: !Extends_Response
   media_encoding: "raw"
   # The encoding of content within this object (can be base64, utf8). Default utf8
   internal_encoding: ""
+  # Additional headers to set in the response
+  response_headers: {}
+  # A status code:
+  response_code: 0
+  # Additional attributes
+  attributes: {}
 
 
 # A first class object creating a typed cross-reference between 2 resources. It references the subject resource by

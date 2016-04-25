@@ -855,7 +855,16 @@ class ServiceGateway(object):
                 content = base64.decodestring(content)
             elif response_data.internal_encoding == "utf8":
                 pass
-            resp = self.response_class(content, response_data.code, mimetype=response_data.media_mimetype)
+            elif response_data.internal_encoding == "filename":
+                # TODO: Server side file name for download
+                pass
+
+            resp_attrs = dict(mimetype=response_data.media_mimetype)
+            if response_data.response_headers:
+                resp_attrs["headers"] = response_data.response_headers
+            if response_data.response_code:
+                resp_attrs["status_code"] = response_data.response_code
+            resp = self.response_class(content, response_data.code, **resp_attrs)
             self._log_request_response(response_data.media_mimetype, "raw", len(content), response_data.code)
             return resp
 
