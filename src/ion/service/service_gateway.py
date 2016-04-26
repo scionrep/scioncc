@@ -29,7 +29,7 @@ from pyon.util.containers import current_time_millis
 
 from ion.service.utility.swagger_gen import SwaggerSpecGenerator
 from ion.util.parse_utils import get_typed_value
-from ion.util.ui_utils import CONT_TYPE_JSON, json_dumps, json_loads, encode_ion_object, get_auth, clear_auth
+from ion.util.ui_utils import CONT_TYPE_JSON, json_dumps, json_loads, encode_ion_object, get_auth, clear_auth, OAuthTokenObj
 
 from interface.services.core.idirectory_service import DirectoryServiceProcessClient
 from interface.services.core.iresource_registry_service import ResourceRegistryServiceProcessClient
@@ -470,10 +470,21 @@ class ServiceGateway(object):
         # Enable temporary authentication tokens to resolve to actor ids
         if authtoken:
             try:
-                token_info = self.idm_client.check_authentication_token(authtoken, headers=self._get_gateway_headers())
-                actor_id = token_info.get("actor_id", actor_id)
-                expiry = token_info.get("expiry", expiry)
-                log.info("Resolved token %s into actor_id=%s expiry=%s", authtoken, actor_id, expiry)
+                if authtoken.startswith(("Bearer_")):
+                    # Backdoor way for OAuth2 access tokens as request args for GET URLs
+                    authtoken = authtoken[7:]
+                    token_id = "access_token_" + str(authtoken)
+                    token_obj = self.process.container.object_store.read(token_id)
+                    token = OAuthTokenObj.from_security_token(token_obj)
+                    if token.is_valid(check_expiry=True):
+                        actor_id = token.user["actor_id"]
+                        expiry = str(token._token_obj.expires)
+                        log.info("Resolved OAuth2 token %s into actor_id=%s expiry=%s", authtoken, actor_id, expiry)
+                else:
+                    token_info = self.idm_client.check_authentication_token(authtoken, headers=self._get_gateway_headers())
+                    actor_id = token_info.get("actor_id", actor_id)
+                    expiry = token_info.get("expiry", expiry)
+                    log.info("Resolved token %s into actor_id=%s expiry=%s", authtoken, actor_id, expiry)
             except NotFound:
                 log.info("Provided authentication token not found: %s", authtoken)
             except Unauthorized:
