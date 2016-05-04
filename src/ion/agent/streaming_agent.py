@@ -3,6 +3,8 @@
 __author__ = 'Michael Meisinger'
 
 from pyon.public import log, RT, BadRequest, named_any, StreamPublisher
+from pyon.util.containers import dict_merge
+
 
 from interface.services.agent.istreaming_agent import BaseStreamingAgent
 
@@ -49,11 +51,12 @@ class StreamingAgent(BaseStreamingAgent):
 
 
     def on_stop(self):
-        if self.current_state in (self.AGENTSTATE_STREAMING, self.AGENTSTATE_CONNECTED):
-            self.disconnect()
+        pass
 
     def on_quit(self):
-        pass
+        if self.current_state in (self.AGENTSTATE_STREAMING, self.AGENTSTATE_CONNECTED):
+            log.info("Terminate agent %s pid=%s resource_id=%s", self.__class__.__name__, self.id, self.resource_id)
+            self.disconnect()
 
     def connect(self, connect_args=None):
         if self.current_state == self.AGENTSTATE_CONNECTED:
@@ -62,7 +65,8 @@ class StreamingAgent(BaseStreamingAgent):
             raise BadRequest("Illegal agent state: %s" % self.current_state)
         try:
             self.stream_pub = StreamPublisher(process=self, stream=self.stream_name)
-            res = self.on_connect(connect_args)
+            args = dict_merge(self.agent_config, connect_args) if connect_args else self.agent_config
+            res = self.on_connect(args)
         except Exception:
             self.current_state = self.AGENTSTATE_ERROR
             raise
@@ -75,12 +79,13 @@ class StreamingAgent(BaseStreamingAgent):
         if self.current_state == self.AGENTSTATE_STREAMING:
             return
         if self.current_state == self.AGENTSTATE_INITIALIZED:
-            self.connect({})
+            self.connect(self.agent_config)
         if self.current_state != self.AGENTSTATE_CONNECTED:
             raise BadRequest("Illegal agent state: %s" % self.current_state)
         log.info("Start streaming")
         try:
-            res = self.on_start_streaming(streaming_args)
+            args = dict_merge(self.agent_config, streaming_args) if streaming_args else self.agent_config
+            res = self.on_start_streaming(args)
         except Exception:
             self.current_state = self.AGENTSTATE_ERROR
             raise
@@ -109,7 +114,8 @@ class StreamingAgent(BaseStreamingAgent):
         if self.current_state != self.AGENTSTATE_CONNECTED:
             raise BadRequest("Illegal agent state: %s" % self.current_state)
         try:
-            res = self.on_acquire_data(streaming_args)
+            args = dict_merge(self.agent_config, streaming_args) if streaming_args else self.agent_config
+            res = self.on_acquire_data(args)
         except Exception:
             self.current_state = self.AGENTSTATE_ERROR
             raise
@@ -118,10 +124,12 @@ class StreamingAgent(BaseStreamingAgent):
         pass
 
     def disconnect(self):
-        if self.current_state == self.AGENTSTATE_INITIALIZED:
+        if self.current_state in self.AGENTSTATE_INITIALIZED:
             return
-        if self.current_state != self.AGENTSTATE_STREAMING:
+        if self.current_state == self.AGENTSTATE_STREAMING:
             self.stop_streaming()
+        if self.current_state != self.AGENTSTATE_CONNECTED:
+            raise BadRequest("Illegal agent state: %s" % self.current_state)
         try:
             res = self.on_disconnect()
             self.stream_pub.close()

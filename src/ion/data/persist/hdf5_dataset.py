@@ -351,7 +351,7 @@ class DatasetHDF5Persistence(object):
                 new_array = np.zeros(len(data_array) * num_steps, dtype=dtype)
                 for i, val in enumerate(data_array):
                     new_array[i*num_steps:(i+1)*num_steps] = np.array([val]*num_steps, dtype=dtype)
-            res_data[var_name] = new_array
+            res_data[var_name] = new_array.tolist()
 
 class HDF5Tools(object):
     @classmethod
