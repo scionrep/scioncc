@@ -19,6 +19,7 @@ class NTP4Time(object):
     """
     FRAC = np.float32(4294967296.) if np else None
     JAN_1970 = np.uint32(2208988800) if np else None
+    JAN_1970_INT = 2208988800
     EPOCH = datetime.datetime(1900, 1, 1)
 
     ntpv4_timestamp = '! 2I'
@@ -26,6 +27,7 @@ class NTP4Time(object):
 
     def __init__(self, date=None):
         """ Can be initialized with a standard unix time stamp """
+        #  Is it correct to represent NTP4 internally as datetime?
         if date is None:
             date = time.time()
         if isinstance(date, numbers.Number):
@@ -145,7 +147,7 @@ class NTP4Time(object):
         era = int(delta) / (2**32)
         offset = np.uint32(np.trunc(delta)) # Overflow does all the work for us
         fraction = np.uint64((delta - int(delta)) * 2**64)
-        ntp_date = struct.pack(self.ntpv4_date, era,offset,fraction)
+        ntp_date = struct.pack(self.ntpv4_date, era, offset, fraction)
         return ntp_date
 
     @classmethod
@@ -221,9 +223,10 @@ class NTP4Time(object):
 
     def to_unix(self):
         """
-        Returns the unix time stamp for this NTP4Time
+        Returns the unix timestamp for this NTP4Time
         """
-        return float(self.seconds - self.JAN_1970 + (self.useconds/1e6))
+        delta = self._dt - self.EPOCH
+        return delta.total_seconds() - self.JAN_1970_INT
 
     @staticmethod
     def htonstr(val):
@@ -252,3 +255,29 @@ class NTP4Time(object):
         if sys.byteorder == 'little':
             return val.byteswap()
         return val
+
+    def __eq__(self, other):
+        return isinstance(other, NTP4Time) and self._dt == other._dt
+
+    def __ne__(self, other):
+        return not isinstance(other, NTP4Time) or self._dt != other._dt
+
+    def __gt__(self, other):
+        return isinstance(other, NTP4Time) and self._dt > other._dt
+
+    def __ge__(self, other):
+        return isinstance(other, NTP4Time) and self._dt >= other._dt
+
+    def __lt__(self, other):
+        return isinstance(other, NTP4Time) and self._dt < other._dt
+
+    def __le__(self, other):
+        return isinstance(other, NTP4Time) and self._dt <= other._dt
+
+    def to_sortable(self):
+        """ Returns a long integer maintaining sort order """
+        delta = (self._dt - self.EPOCH).total_seconds()
+        seconds = np.uint32(np.trunc(delta))
+        fraction = np.uint32((delta - int(delta)) * 2**32)
+        value = int(seconds) * 2**32 + int(fraction)
+        return value

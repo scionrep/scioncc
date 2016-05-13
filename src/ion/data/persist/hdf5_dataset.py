@@ -31,7 +31,9 @@ DS_VARIABLES = "data"
 DS_TIMEIDX_PATH = "index/time_idx"
 DS_TIMEINGEST_PATH = "index/time_ingest"
 INTERNAL_ROW_INCREMENT = 1000
+TIMEINDEX_ROW_INCREMENT = 1000
 DEFAULT_TIME_INDEX_STEP = 1000
+DEFAULT_MAX_ROWS = 1000000
 
 
 class DatasetHDF5Persistence(object):
@@ -71,11 +73,46 @@ class DatasetHDF5Persistence(object):
             self.var_index[var_name] = position
         if self.time_var not in self.var_defs_map:
             raise BadRequest("No time variable present")
+        self.expand_info = self._get_expand_info()
 
     def _get_ds_filename(self):
         local_fn = "%s%s.hdf5" % (DS_FILE_PREFIX, self.dataset_id)
         ds_filename = self.container.file_system.get("%s/%s" % (DS_BASE_PATH, local_fn))
         return ds_filename
+
+    def _get_expand_info(self):
+        """ Returns packed value expansion info from analyzing dataset schema """
+        need_expand, num_steps, step_increment, expand_cols = False, 0, 0, {}
+        for var_def in self.var_defs:
+            packing_cfg = var_def.get("packing", {})
+            packing_type = packing_cfg.get("type", "")
+            if not packing_type:
+                continue
+            if packing_type == "fixed_sampling_rate":
+                dtype = np.dtype(var_def["storage_dtype"])
+                if len(dtype.shape) > 1:
+                    raise BadRequest("Unsupported higher order dtype shape")
+                elif len(dtype.shape) == 1 and dtype.shape[0] > 1:
+                    if need_expand:
+                        # Check compatibility
+                        if dtype.shape[0] != num_steps:
+                            raise BadRequest("Cannot expand multiple variables with different pack size")
+                        row_period = packing_cfg["samples_period"]
+                        if step_increment != row_period / num_steps:
+                            raise BadRequest("Cannot expand multiple variables with different step increment")
+                    else:
+                        need_expand = True
+                        num_steps = dtype.shape[0]
+                        row_period = packing_cfg["samples_period"]
+                        step_increment = row_period / num_steps
+                    expand_cols[var_def["name"]] = dict(basedt=np.dtype(dtype.base))
+            else:
+                raise BadRequest("Unsupported packing type")
+        expand_info = dict(need_expand=need_expand,         # Bool
+                           num_steps=num_steps,             # Number of values (steps) per packed row
+                           step_increment=step_increment,   # Seconds fraction per time step
+                           expand_cols=expand_cols)         # Colnames to be expanded
+        return expand_info
 
     def require_dataset(self):
         """
@@ -227,7 +264,7 @@ class DatasetHDF5Persistence(object):
                 ds_tidx = data_file[DS_TIMEIDX_PATH]
                 tidx_cur_row = ds_tidx.attrs["cur_row"]
                 if tidx_cur_row + num_tidx_rows > len(ds_tidx):
-                    self._resize_dataset(ds_tidx, num_tidx_rows, INTERNAL_ROW_INCREMENT)
+                    self._resize_dataset(ds_tidx, num_tidx_rows, TIMEINDEX_ROW_INCREMENT)
                 ds_tidx[tidx_cur_row:tidx_cur_row+num_tidx_rows] = time_idx_rows
                 ds_tidx.attrs["cur_row"] += num_tidx_rows
 
@@ -247,18 +284,28 @@ class DatasetHDF5Persistence(object):
             res_data = {}
             read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
             time_format = data_filter.get("time_format", "unix_millis")
-            max_rows = data_filter.get("max_rows", 999999999)
+            max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
+            start_time = data_filter.get("start_time", None)
+            end_time = data_filter.get("end_time", None)
+            start_time_include = data_filter.get("start_time_include", True) is True
+            should_decimate = data_filter.get("decimate", False) is True
             time_slice = None
+
+            start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
+            log.info("ROW INTERVAL %s %s", start_row, end_row)
+            if self.expand_info.get("need_expand", False):
+                max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
+
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-                time_ds = data_file["vars/%s" % self.time_var]
-                cur_idx = time_ds.attrs["cur_row"]
+                ds_time = data_file["vars/%s" % self.time_var]
+                cur_idx = ds_time.attrs["cur_row"]
                 for var_name in read_vars:
                     ds_path = "vars/%s" % var_name
                     if ds_path not in data_file:
                         log.warn("Variable '%s' not in dataset - ignored", var_name)
                         continue
-                    var_ds = data_file[ds_path]
-                    data_array = var_ds[max(cur_idx-max_rows, 0):cur_idx]
+                    ds_var = data_file[ds_path]
+                    data_array = ds_var[max(start_row, end_row-max_rows, 0):end_row]
                     if var_name == self.time_var and self.var_defs_map[var_name].get("base_type", "") == "ntp_time":
                         if time_format == "unix_millis":
                             data_array = [int(1000*NTP4Time.from_ntp64(dv.tostring()).to_unix()) for dv in data_array]
@@ -284,57 +331,85 @@ class DatasetHDF5Persistence(object):
             elif self.ds_layout == DS_LAYOUT_COMBINED:
                 raise NotImplementedError()
 
-            start_time = data_filter.get("start_time", None)
-            start_time_include = data_filter.get("start_time_include", True) is True
-            if time_slice and res_data and start_time:
-                start_time = int(start_time)
-                time_idx = len(time_slice)
-                for idx, tv in enumerate(time_slice):
-                    if tv == start_time and start_time_include:
-                        time_idx = idx
-                        break
-                    elif tv > start_time:
-                        time_idx = idx
-                        break
-                for var_name, var_series in res_data.iteritems():
-                    res_data[var_name] = var_series[time_idx:]
-
             return res_data
 
         finally:
             data_file.close()
 
+    def _get_row_interval(self, data_file, start_time, end_time, start_time_include=True):
+        """ Lookup delimiting row numbers using time index, matching start and end time.
+        Note: This applies before pack expansion, so step values are not considered right now.
+        """
+        ds_tidx = data_file[DS_TIMEIDX_PATH]
+        ds_time = data_file["vars/%s" % self.time_var]
+        cur_idx = ds_time.attrs["cur_row"]
+        log.info("Get time %s %s (%s)", start_time, end_time, cur_idx)
+        start_row, end_row = 0, cur_idx
+        if not start_time and not end_time:
+            return start_row, end_row
+        time_type = self.var_defs_map[self.time_var].get("base_type", "")
+
+        # Could use binary search - for now just iterate
+        start_time_val = float(start_time)/1000 if start_time else 0
+        end_time_val = float(end_time)/1000 if end_time else 0
+        if start_time and end_time and start_time >= end_time:
+            end_time = end_time_val = 0
+
+        def gte_time(data_val, cmp_val, allow_equal=True):
+            # Support NTP4 timestamp and Unit millis (i8)
+            if time_type == "ntp_time":
+                if allow_equal:
+                    return NTP4Time.from_ntp64(data_val.tostring()).to_unix() >= cmp_val
+                else:
+                    return NTP4Time.from_ntp64(data_val.tostring()).to_unix() > cmp_val
+            else:
+                if allow_equal:
+                    return data_val >= cmp_val
+                else:
+                    return data_val > cmp_val
+
+        tidx_slice, step, incr, start_win, end_win, done = None, 0, TIMEINDEX_ROW_INCREMENT, 0, 0, False
+        while step * incr < len(ds_tidx) and not done:
+            tidx_slice = ds_tidx[step*incr:min((step+1)*incr, len(ds_tidx))]
+            if start_time and not start_win and gte_time(tidx_slice[-1], start_time_val, True):
+                for i, ts_val in enumerate(tidx_slice):
+                    if gte_time(ts_val, start_time_val, start_time_include):
+                        start_win = max(0, step * incr + i - 1)
+                        if not end_time:
+                            done = True
+                        break
+            if end_time and gte_time(tidx_slice[-1], end_time_val, True):
+                for i, ts_val in enumerate(tidx_slice):
+                    if gte_time(ts_val, end_time_val):
+                        end_win = max(0, step * incr + i - 1)
+                        done = True
+                        break
+            step += 1
+
+        # Lookup real rows
+        if start_time:
+            ts_slice = ds_time[start_win * self.time_idx_step: min((start_win + 1) * self.time_idx_step + 1, cur_idx)]
+            for i, ts_val in enumerate(ts_slice):
+                if gte_time(ts_val, start_time_val, start_time_include):
+                    start_row = start_win * self.time_idx_step + i
+                    break
+        if end_time:
+            ts_slice = ds_time[end_win * self.time_idx_step: min((end_win + 1) * self.time_idx_step + 1, cur_idx)]
+            for i, ts_val in enumerate(ts_slice):
+                if gte_time(ts_val, end_time_val, False):
+                    end_row = start_win * self.time_idx_step + i
+                    break
+
+        return start_row, end_row
+
     def _expand_packed_rows(self, res_data, data_filter):
         """ Expand packed data representations """
-        need_expand, num_steps, step_increment, expand_cols = False, 0, 0, {}
-        for var_def in self.var_defs:
-            packing_cfg = var_def.get("packing", {})
-            packing_type = packing_cfg.get("type", "")
-            if not packing_type:
-                continue
-            if packing_type == "fixed_sampling_rate":
-                dtype = np.dtype(var_def["storage_dtype"])
-                if len(dtype.shape) > 1:
-                    raise BadRequest("Unsupported higher order dtype shape")
-                elif len(dtype.shape) == 1 and dtype.shape[0] > 1:
-                    if need_expand:
-                        # Check compatibility
-                        if dtype.shape[0] != num_steps:
-                            raise BadRequest("Cannot expand multiple variables with different pack size")
-                        row_period = packing_cfg["samples_period"]
-                        if step_increment != row_period / num_steps:
-                            raise BadRequest("Cannot expand multiple variables with different step increment")
-                    else:
-                        need_expand = True
-                        num_steps = dtype.shape[0]
-                        row_period = packing_cfg["samples_period"]
-                        step_increment = row_period / num_steps
-                    expand_cols[var_def["name"]] = dict(basedt=np.dtype(dtype.base))
-            else:
-                raise BadRequest("Unsupported packing type")
-        if not need_expand:
+        if not self.expand_info.get("need_expand", False):
             return
+        num_steps, step_increment, expand_cols = self.expand_info["num_steps"], self.expand_info["step_increment"], self.expand_info["expand_cols"]
+        max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
         log.info("Row expansion num_steps=%s step_incr=%s", num_steps, step_increment)
+
         for var_name, data_array in res_data.iteritems():
             if var_name in expand_cols:
                 new_array = np.zeros(len(data_array) * num_steps, dtype=expand_cols[var_name]["basedt"])
@@ -351,7 +426,10 @@ class DatasetHDF5Persistence(object):
                 new_array = np.zeros(len(data_array) * num_steps, dtype=dtype)
                 for i, val in enumerate(data_array):
                     new_array[i*num_steps:(i+1)*num_steps] = np.array([val]*num_steps, dtype=dtype)
+            if max_rows:
+                new_array = new_array[-max_rows:]
             res_data[var_name] = new_array.tolist()
+
 
 class HDF5Tools(object):
     @classmethod
