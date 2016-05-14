@@ -3,6 +3,7 @@
 __author__ = 'Michael Meisinger'
 
 import os
+import tempfile
 
 from pyon.public import log, BadRequest, CFG, Container
 from ion.util.hdf_utils import HDFLockingFile
@@ -292,9 +293,11 @@ class DatasetHDF5Persistence(object):
             time_slice = None
 
             start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
-            log.info("ROW INTERVAL %s %s", start_row, end_row)
+            log.info("Row date interval: %s : %s", start_row, end_row)
             if self.expand_info.get("need_expand", False):
                 max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
+            if end_row-start_row > max_rows:
+                log.info("Truncating %s rows to %s max rows (from the end)", end_row-start_row, max_rows)
 
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
                 ds_time = data_file["vars/%s" % self.time_var]
@@ -341,6 +344,7 @@ class DatasetHDF5Persistence(object):
         Note: This applies before pack expansion, so step values are not considered right now.
         """
         ds_tidx = data_file[DS_TIMEIDX_PATH]
+        cur_tidx = ds_tidx.attrs["cur_row"]
         ds_time = data_file["vars/%s" % self.time_var]
         cur_idx = ds_time.attrs["cur_row"]
         log.info("Get time %s %s (%s)", start_time, end_time, cur_idx)
@@ -349,11 +353,11 @@ class DatasetHDF5Persistence(object):
             return start_row, end_row
         time_type = self.var_defs_map[self.time_var].get("base_type", "")
 
-        # Could use binary search - for now just iterate
         start_time_val = float(start_time)/1000 if start_time else 0
         end_time_val = float(end_time)/1000 if end_time else 0
         if start_time and end_time and start_time >= end_time:
             end_time = end_time_val = 0
+        last_time_val = ds_time[cur_idx - 1]
 
         def gte_time(data_val, cmp_val, allow_equal=True):
             # Support NTP4 timestamp and Unit millis (i8)
@@ -368,23 +372,36 @@ class DatasetHDF5Persistence(object):
                 else:
                     return data_val > cmp_val
 
-        tidx_slice, step, incr, start_win, end_win, done = None, 0, TIMEINDEX_ROW_INCREMENT, 0, 0, False
-        while step * incr < len(ds_tidx) and not done:
-            tidx_slice = ds_tidx[step*incr:min((step+1)*incr, len(ds_tidx))]
-            if start_time and not start_win and gte_time(tidx_slice[-1], start_time_val, True):
+        if not gte_time(last_time_val, start_time_val, start_time_include):
+            # No value in dataset before start_time
+            return cur_idx, cur_idx
+
+        # Walk through the time index, in chunks
+        # TODO: Could use binary search - for now just iterate
+        tidx_slice, step, incr, start_win, end_win, done = None, 0, TIMEINDEX_ROW_INCREMENT, -1, -1, False
+        while step * incr <= cur_tidx and not done:
+            tidx_slice = ds_tidx[step*incr:min((step+1)*incr, cur_tidx)]
+            if start_time and start_win == -1 and gte_time(tidx_slice[-1], start_time_val, True):
                 for i, ts_val in enumerate(tidx_slice):
                     if gte_time(ts_val, start_time_val, start_time_include):
                         start_win = max(0, step * incr + i - 1)
                         if not end_time:
                             done = True
                         break
-            if end_time and gte_time(tidx_slice[-1], end_time_val, True):
+
+            if end_time and (gte_time(tidx_slice[-1], end_time_val, True) or len(tidx_slice) < incr):
                 for i, ts_val in enumerate(tidx_slice):
                     if gte_time(ts_val, end_time_val):
                         end_win = max(0, step * incr + i - 1)
                         done = True
                         break
             step += 1
+
+        # The actual last timestamps may be after the last index value
+        if start_time and start_win == -1:
+            start_win = int(cur_tidx / self.time_idx_step)
+        if end_time and end_win == -1:
+            end_win = int(cur_tidx / self.time_idx_step)
 
         # Lookup real rows
         if start_time:
@@ -393,7 +410,7 @@ class DatasetHDF5Persistence(object):
                 if gte_time(ts_val, start_time_val, start_time_include):
                     start_row = start_win * self.time_idx_step + i
                     break
-        if end_time:
+        if end_time and end_win != -1:
             ts_slice = ds_time[end_win * self.time_idx_step: min((end_win + 1) * self.time_idx_step + 1, cur_idx)]
             for i, ts_val in enumerate(ts_slice):
                 if gte_time(ts_val, end_time_val, False):
@@ -429,6 +446,46 @@ class DatasetHDF5Persistence(object):
             if max_rows:
                 new_array = new_array[-max_rows:]
             res_data[var_name] = new_array.tolist()
+
+    def get_data_copy(self, data_filter=None):
+        data_filter = data_filter or {}
+        ds_filename = self._get_ds_filename()
+        if not os.path.exists(ds_filename):
+            return {}
+        data_file = HDFLockingFile(ds_filename, "r", retry_count=10, retry_wait=0.2)
+        try:
+            res_data = {}
+            read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
+            max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
+            start_time = data_filter.get("start_time", None)
+            end_time = data_filter.get("end_time", None)
+            start_time_include = data_filter.get("start_time_include", True) is True
+            time_slice = None
+
+            start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
+            log.info("ROW INTERVAL %s %s", start_row, end_row)
+            if self.expand_info.get("need_expand", False):
+                max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
+
+            if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
+                ds_time = data_file["vars/%s" % self.time_var]
+                cur_idx = ds_time.attrs["cur_row"]
+                for var_name in read_vars:
+                    ds_path = "vars/%s" % var_name
+                    if ds_path not in data_file:
+                        log.warn("Variable '%s' not in dataset - ignored", var_name)
+                        continue
+                    ds_var = data_file[ds_path]
+                    data_array = ds_var[max(start_row, end_row-max_rows, 0):end_row]
+
+
+            elif self.ds_layout == DS_LAYOUT_COMBINED:
+                raise NotImplementedError()
+
+            return res_data
+
+        finally:
+            data_file.close()
 
 
 class HDF5Tools(object):
