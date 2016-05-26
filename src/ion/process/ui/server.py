@@ -487,7 +487,8 @@ def load_token(access_token=None, refresh_token=None):
 
                 flask.g.oauth_user = token.user
                 flask.g.actor_id = token.user["actor_id"]
-                if ui_instance.extend_session_timeout and token.is_valid(check_expiry=True):
+                if "noextend" not in request.headers.get("scion-session", "") and \
+                    ui_instance.extend_session_timeout and token.is_valid(check_expiry=True):
                     new_expires = get_ion_ts_millis() + 1000 * ui_instance.session_timeout
                     if ui_instance.max_session_validity:
                         # Make sure token does not exceed maximum validity
