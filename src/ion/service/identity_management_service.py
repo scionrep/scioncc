@@ -6,11 +6,10 @@ from uuid import uuid4
 import bcrypt
 
 #from pyon.core.security.authentication import Authentication
-from pyon.public import log, CFG, RT, OT, Inconsistent, NotFound, BadRequest
-from pyon.public import get_ion_ts_millis, get_ion_ts, Unauthorized
+from pyon.public import log, CFG, RT, OT, Inconsistent, NotFound, BadRequest, EventPublisher, \
+    get_ion_ts_millis, get_ion_ts, Unauthorized
 
 from interface.objects import SecurityToken, TokenTypeEnum, Credentials, AuthStatusEnum
-
 from interface.services.core.iidentity_management_service import BaseIdentityManagementService
 
 CFG_PREFIX = 'service.identity_management'
@@ -23,9 +22,13 @@ class IdentityManagementService(BaseIdentityManagementService):
     identities to external identities. Also stores metadata such as a user profile.
     """
 
+    event_pub = None
+
     def on_init(self):
         self.rr = self.clients.resource_registry
         #self.authentication = Authentication()
+
+        self.event_pub = EventPublisher(process=self)
 
     def create_actor_identity(self, actor_identity=None):
         self._validate_resource_obj("actor_identity", actor_identity, RT.ActorIdentity, checks="noid,name")
@@ -172,7 +175,7 @@ class IdentityManagementService(BaseIdentityManagementService):
         actor_obj = self.read_actor_identity(actor_id)
         try:
             if actor_obj.auth_status != AuthStatusEnum.ENABLED:
-                raise NotFound("identity not enabled")
+                raise NotFound("Actor not enabled")
 
             cred_obj = None
             for cred in actor_obj.credentials:
@@ -201,6 +204,22 @@ class IdentityManagementService(BaseIdentityManagementService):
         finally:
             # Lower level RR call to avoid credentials clearing
             self.rr.update(actor_obj)
+
+            self._publish_auth_event(actor_obj, username)
+
+    def _publish_auth_event(self, actor_obj, username):
+        if not self.event_pub:
+            return
+
+        event_data = dict()
+        event_data['origin'] = actor_obj._id
+        event_data['origin_type'] = RT.ActorIdentity
+        event_data['sub_type'] = "SUCCESS" if actor_obj.auth_fail_count == 0 else "FAIL"
+        event_data['username'] = username
+        event_data['auth_count'] = actor_obj.auth_count
+        event_data['auth_status'] = actor_obj.auth_status
+
+        self.event_pub.publish_event(event_type='AuthenticationEvent', **event_data)
 
     def set_actor_auth_status(self, actor_id='', status=None):
         actor_obj = self._validate_resource_id("actor_id", actor_id, RT.ActorIdentity)

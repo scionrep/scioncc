@@ -264,6 +264,14 @@ ServicePolicyEvent: !Extends_PolicyEvent
   op: ""   #Optional op name
 
 
+# Fired when an actor authenticates or fails to authenticate.
+# origin is actor_id, subtype is SUCCESS, FAIL
+AuthenticationEvent: !Extends_Event
+  username: ""  #
+  auth_count: 0
+  auth_status: 0
+
+
 #This event is used to flush the caches containing user roles
 UserRoleCacheResetEvent: !Extends_PolicyEvent
 
