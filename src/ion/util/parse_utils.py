@@ -69,6 +69,8 @@ def get_typed_value(value, schema_entry=None, targettype=None, strict=False):
     elif targettype == 'float':
         if type(value) == float:
             return value
+        elif type(value) in (int, long):
+            return float(value)
         if strict:
             raise BadRequest("Value %s is type %s not float" % (value, type(value).__name__))
         try:
