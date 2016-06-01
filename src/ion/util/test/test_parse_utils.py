@@ -47,6 +47,8 @@ class TestParseUtils(UnitTestCase):
             get_typed_value("", targettype="float", strict=False)
         ret_val = get_typed_value("999.9", targettype="float", strict=False)
         self.assertEqual(ret_val, 999.9)
+        ret_val = get_typed_value("999", targettype="float", strict=False)
+        self.assertEqual(ret_val, 999.0)
 
         # TEST: String
         ret_val = get_typed_value("foo", targettype="str", strict=True)
