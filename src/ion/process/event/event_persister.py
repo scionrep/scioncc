@@ -12,8 +12,6 @@ from pyon.util.async import spawn
 from pyon.util.containers import named_any
 from pyon.public import log
 
-PROCESS_PLUGINS = []
-
 
 class EventPersister(SimpleProcess):
 
@@ -45,9 +43,11 @@ class EventPersister(SimpleProcess):
         # The event subscriber
         self.event_sub = None
 
+        process_plugin_defs = self.CFG.get_safe("process.event_persister.process_plugins", {}) or {}
+
         # Registered event process plugins
         self.process_plugins = {}
-        for plugin_name, plugin_cls, plugin_args in PROCESS_PLUGINS:
+        for plugin_name, plugin_cls, plugin_args in process_plugin_defs:
             try:
                 plugin = named_any(plugin_cls)(**plugin_args)
                 self.process_plugins[plugin_name]= plugin
