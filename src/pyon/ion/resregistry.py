@@ -4,6 +4,8 @@
 
 __author__ = 'Michael Meisinger'
 
+from functools import wraps
+
 from pyon.core import bootstrap
 from pyon.core.bootstrap import IonObject, CFG
 from pyon.core.governance import get_system_actor
@@ -12,7 +14,7 @@ from pyon.core.object import IonObjectBase
 from pyon.core.registry import getextends
 from pyon.datastore.datastore import DataStore
 from pyon.datastore.datastore_query import DatastoreQueryBuilder, DQ
-from pyon.ion.event import EventPublisher
+from pyon.ion.event import EventPublisher, event_context
 from pyon.ion.identifier import create_unique_resource_id, create_unique_association_id
 from pyon.ion.resource import LCS, LCE, PRED, RT, AS, OT, get_restype_lcsm, is_resource, ExtendedResourceContainer, \
     lcstate, lcsplit, Predicates, create_access_args
@@ -835,11 +837,25 @@ class ResourceRegistry(object):
         return user_id
 
 
+def with_event_context(func):
+    # Decorator that sets event context such as actor_id
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            actor_id = get_ion_actor_id(getattr(self, "_process", None))
+            event_context.actor_id = actor_id
+            return func(self, *args, **kwargs)
+        finally:
+            event_context.actor_id = None
+    return wrapper
+
+
 class ResourceRegistryServiceWrapper(object):
     """
     Class that maps the service interface of the resource_registry service (YML)
     to the container's resource registry instance and smooth over the differences.
     In particular it extracts the actor from the current message context for use as owner argument.
+    The message context gets lost, so is not available for e.g. event publishing.
     """
     def __init__(self, rr, process):
         self._rr = rr
@@ -850,11 +866,37 @@ class ResourceRegistryServiceWrapper(object):
             return getattr(self, attr)
         return getattr(self._rr, attr)
 
+    @with_event_context
     def create(self, object=None):
         return self._rr.create(object=object, actor_id=get_ion_actor_id(self._process))
 
+    @with_event_context
+    def create_mult(self, res_list):
+        return self._rr.create_mult(res_list=res_list, actor_id=get_ion_actor_id(self._process))
+
+    @with_event_context
     def create_attachment(self, resource_id='', attachment=None):
         return self._rr.create_attachment(resource_id=resource_id, attachment=attachment, actor_id=get_ion_actor_id(self._process))
+
+    @with_event_context
+    def update(self, *args, **kwargs):
+        return self._rr.update(*args, **kwargs)
+
+    @with_event_context
+    def delete(self, *args, **kwargs):
+        return self._rr.delete(*args, **kwargs)
+
+    @with_event_context
+    def lcs_delete(self, *args, **kwargs):
+        return self._rr.lcs_delete(*args, **kwargs)
+
+    @with_event_context
+    def execute_lifecycle_transition(self, *args, **kwargs):
+        return self._rr.execute_lifecycle_transition(*args, **kwargs)
+
+    @with_event_context
+    def set_lifecycle_state(self, *args, **kwargs):
+        return self._rr.set_lifecycle_state(*args, **kwargs)
 
     def find_objects(self, subject="", predicate="", object_type="", id_only=False, limit=0, skip=0, descending=False):
         access_args = create_access_args(current_actor_id=get_ion_actor_id(self._process),

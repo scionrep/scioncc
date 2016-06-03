@@ -6,6 +6,7 @@ __author__ = 'Dave Foster <dfoster@asascience.com>, Michael Meisinger'
 
 import functools
 import sys
+import threading
 import traceback
 from gevent import event as gevent_event
 
@@ -28,6 +29,9 @@ from interface.objects import Event
 VALID_EVENT_TIME_PERIOD = 365 * 24 * 60 * 60 * 1000   # one year
 DEFAULT_SYSTEM_XS = "system"
 DEFAULT_EVENTS_XP = "events"
+
+# Alternative way to set process context
+event_context = threading.local()
 
 
 class EventError(IonException):
@@ -191,6 +195,8 @@ class EventPublisher(Publisher):
                 actor_id = ctx.get(MSG_HEADER_ACTOR, None) or ""
         except Exception as ex:
             pass
+
+        actor_id = actor_id or getattr(event_context, "actor_id", None) or ""
 
         return actor_id
 
