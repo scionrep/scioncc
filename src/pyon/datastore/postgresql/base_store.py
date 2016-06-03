@@ -688,8 +688,7 @@ class PostgresDataStore(DataStore):
             if doc.get("type_", None) == "DirEntry":
                 obj_type = "D"
         elif profile == DataStore.DS_PROFILE.EVENTS:
-            if doc.get("origin", None):
-                obj_type = "E"
+            obj_type = "E"
         return obj_type
 
     def update_attachment(self, doc, attachment_name, data, content_type=None, datastore_name=""):
@@ -1175,6 +1174,7 @@ class PostgresDataStore(DataStore):
             #print "filter:", filter
             cur.execute(sql, query_args)
             rows = cur.fetchall()
+            print "EVENTS", cur.query
 
         if id_only:
             res_rows = [(self._prep_id(row[0]), [], row[1]) for row in rows]
