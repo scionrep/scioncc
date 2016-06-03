@@ -1174,7 +1174,6 @@ class PostgresDataStore(DataStore):
             #print "filter:", filter
             cur.execute(sql, query_args)
             rows = cur.fetchall()
-            print "EVENTS", cur.query
 
         if id_only:
             res_rows = [(self._prep_id(row[0]), [], row[1]) for row in rows]
