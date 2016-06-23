@@ -31,6 +31,7 @@ class AgentControl(object):
         config = dict(agent_config=agent_config, agent=dict(resource_id=resource_id))
 
         agent_name = agent_type + "_" + resource_id
+        # TODO: This should be PD eventually, maintaining Process state
         self.process_id = Container.instance.spawn_process(agent_name, agent_mod, agent_cls, config)
         return self.process_id
 

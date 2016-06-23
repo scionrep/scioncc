@@ -13,6 +13,7 @@ from ion.data.packet.packet_builder import DataPacketBuilder
 from interface.objects import DataPacket
 
 class DataAgent(StreamingAgent):
+    agent_type = "data_agent"
     agent_plugin = None
     sampling_gl = None
     sampling_gl_quit = None

@@ -937,13 +937,15 @@ class ProcManager(object):
             if self.container.has_capability(self.container.CCAP.DIRECTORY):
                 # Registration of AGENT process: in Directory
                 caps = process_instance.get_capabilities() if hasattr(process_instance, "get_capabilities") else {}
-                self.container.directory.register("/Agents", process_instance.id,
-                        **dict(name=process_instance._proc_name,
-                               container=process_instance.container.id,
-                               resource_id=getattr(process_instance, "resource_id", ""),
-                               agent_id=getattr(process_instance, "agent_id", ""),
-                               def_id=getattr(process_instance, "agent_def_id", ""),
-                               capabilities=caps))
+                entry_attrs = dict(name=process_instance._proc_name,
+                                   container=process_instance.container.id,
+                                   resource_id=getattr(process_instance, "resource_id", ""),
+                                   agent_id=getattr(process_instance, "agent_id", ""),
+                                   agent_type=getattr(process_instance, "agent_type", ""),
+                                   def_id=getattr(process_instance, "agent_def_id", ""),
+                                   capabilities=caps)
+                entry_attrs.update(getattr(process_instance, "_directory_attributes", {}))
+                self.container.directory.register("/Agents", process_instance.id, **entry_attrs)
 
         self._call_proc_state_changed(process_instance, ProcessStateEnum.RUNNING)
 

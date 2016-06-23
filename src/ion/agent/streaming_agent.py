@@ -26,6 +26,7 @@ class StreamingAgent(BaseStreamingAgent):
     resource_id = None
     agent_id = None
     agent_def_id = None
+    agent_type = "agent"
 
     # Instance defaults (local)
     current_state = AGENTSTATE_NEW
