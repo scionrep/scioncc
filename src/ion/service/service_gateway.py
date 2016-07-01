@@ -252,7 +252,7 @@ class ServiceGateway(object):
             # Form encoded
             if GATEWAY_ARG_JSON in request.form:
                 payload = request.form[GATEWAY_ARG_JSON]
-                request_obj = json_loads(str(payload))
+                request_obj = json_loads(payload)
 
         if request_obj and is_ion_object_dict(request_obj):
             request_obj = self.create_ion_object(request_obj)
@@ -327,7 +327,7 @@ class ServiceGateway(object):
     def create_attachment(self):
         try:
             payload = request.form[GATEWAY_ARG_JSON]
-            json_params = json_loads(str(payload))
+            json_params = json_loads(payload)
 
             actor_id, expiry = self.get_governance_info_from_request(json_params)
             actor_id, expiry = self.validate_request(actor_id, expiry)
@@ -637,7 +637,7 @@ class ServiceGateway(object):
                 # Form encoded payload
                 if GATEWAY_ARG_JSON in request.form:
                     payload = request.form[GATEWAY_ARG_JSON]
-                    request_args = json_loads(str(payload))
+                    request_args = json_loads(payload)
                     if GATEWAY_ARG_PARAMS not in request_args:
                         # Magic fallback: Directly use JSON first level as args if params key not present
                         request_args = {GATEWAY_ARG_PARAMS: request_args}
