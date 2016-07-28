@@ -3,7 +3,8 @@
 __author__ = 'Michael Meisinger'
 
 import os
-import tempfile
+import time
+import uuid
 
 from pyon.public import log, BadRequest, CFG, Container
 from ion.util.hdf_utils import HDFLockingFile
@@ -74,6 +75,9 @@ class DatasetHDF5Persistence(object):
             self.var_index[var_name] = position
         if self.time_var not in self.var_defs_map:
             raise BadRequest("No time variable present")
+        self.pruning_attrs = self.dataset_schema["attributes"].get("pruning", None) or {}
+        self.prune_trigger_mode = self.pruning_attrs.get("trigger_mode", None) or ""
+        self.prune_mode = self.pruning_attrs.get("prune_mode", None) or ""
         self.expand_info = self._get_expand_info()
 
     def _get_ds_filename(self):
@@ -115,12 +119,12 @@ class DatasetHDF5Persistence(object):
                            expand_cols=expand_cols)         # Colnames to be expanded
         return expand_info
 
-    def require_dataset(self):
+    def require_dataset(self, ds_filename=None):
         """
         Ensures a dataset HDF5 file exists and creates it if necessary usign the dataset
         schema definition.
         """
-        ds_filename = self._get_ds_filename()
+        ds_filename = ds_filename or self._get_ds_filename()
         if os.path.exists(ds_filename):
             return ds_filename, False
 
@@ -146,6 +150,10 @@ class DatasetHDF5Persistence(object):
             initial_shape = (self.ds_increment, )
 
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
+                # Individial layout means every variable has its own table - variable values
+                # must be coindexed with the time values.
+                # The time variable keeps the cur_row attribute which is the next writable index.
+                # The length of tables is increased in configurable chunk sizes.
                 for position, var_info in enumerate(self.var_defs):
                     var_name = var_info["name"]
                     base_type = var_info.get("base_type", "float")
@@ -160,6 +168,10 @@ class DatasetHDF5Persistence(object):
                         dset.attrs["cur_row"] = 0
 
             elif self.ds_layout == DS_LAYOUT_COMBINED:
+                # EXPERIMENTAL - unsupported for most operations.
+                # Combined layout means all variables are in one table of structured type.
+                # The cur_row attribute keeps the number of next writable index.
+                # The length of the table is increased in configurable chunk sizes.
                 dtype_parts = []
                 for var_info in self.var_defs:
                     var_name = var_info["name"]
@@ -172,7 +184,8 @@ class DatasetHDF5Persistence(object):
                 dset.attrs["dtype_repr"] = repr(dset.dtype)[6:-1]
                 dset.attrs["cur_row"] = 0
 
-            # Internal time index
+            # Internal time index - a table indexing every nth row's timestep.
+            # Index table grows in constant defined chunk size.
             data_file.create_group("index")
             dtype_tidx = [("time", "i8")]
             ds_tidx = data_file.create_dataset(DS_TIMEIDX_PATH, (INTERNAL_ROW_INCREMENT, ),
@@ -181,7 +194,8 @@ class DatasetHDF5Persistence(object):
             ds_tidx.attrs["description"] = "Index of every %s-th time value" % self.time_idx_step
             ds_tidx.attrs["step"] = self.time_idx_step
 
-            # Internal ingest time
+            # Internal ingest time - table of 3 tuple with timestamp, start row and num rows for a packet
+            # Index table grows in constant defined chunk size.
             dtype_tingest = [("time", "i8"), ("row", "u4"), ("count", "u4")]
             ds_tingest = data_file.create_dataset(DS_TIMEINGEST_PATH, (INTERNAL_ROW_INCREMENT, ),
                                                   dtype=dtype_tingest, maxshape=(None, ))
@@ -194,7 +208,10 @@ class DatasetHDF5Persistence(object):
         return ds_filename, True
 
     def _resize_dataset(self, var_ds, num_rows, row_increment=None):
-        """ Performs a resize operation on a dataset table """
+        """
+        Performs a resize operation on a dataset table if needed.
+        Grows table in configurable chunks.
+        """
         row_increment = row_increment or self.ds_increment
         cur_size = len(var_ds)
         new_size = cur_size + (int(num_rows / row_increment) + 1) * row_increment
@@ -209,6 +226,7 @@ class DatasetHDF5Persistence(object):
         num_rows, cur_idx, time_idx_rows = len(packet.data["data"]), 0, []
         ds_filename = self._get_ds_filename()
         data_file = HDFLockingFile(ds_filename, "r+", retry_count=10, retry_wait=0.5)
+        file_closed = False
         try:
             if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
                 # Get index values from time var
@@ -255,23 +273,81 @@ class DatasetHDF5Persistence(object):
             ds_tingest[ds_tingest.attrs["cur_row"]] = (ingest_ts.to_np_value(), cur_idx, num_rows)
             ds_tingest.attrs["cur_row"] += 1
 
-            # Update time_idx (every nth row's time)
-            new_idx_row = (cur_idx + num_rows + self.time_idx_step - 1) / self.time_idx_step
-            old_idx_row = (cur_idx + self.time_idx_step - 1) / self.time_idx_step
-            num_tidx_rows = new_idx_row - old_idx_row
-            time_ds = data_file["vars/%s" % (self.time_var if self.ds_layout == DS_LAYOUT_INDIVIDUAL else DS_VARIABLES)]
-            time_idx_rows = [time_ds[idx_row*self.time_idx_step] for idx_row in xrange(old_idx_row, new_idx_row)]
-            if time_idx_rows:
-                ds_tidx = data_file[DS_TIMEIDX_PATH]
-                tidx_cur_row = ds_tidx.attrs["cur_row"]
-                if tidx_cur_row + num_tidx_rows > len(ds_tidx):
-                    self._resize_dataset(ds_tidx, num_tidx_rows, TIMEINDEX_ROW_INCREMENT)
-                ds_tidx[tidx_cur_row:tidx_cur_row+num_tidx_rows] = time_idx_rows
-                ds_tidx.attrs["cur_row"] += num_tidx_rows
+            # Update time index
+            self._update_time_index(data_file, num_rows, cur_idx=cur_idx)
+
+            # Check if pruning is necessary
+            if self.prune_trigger_mode == "on_ingest" and self.prune_mode:
+                file_closed = self._prune_dataset(data_file)
 
             #HDF5Tools.dump_hdf5(data_file, with_data=True)
         finally:
-            data_file.close()
+            if not file_closed:
+                data_file.close()
+
+    def _update_time_index(self, data_file, num_rows, cur_idx=0):
+        """ Update time_idx (every nth row's time) """
+        new_idx_row = (cur_idx + num_rows + self.time_idx_step - 1) / self.time_idx_step
+        old_idx_row = (cur_idx + self.time_idx_step - 1) / self.time_idx_step
+        num_tidx_rows = new_idx_row - old_idx_row
+        time_ds = data_file["vars/%s" % (self.time_var if self.ds_layout == DS_LAYOUT_INDIVIDUAL else DS_VARIABLES)]
+        time_idx_rows = [time_ds[idx_row * self.time_idx_step] for idx_row in xrange(old_idx_row, new_idx_row)]
+        if time_idx_rows:
+            ds_tidx = data_file[DS_TIMEIDX_PATH]
+            tidx_cur_row = ds_tidx.attrs["cur_row"]
+            if tidx_cur_row + num_tidx_rows > len(ds_tidx):
+                self._resize_dataset(ds_tidx, num_tidx_rows, TIMEINDEX_ROW_INCREMENT)
+            ds_tidx[tidx_cur_row:tidx_cur_row + num_tidx_rows] = time_idx_rows
+            ds_tidx.attrs["cur_row"] += num_tidx_rows
+
+    def _prune_dataset(self, data_file):
+        if not self.prune_mode:
+            return
+        if self.prune_mode == "max_age_rel":
+            # Prunes if first timestamp older than trigger compared to most recent timestamp
+            trigger_age = float(self.pruning_attrs.get("trigger_age", 0))
+            retain_age = float(self.pruning_attrs.get("retain_age", 0))
+            if trigger_age <= 0.0 or retain_age <= 0.0 or trigger_age < retain_age:
+                raise BadRequest("Bad pruning trigger_age or retain_age")
+            var_ds = data_file["vars/%s" % self.time_var]
+            cur_idx = var_ds.attrs["cur_row"]
+            if not len(var_ds) or not var_ds.attrs["cur_row"]:
+                return
+            min_ts = NTP4Time.from_ntp64(var_ds[0].tostring()).to_unix()
+            max_ts = NTP4Time.from_ntp64(var_ds[cur_idx-1].tostring()).to_unix()
+            if min_ts + trigger_age >= max_ts:
+                return
+
+            # Find the first index that is lower or equal to retain_age and delete gap
+            start_time = (max_ts - retain_age) * 1000
+            log.info("PRUNING dataset now: mode=%s, start_time=%s", self.prune_mode, int(start_time))
+            copy_filename = self._get_data_copy(data_file, data_filter=dict(start_time=start_time))
+        elif self.prune_mode == "max_age_abs":
+            # Prunes if first timestamp older than trigger compared to current timestamp
+            raise NotImplementedError()
+        elif self.prune_mode == "max_rows":
+            raise NotImplementedError()
+        elif self.prune_mode == "max_size":
+            raise NotImplementedError()
+        else:
+            raise BadRequest("Invalid prune_mode: %s" % self.prune_mode)
+
+        if not copy_filename:
+            return
+
+        # Do the replace of data file with the copy.
+        # Make sure to heed race conditions so that waiting processes won't lock the file first
+        ds_filename = self._get_ds_filename()
+        ds_filename_bak = ds_filename + ".bak"
+        if os.path.exists(ds_filename_bak):
+            os.remove(ds_filename_bak)
+
+        data_file.close()  # Note: Inter-process race condition possible because close removes the lock
+        os.rename(ds_filename, ds_filename_bak)
+        os.rename(copy_filename, ds_filename)
+        # os.remove(ds_filename_bak)
+        log.info("Pruning successful. Replaced dataset with pruned file.")
+        return True
 
     # -------------------------------------------------------------------------
 
@@ -293,7 +369,7 @@ class DatasetHDF5Persistence(object):
             time_slice = None
 
             start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
-            log.info("Row date interval: %s : %s", start_row, end_row)
+            log.info("Get data for row interval %s to %s", start_row, end_row)
             if self.expand_info.get("need_expand", False):
                 max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
             if end_row-start_row > max_rows:
@@ -347,7 +423,9 @@ class DatasetHDF5Persistence(object):
         cur_tidx = ds_tidx.attrs["cur_row"]
         ds_time = data_file["vars/%s" % self.time_var]
         cur_idx = ds_time.attrs["cur_row"]
-        log.info("Get time %s %s (%s)", start_time, end_time, cur_idx)
+        log.info("Get row interval for time interval %s to %s (%s rows total)",
+                 int(start_time)/1000 if start_time else start_time,
+                 int(end_time)/1000 if end_time else end_time, cur_idx)
         start_row, end_row = 0, cur_idx
         if not start_time and not end_time:
             return start_row, end_row
@@ -454,43 +532,98 @@ class DatasetHDF5Persistence(object):
             return {}
         data_file = HDFLockingFile(ds_filename, "r", retry_count=10, retry_wait=0.2)
         try:
-            res_data = {}
-            read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
-            max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
-            start_time = data_filter.get("start_time", None)
-            end_time = data_filter.get("end_time", None)
-            start_time_include = data_filter.get("start_time_include", True) is True
-            time_slice = None
+            return self._get_data_copy(data_file, data_filter=data_filter)
+        finally:
+            data_file.close()
 
-            start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
-            log.info("ROW INTERVAL %s %s", start_row, end_row)
-            if self.expand_info.get("need_expand", False):
-                max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
+    def _get_data_copy(self, data_file, data_filter=None):
+        """ Helper to copy HDF5 that takes already open file handle """
+        data_filter = data_filter or {}
+        res_data = {}
+        read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
+        start_time = data_filter.get("start_time", None)
+        end_time = data_filter.get("end_time", None)
+        start_time_include = data_filter.get("start_time_include", True) is True
+        time_slice = None
 
-            if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-                ds_time = data_file["vars/%s" % self.time_var]
-                cur_idx = ds_time.attrs["cur_row"]
+        ds_time = data_file["vars/%s" % self.time_var]
+        cur_idx = ds_time.attrs["cur_row"]
+
+        start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
+        num_rows = end_row - start_row
+        log.info("Copying dataset: %s rows of %s (%s to %s)", end_row-start_row, cur_idx, start_row, end_row)
+
+        if self.ds_layout != DS_LAYOUT_INDIVIDUAL:
+            raise NotImplementedError()
+
+        copy_filename = self.container.file_system.get("TEMP/ds_temp_%s.hdf5" % uuid.uuid4().hex)
+        try:
+            self.require_dataset(ds_filename=copy_filename)
+
+            new_file = HDFLockingFile(copy_filename, "r+", retry_count=2, retry_wait=0.1)
+            try:
                 for var_name in read_vars:
                     ds_path = "vars/%s" % var_name
                     if ds_path not in data_file:
                         log.warn("Variable '%s' not in dataset - ignored", var_name)
                         continue
                     ds_var = data_file[ds_path]
-                    data_array = ds_var[max(start_row, end_row-max_rows, 0):end_row]
+                    new_ds_var = new_file[ds_path]
 
+                    if num_rows > len(new_ds_var):
+                        self._resize_dataset(new_ds_var, num_rows)
 
-            elif self.ds_layout == DS_LAYOUT_COMBINED:
-                raise NotImplementedError()
+                    data_array = ds_var[start_row:end_row]
+                    # TODO: Chunkwise copy instead of one big
+                    new_ds_var[0:num_rows] = data_array
+                    if var_name == self.time_var:
+                        new_ds_var.attrs["cur_row"] = num_rows
 
-            return res_data
+                    # Use lower level copy
+                # Time index
+                self._update_time_index(new_file, num_rows, cur_idx=0)
 
-        finally:
-            data_file.close()
+                # Ingest ts - copy from existing, fix index values and prune
+                ds_tingest = data_file[DS_TIMEINGEST_PATH]
+                new_ds_tingest = new_file[DS_TIMEINGEST_PATH]
+                self._resize_dataset(new_ds_tingest, len(ds_tingest), INTERNAL_ROW_INCREMENT)   # Could be smaller
+                prev_irow_val, cur_new_row = None, 0
+                for irow, irow_val in enumerate(ds_tingest[:ds_tingest.attrs["cur_row"]]):
+                    its, iidx, inrows = irow_val
+                    if iidx >= start_row:
+                        if iidx > start_row and cur_new_row == 0 and prev_irow_val:
+                            # The first is partial of previous row
+                            pits, piidx, pinrows = prev_irow_val
+                            new_ds_tingest[cur_new_row] = (pits, 0, iidx-start_row)
+                            cur_new_row += 1
+                        if iidx + inrows - 1 < end_row:
+                            new_ds_tingest[cur_new_row] = (its, iidx-start_row, min(inrows, end_row-iidx))
+                            cur_new_row += 1
+                    prev_irow_val = irow_val
+                new_ds_tingest.attrs["cur_row"] = cur_new_row
+
+            finally:
+                try:
+                    new_file.close()
+                except Exception:
+                    pass
+
+            log.info("Copy dataset successful: %s rows, %s bytes (original size: %s bytes)", num_rows,
+                     os.path.getsize(copy_filename), os.path.getsize(self._get_ds_filename()))
+
+            #HDF5Tools.dump_hdf5(copy_filename, with_data=True)
+        except Exception:
+            log.exception("Error copying HDF5 file")
+            if os.path.exists(copy_filename):
+                os.remove(copy_filename)
+            return None
+
+        return copy_filename
 
 
 class HDF5Tools(object):
     @classmethod
-    def dump_hdf5(cls, data_file, leave_open=False, with_data=False):
+    def dump_hdf5(cls, data_file, leave_open=False, with_data=False, with_crow=True):
         should_close = False
         if isinstance(data_file, basestring) and os.path.exists(data_file):
             filename = data_file
@@ -505,12 +638,18 @@ class HDF5Tools(object):
             parts = entry_name.split("/")
             entry = data_file[entry_name]
             ilevel = len(parts)
+            cur_row = None
             print "%s%s %s" % ("  "*ilevel, parts[-1], entry)
             if entry.attrs:
                 print "%s  [%s]" % ("  "*ilevel, ", ".join("%s=%s" % (k, v) for (k, v) in entry.attrs.iteritems()))
 
             if with_data and hasattr(entry, "value"):
-                print "%s  %s" % ("  "*ilevel, entry.value)
+                cur_row = entry.attrs["cur_row"] if entry.attrs and "cur_row" in entry.attrs else None
+                cur_row = cur_row or (data_file["vars/time"].attrs["cur_row"] if entry_name.startswith("vars") else None)
+                if with_crow and cur_row:
+                    print "%s  %s (%s of %s)" % ("  "*ilevel, entry.value[:cur_row], cur_row, len(entry))
+                else:
+                    print "%s  %s" % ("  "*ilevel, entry.value)
 
         data_file.visit(dump_item)
 

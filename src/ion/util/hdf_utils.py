@@ -89,7 +89,7 @@ class HDFLockingFile(h5py.File if h5py else object):
         """ See also: https://github.com/theochem/horton/blob/master/horton/io/lockedh5.py """
         if not h5py:
             raise Exception("Requires h5py")
-        retry_count = kwargs.pop("retry_count", 10)
+        retry_count = kwargs.pop("retry_count", 10) + 1   # It's actually a try-count
         retry_wait = kwargs.pop("retry_wait", 1.0)
 
         # Try to open file (h5py may detect multiple writes)
