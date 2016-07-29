@@ -3,6 +3,7 @@
 __author__ = 'Michael Meisinger'
 
 import os
+import math
 import time
 import uuid
 
@@ -12,12 +13,11 @@ from ion.util.ntp_time import NTP4Time
 
 try:
     import numpy as np
-except ImportError:
-    np = None
-try:
+    import scipy
     import h5py
 except ImportError:
-    log.warn("Missing h5py library.")
+    np = None
+    scipy = None
     h5py = None
 
 
@@ -78,6 +78,10 @@ class DatasetHDF5Persistence(object):
         self.pruning_attrs = self.dataset_schema["attributes"].get("pruning", None) or {}
         self.prune_trigger_mode = self.pruning_attrs.get("trigger_mode", None) or ""
         self.prune_mode = self.pruning_attrs.get("prune_mode", None) or ""
+        if self.prune_mode and self.pruning_attrs.get("prune_action", None) != "rewrite":
+            log.warn("Illegal prune_action: %s", self.pruning_attrs.get("prune_action", None))
+            self.prune_mode = None
+
         self.expand_info = self._get_expand_info()
 
     def _get_ds_filename(self):
@@ -361,10 +365,11 @@ class DatasetHDF5Persistence(object):
             res_data = {}
             read_vars = data_filter.get("variables", []) or [var_info["name"] for var_info in self.var_defs]
             time_format = data_filter.get("time_format", "unix_millis")
-            max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
+            max_rows_org = max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
             start_time = data_filter.get("start_time", None)
             end_time = data_filter.get("end_time", None)
             start_time_include = data_filter.get("start_time_include", True) is True
+            #data_filter["decimate"] = True
             should_decimate = data_filter.get("decimate", False) is True
             time_slice = None
 
@@ -373,42 +378,45 @@ class DatasetHDF5Persistence(object):
             if self.expand_info.get("need_expand", False):
                 max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
             if end_row-start_row > max_rows:
-                log.info("Truncating %s rows to %s max rows (from the end)", end_row-start_row, max_rows)
+                if should_decimate:
+                    log.info("Decimating %s rows to satisfy %s max rows", end_row - start_row, max_rows_org)
+                else:
+                    log.info("Truncating %s rows to %s max rows, %s unexpanded", end_row-start_row, max_rows_org, max_rows)
 
-            if self.ds_layout == DS_LAYOUT_INDIVIDUAL:
-                ds_time = data_file["vars/%s" % self.time_var]
-                cur_idx = ds_time.attrs["cur_row"]
-                for var_name in read_vars:
-                    ds_path = "vars/%s" % var_name
-                    if ds_path not in data_file:
-                        log.warn("Variable '%s' not in dataset - ignored", var_name)
-                        continue
-                    ds_var = data_file[ds_path]
-                    data_array = ds_var[max(start_row, end_row-max_rows, 0):end_row]
-                    if var_name == self.time_var and self.var_defs_map[var_name].get("base_type", "") == "ntp_time":
-                        if time_format == "unix_millis":
-                            data_array = [int(1000*NTP4Time.from_ntp64(dv.tostring()).to_unix()) for dv in data_array]
-                        else:
-                            data_array = data_array.tolist()
+            if self.ds_layout != DS_LAYOUT_INDIVIDUAL:
+                raise NotImplementedError()
+
+            ds_time = data_file["vars/%s" % self.time_var]
+            cur_idx = ds_time.attrs["cur_row"]
+            for var_name in read_vars:
+                ds_path = "vars/%s" % var_name
+                if ds_path not in data_file:
+                    log.warn("Variable '%s' not in dataset - ignored", var_name)
+                    continue
+                ds_var = data_file[ds_path]
+                start_row_act = start_row if should_decimate else max(start_row, end_row-max_rows, 0)
+                data_array = ds_var[start_row_act:end_row]
+                if var_name == self.time_var and self.var_defs_map[var_name].get("base_type", "") == "ntp_time":
+                    if time_format == "unix_millis":
+                        data_array = [int(1000*NTP4Time.from_ntp64(dv.tostring()).to_unix()) for dv in data_array]
                     else:
                         data_array = data_array.tolist()
-                    if var_name == self.time_var:
-                        time_slice = data_array
+                else:
+                    data_array = data_array.tolist()
+                if var_name == self.time_var:
+                    time_slice = data_array
 
-                    res_data[var_name] = data_array
+                res_data[var_name] = data_array
 
-                # At this point we have dict with variable to data array mapping with target (unix) timestamps
-                self._expand_packed_rows(res_data, data_filter)
+            # At this point res_data is dict mapping varname to data array. Time values are target (unix) timestamps
+            self._expand_packed_rows(res_data, data_filter)
 
-                if data_filter.get("transpose_time", False) is True:
-                    time_series = res_data.pop(self.time_var)
-                    for var_name, var_series in res_data.iteritems():
-                        res_data[var_name] = [(tv, dv) for (tv, dv) in zip(time_series, var_series)]
+            self._decimate_rows(res_data, data_filter)
 
-                # Downsample: http://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
-
-            elif self.ds_layout == DS_LAYOUT_COMBINED:
-                raise NotImplementedError()
+            if data_filter.get("transpose_time", False) is True:
+                time_series = res_data.pop(self.time_var)
+                for var_name, var_series in res_data.iteritems():
+                    res_data[var_name] = [(tv, dv) for (tv, dv) in zip(time_series, var_series)]
 
             return res_data
 
@@ -503,6 +511,7 @@ class DatasetHDF5Persistence(object):
             return
         num_steps, step_increment, expand_cols = self.expand_info["num_steps"], self.expand_info["step_increment"], self.expand_info["expand_cols"]
         max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
+        should_decimate = data_filter.get("decimate", False) is True
         log.info("Row expansion num_steps=%s step_incr=%s", num_steps, step_increment)
 
         for var_name, data_array in res_data.iteritems():
@@ -521,8 +530,37 @@ class DatasetHDF5Persistence(object):
                 new_array = np.zeros(len(data_array) * num_steps, dtype=dtype)
                 for i, val in enumerate(data_array):
                     new_array[i*num_steps:(i+1)*num_steps] = np.array([val]*num_steps, dtype=dtype)
-            if max_rows:
+            if max_rows and not should_decimate:
                 new_array = new_array[-max_rows:]
+            res_data[var_name] = new_array.tolist()
+
+    def _decimate_rows(self, res_data, data_filter):
+        """ Decimate/downsample data """
+        # Downsample: http://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
+        should_decimate = data_filter.get("decimate", False) is True
+        max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
+        num_rows = len(res_data[self.time_var])
+        if not should_decimate or max_rows >= num_rows:
+            return
+
+        dec_factor = int(num_rows / max_rows) + 1
+        if dec_factor <= 1:
+            return
+        pad_size = int(math.ceil(float(num_rows) / dec_factor) * dec_factor - num_rows)
+
+        log.info("DECIMATE from %s with factor %s and padding %s to size %s", num_rows, dec_factor, pad_size,
+                 int(float(num_rows + pad_size) / dec_factor))
+
+        # We decimate after converting a data array to a list because of the packed sample expansion case
+        # but also to be able to average timestamps vs NTPv4 values. This is inefficent but works for now.
+        # The bigger problem is the quality of the decimation. A binning approach would be better.
+
+        for var_name, var_vals in res_data.iteritems():
+            data_array = np.array(var_vals)
+            da_padded = np.append(data_array, np.zeros(pad_size) * np.NaN)
+
+            new_array = scipy.nanmean(da_padded.reshape(-1, dec_factor), axis=1)
+            #new_array = scipy.signal.decimate(da_padded, dec_factor)
             res_data[var_name] = new_array.tolist()
 
     def get_data_copy(self, data_filter=None):
@@ -657,4 +695,3 @@ class HDF5Tools(object):
             data_file.close()
 
         return data_file
-
