@@ -4,6 +4,7 @@ __author__ = "Stephen P. Henrie, Michael Meisinger"
 
 import ast
 import inspect
+import os
 import string
 import sys
 import time
@@ -867,8 +868,15 @@ class ServiceGateway(object):
             elif response_data.internal_encoding == "utf8":
                 pass
             elif response_data.internal_encoding == "filename":
-                # TODO: Server side file name for download
-                pass
+                # Server side file name for download and then delete
+                filename = content
+                if not os.path.exists(filename):
+                    raise BadRequest("File not found")
+                # Simple way of solving file download problem
+                # TODO: Use flask send_file and after request hook
+                with open(filename, "rb") as f:
+                    content = f.read()
+                os.remove(filename)
 
             resp_attrs = dict(mimetype=response_data.media_mimetype)
             if response_data.response_headers:
