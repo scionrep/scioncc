@@ -8,6 +8,7 @@ import time
 import uuid
 
 from pyon.public import log, BadRequest, CFG, Container
+from pyon.util.containers import get_datetime_str
 from ion.util.hdf_utils import HDFLockingFile
 from ion.util.ntp_time import NTP4Time
 
@@ -355,6 +356,56 @@ class DatasetHDF5Persistence(object):
 
     # -------------------------------------------------------------------------
 
+    def get_data_info(self, data_filter=None):
+        data_filter = data_filter or {}
+        ds_filename = self._get_ds_filename()
+        if not os.path.exists(ds_filename):
+            return {}
+        data_file = HDFLockingFile(ds_filename, "r", retry_count=10, retry_wait=0.2)
+        try:
+            res_info = {}
+            max_rows_org = max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
+            start_time = data_filter.get("start_time", None)
+            end_time = data_filter.get("end_time", None)
+            start_time_include = data_filter.get("start_time_include", True) is True
+            should_decimate = data_filter.get("decimate", False) is True
+
+            ds_time = data_file["vars/%s" % self.time_var]
+            cur_idx = ds_time.attrs["cur_row"]
+
+            res_info["ds_rows"] = cur_idx
+            res_info["ds_size"] = len(ds_time)
+            res_info["file_size"] = os.path.getsize(ds_filename)
+            res_info["file_name"] = ds_filename
+            res_info["vars"] = list(data_file["vars"])
+
+            start_row, end_row = self._get_row_interval(data_file, start_time, end_time, start_time_include)
+            res_info["need_expand"] = self.expand_info.get("need_expand", False)
+            if self.expand_info.get("need_expand", False):
+                max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
+            res_info["should_decimate"] = should_decimate
+            res_info["need_decimate"] = should_decimate and end_row-start_row > max_rows
+
+            res_info["ts_first"] = NTP4Time.from_ntp64(ds_time.value[0].tostring()).to_unix()
+            res_info["ts_last"] = NTP4Time.from_ntp64(ds_time.value[cur_idx-1].tostring()).to_unix()
+            res_info["ts_first_str"] = get_datetime_str(res_info["ts_first"]*1000, local_time=False)
+            res_info["ts_last_str"] = get_datetime_str(res_info["ts_last"]*1000, local_time=False)
+
+            res_info["ds_samples"] = cur_idx * self.expand_info["num_steps"] if res_info["need_expand"] else cur_idx
+
+            res_info["filter_start_row"] = start_row
+            res_info["filter_end_row"] = end_row
+            res_info["filter_max_rows"] = max_rows
+            res_info["filter_ts_first"] = NTP4Time.from_ntp64(ds_time.value[start_row].tostring()).to_unix()
+            res_info["filter_ts_last"] = NTP4Time.from_ntp64(ds_time.value[end_row-1].tostring()).to_unix()
+            res_info["filter_ts_first_str"] = get_datetime_str(res_info["filter_ts_first"]*1000, local_time=False)
+            res_info["filter_ts_last_str"] = get_datetime_str(res_info["filter_ts_last"]*1000, local_time=False)
+
+            return res_info
+
+        finally:
+            data_file.close()
+
     def get_data(self, data_filter=None):
         data_filter = data_filter or {}
         ds_filename = self._get_ds_filename()
@@ -369,7 +420,6 @@ class DatasetHDF5Persistence(object):
             start_time = data_filter.get("start_time", None)
             end_time = data_filter.get("end_time", None)
             start_time_include = data_filter.get("start_time_include", True) is True
-            #data_filter["decimate"] = True
             should_decimate = data_filter.get("decimate", False) is True
             time_slice = None
 

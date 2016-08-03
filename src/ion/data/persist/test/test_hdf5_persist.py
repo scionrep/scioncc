@@ -156,6 +156,11 @@ class TestHDF5Persist(IonIntegrationTestCase):
             self.assertEqual(ds_time[0], ds_tidx[0][0])
             self.assertEqual(ds_time[1000], ds_tidx[1][0])
 
+        info_res = self.hdf5_persist.get_data_info()
+
+        self.assertEqual(info_res["ds_rows"], 1100)
+        self.assertEqual(info_res["ts_first"], 1000000000.0)
+        self.assertEqual(info_res["ts_last"], 1000010990.0)
 
     def test_hdf5_persist_prune(self):
         # Test auto-pruning
