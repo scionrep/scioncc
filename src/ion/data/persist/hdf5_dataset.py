@@ -14,11 +14,9 @@ from ion.util.ntp_time import NTP4Time
 
 try:
     import numpy as np
-    import scipy
     import h5py
 except ImportError:
     np = None
-    scipy = None
     h5py = None
 
 
@@ -384,7 +382,7 @@ class DatasetHDF5Persistence(object):
             if self.expand_info.get("need_expand", False):
                 max_rows = max_rows / self.expand_info["num_steps"]  # Compensate expansion
             res_info["should_decimate"] = should_decimate
-            res_info["need_decimate"] = should_decimate and end_row-start_row > max_rows
+            res_info["need_decimate"] = bool(should_decimate and end_row-start_row > max_rows)
 
             res_info["ts_first"] = NTP4Time.from_ntp64(ds_time.value[0].tostring()).to_unix()
             res_info["ts_last"] = NTP4Time.from_ntp64(ds_time.value[cur_idx-1].tostring()).to_unix()
@@ -588,30 +586,43 @@ class DatasetHDF5Persistence(object):
         """ Decimate/downsample data """
         # Downsample: http://stackoverflow.com/questions/20322079/downsample-a-1d-numpy-array
         should_decimate = data_filter.get("decimate", False) is True
+        dec_method = data_filter.get("decimate_method", "mean")
         max_rows = data_filter.get("max_rows", DEFAULT_MAX_ROWS)
         num_rows = len(res_data[self.time_var])
         if not should_decimate or max_rows >= num_rows:
             return
 
-        dec_factor = int(num_rows / max_rows) + 1
+        dec_factor = int(math.ceil(float(num_rows) / max_rows))
         if dec_factor <= 1:
             return
         pad_size = int(math.ceil(float(num_rows) / dec_factor) * dec_factor - num_rows)
+        pad_size2 = int(math.ceil(float(num_rows) / (2*dec_factor)) * 2 * dec_factor - num_rows)
 
-        log.info("DECIMATE from %s with factor %s and padding %s to size %s", num_rows, dec_factor, pad_size,
-                 int(float(num_rows + pad_size) / dec_factor))
+        log.info("DECIMATE from %s with factor %s and padding %s to size %s using method %s", num_rows, dec_factor,
+                 pad_size, int(float(num_rows + pad_size) / dec_factor), dec_method)
 
         # We decimate after converting a data array to a list because of the packed sample expansion case
         # but also to be able to average timestamps vs NTPv4 values. This is inefficent but works for now.
         # The bigger problem is the quality of the decimation. A binning approach would be better.
 
         for var_name, var_vals in res_data.iteritems():
-            data_array = np.array(var_vals)
-            da_padded = np.append(data_array, np.zeros(pad_size) * np.NaN)
-
-            new_array = scipy.nanmean(da_padded.reshape(-1, dec_factor), axis=1)
-            #new_array = scipy.signal.decimate(da_padded, dec_factor)
-            res_data[var_name] = new_array.tolist()
+            if dec_method == "mean" or var_name == self.time_var:
+                data_array = np.array(var_vals)
+                da_padded = np.append(data_array, np.zeros(pad_size) * np.NaN)
+                new_array = np.nanmean(da_padded.reshape(-1, dec_factor), axis=1)
+                res_data[var_name] = new_array.tolist()
+            elif dec_method == "minmax":
+                data_array = np.array(var_vals)
+                da_padded = np.append(data_array, np.zeros(pad_size2) * np.NaN)
+                da_reshaped = da_padded.reshape(-1, 2*dec_factor)
+                min_array = np.nanmin(da_reshaped, axis=1)
+                max_array = np.nanmax(da_reshaped, axis=1)
+                new_array = np.vstack((min_array, max_array)).reshape((-1, ), order='F')  # Interleave
+                if len(new_array) > max_rows:
+                    new_array = new_array[:max_rows]
+                res_data[var_name] = new_array.tolist()
+            else:
+                raise BadRequest("Unknown decimation method")
 
     def get_data_copy(self, data_filter=None):
         data_filter = data_filter or {}

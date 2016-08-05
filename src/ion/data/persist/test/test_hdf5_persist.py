@@ -268,3 +268,57 @@ variables:
         self.assertEqual(len(data_res["time"]), 51)
         self.assertEqual(data_res["var1"][0], 202.0)
         self.assertEqual(data_res["var1"][50], 252.0)
+
+    def test_hdf5_persist_decimate(self):
+        # Test HDF5 writing, time indexing, array extension etc
+        ds_schema_str = """
+        type: scion_data_schema_1
+        description: Schema for test datasets
+        attributes:
+          basic_shape: 1d_timeseries
+          time_variable: time
+          persistence:
+            format: hdf5
+            layout: vars_individual
+            row_increment: 1000
+            time_index_step: 1000
+        variables:
+          - name: time
+            base_type: ntp_time
+            storage_dtype: i8
+            unit: ""
+            description: NTPv4 timestamp
+          - name: var1
+            base_type: float
+            storage_dtype: f8
+            unit: ""
+            description: Sample value
+          - name: random1
+            base_type: float
+            storage_dtype: f8
+            unit: ""
+            description: Random values
+        """
+        ds_schema = yaml.load(ds_schema_str)
+        ds_id = create_simple_unique_id()
+        ds_filename = self.container.file_system.get("%s/%s%s.hdf5" % (DS_BASE_PATH, DS_FILE_PREFIX, ds_id))
+
+        self.hdf5_persist = DatasetHDF5Persistence.get_persistence(ds_id, ds_schema, "hdf5")
+        self.hdf5_persist.require_dataset()
+
+        self.assertTrue(os.path.exists(ds_filename))
+        self.addCleanup(os.remove, ds_filename)
+
+        # Add 100000 values in packets of 100
+        for i in xrange(100):
+            packet = self._get_data_packet(i * 100, 100)
+            self.hdf5_persist.extend_dataset(packet)
+
+        data_res = self.hdf5_persist.get_data()
+        self.assertEqual(len(data_res), 3)
+        self.assertEqual(len(data_res["time"]), 10000)
+
+        data_res = self.hdf5_persist.get_data(dict(max_rows=999, decimate=True, decimate_method="minmax"))
+        self.assertEqual(len(data_res), 3)
+        self.assertLessEqual(len(data_res["time"]), 1000)
+

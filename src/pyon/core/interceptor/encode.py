@@ -124,7 +124,7 @@ def encode_ion(obj):
 
     if has_numpy and isinstance(obj, np.ndarray):
         #return {'t': EncodeTypes.NPARRAY, 'o': obj.tolist(), 'd': obj.dtype.str}
-        return {'t': EncodeTypes.NPARRAY, 'o': obj.tostring(), 'd': repr(obj.dtype)[6:-1], 's':obj.shape}
+        return {'t': EncodeTypes.NPARRAY, 'o': obj.tostring(), 'd': repr(obj.dtype)[6:-1], 's': obj.shape}
 
     if isinstance(obj, complex):
         return {'t': EncodeTypes.COMPLEX, 'o': (obj.real, obj.imag)}
@@ -170,7 +170,7 @@ class EncodeInterceptor(Interceptor):
         try:
             invocation.message = msgpack.packb(payload, default=encode_ion)
         except Exception:
-            log.error("Illegal type in IonObject attributes: %s", payload)
+            log.exception("Illegal type in IonObject attributes: %s", payload)
             raise BadRequest("Illegal type in IonObject attributes")
 
         # Make sure no Nones exist in headers - this indicates a problem somewhere up the stack.
