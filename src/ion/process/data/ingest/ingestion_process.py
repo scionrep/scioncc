@@ -2,7 +2,7 @@
 
 __author__ = 'Michael Meisinger'
 
-from pyon.public import log, StandaloneProcess, BadRequest, CFG, StreamSubscriber, named_any
+from pyon.public import log, StandaloneProcess, BadRequest, CFG, StreamSubscriber, named_any, get_safe
 
 from interface.objects import StreamRoute, DataPacket
 
@@ -12,21 +12,27 @@ CONFIG_KEY = "process.ingestion_process"
 class IngestionProcess(StandaloneProcess):
 
     def on_init(self):
-        log.info("Ingestion starting")
+        self.ingestion_profile = self.CFG.get_safe(CONFIG_KEY + ".ingestion_profile", "default")
+
+        log.info("Ingestion starting using profile '%s'", self.ingestion_profile)
         self.exchange_name = "ingestion_process"
 
-        plugin_cls = CFG.get_safe(CONFIG_KEY + ".plugin")
+        self.ingestion_config = self.CFG.get_safe(CONFIG_KEY + ".profile_" + self.ingestion_profile) or {}
+        if not self.ingestion_config:
+            raise BadRequest("No config found for profile '%s'" % self.ingestion_profile)
+
+        plugin_cls = get_safe(self.ingestion_config, "plugin")
         self.plugin = named_any(plugin_cls)(self)
         log.info("Started ingestion plugin '%s'", plugin_cls)
 
         self.persistence_formats = {}
         self.persistence_objects = {}
-        self.default_persistence_format = CFG.get_safe(CONFIG_KEY + ".persist.persistence_format")
+        self.default_persistence_format = get_safe(self.ingestion_config, "persist.persistence_format")
         self._require_persistence_layer(self.default_persistence_format)
 
         self.stream_sub = StreamSubscriber(process=self, exchange_name=self.exchange_name,
                                            callback=self.process_package)
-        streams = CFG.get_safe(CONFIG_KEY + ".stream_subscriptions") or []
+        streams = get_safe(self.ingestion_config, "stream_subscriptions") or []
         for stream in streams:
             if isinstance(stream, list):
                 stream = StreamRoute(exchange_point=stream[0], routing_key=stream[1])
@@ -79,6 +85,13 @@ class IngestionProcess(StandaloneProcess):
 
 
 class IngestionPlugin(object):
+    """
+    Base class for application specific ingestion plugins. Their purpose is to resolve dataset identifiers
+    to dataset definitions, e.g. by retrieving this information from a database.
+
+    The same plugin instance is used all the time, so that this instance can cache lookup information.
+    """
+
     def __init__(self, ingestion_process):
         self.ingestion_process = ingestion_process
         self.rr = self.ingestion_process.container.resource_registry

@@ -316,11 +316,13 @@ process:
     extensions: []   # A list of fully qualified class names implementing the UIExtension interface
 
   ingestion_process:
-    stream_subscriptions:           # List of either stream names (str) or [XP, stream_name] tuples
-    - basic_streams
-    plugin: ""                      # Classname for ingestion plugin
-    persist:
-      persistence_format: hdf5
+    ingestion_profile: default       # The profile to use (can be overriden in process config)
+    profile_default:                 # Standard ingestion profile
+      stream_subscriptions:          # List of either stream names (str) or [XP, stream_name] tuples
+      - basic_streams
+      plugin: ""                     # Classname for application specific ingestion plugin
+      persist:
+        persistence_format: hdf5
 
 # ----------------------------------------------------------------------------------
 # The "service" root entry
