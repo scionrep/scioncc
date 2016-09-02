@@ -284,6 +284,9 @@ class DatasetHDF5Persistence(object):
                 file_closed = self._prune_dataset(data_file)
 
             #HDF5Tools.dump_hdf5(data_file, with_data=True)
+        except Exception:
+            log.exception("Error extending dataset %s HDF5 file" % self.dataset_id)
+            raise
         finally:
             if not file_closed:
                 data_file.close()
@@ -314,7 +317,7 @@ class DatasetHDF5Persistence(object):
                 raise BadRequest("Bad pruning trigger_age or retain_age")
             var_ds = data_file["vars/%s" % self.time_var]
             cur_idx = var_ds.attrs["cur_row"]
-            if not len(var_ds) or not var_ds.attrs["cur_row"]:
+            if not len(var_ds) or not cur_idx:
                 return
             min_ts = NTP4Time.from_ntp64(var_ds[0].tostring()).to_unix()
             max_ts = NTP4Time.from_ntp64(var_ds[cur_idx-1].tostring()).to_unix()
