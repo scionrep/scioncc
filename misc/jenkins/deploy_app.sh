@@ -2,43 +2,46 @@
 
 set -e
 
-APP_HOME=/home/app
-APP_ROOT=$APP_HOME/app/app
-APP_VERSION=`cat $APP_ROOT/VERSION`
+SCION_HOME=/export/home/scion
+SCION_APP_ROOT=$SCION_HOME/app/scion_app
+SCION_APP_LOGS=$SCION_HOME/app/scion_logs
 
-cd $APP_ROOT
+SCION_VERSION=`cat $SCION_APP_ROOT/VERSION`
 
-cp -f -T config/pyon.app.yml.template pyon.app.yml
+cd $SCION_APP_ROOT
 
-sed -i "s/%SYSNAME%/dev/g" pyon.app.yml
-sed -i "s/%WEB_UI_URL%/http:\/\/server.com\:8080\//g" pyon.app.yml
+tar zxf dist/scion_project.tar.gz
+rm dist/scion_project.tar.gz
+tar zxf dist/scion_build.tar.gz
+rm dist/scion_build.tar.gz
 
-sed -i "s/%AMQP_HOST%/localhost/g" pyon.app.yml
-sed -i "s/%AMQP_PORT%/5672/g" pyon.app.yml
-sed -i "s/%AMQP_USER%/guest/g" pyon.app.yml
-sed -i "s/%AMQP_PASSWORD%/guest/g" pyon.app.yml
+cp -f -T defs/res/config/templates/prod_pyon.scion.yml pyon.scion.yml
 
-sed -i "s/%AMQP_MPORT%/15672/g" pyon.app.yml
-sed -i "s/%AMQP_MUSER%/guest/g" pyon.app.yml
-sed -i "s/%AMQP_MPASSWORD%/guest/g" pyon.app.yml
+sed -i "s/%SYSNAME%/scion/g" pyon.scion.yml
+sed -i "s/%SERVICE_GWY_PORT%/4000/g" pyon.scion.yml
+sed -i "s/%ADMIN_UI_PORT%/9000/g" pyon.scion.yml
+sed -i "s/%WEB_UI_URL%/http:\/\/scion-dev.ucsd.edu\//g" pyon.scion.yml
 
-sed -i "s/%PG_HOST%/dev-rds.abcdefg.us-east-1.rds.amazonaws.com/g" pyon.app.yml
-sed -i "s/%PG_USER%/ion/g" pyon.app.yml
-sed -i "s/%PG_PASSWORD%/abcdefg/g" pyon.app.yml
-sed -i "s/%PG_ADMIN_USER%/master/g" pyon.app.yml
-sed -i "s/%PG_ADMIN_PASSWORD%/abcdefg/g" pyon.app.yml
+sed -i "s/%AMQP_HOST%/localhost/g" pyon.scion.yml
+sed -i "s/%AMQP_PORT%/5672/g" pyon.scion.yml
+sed -i "s/%AMQP_USER%/guest/g" pyon.scion.yml
+sed -i "s/%AMQP_PASSWORD%/guest/g" pyon.scion.yml
+sed -i "s/%AMQP_MPORT%/15672/g" pyon.scion.yml
+sed -i "s/%AMQP_MUSER%/guest/g" pyon.scion.yml
+sed -i "s/%AMQP_MPASSWORD%/guest/g" pyon.scion.yml
 
-sed  -i "s/%PG_ADMIN_PASSWORD%/abcdefg/g" pyon.app.yml
+sed -i "s/%PG_HOST%/localhost/g" pyon.scion.yml
+sed -i "s/%PG_USER%/ion/g" pyon.scion.yml
+sed -i "s/%PG_PASSWORD%/abcdef/g" pyon.scion.yml
+sed -i "s/%PG_ADMIN_USER%/postgres/g" pyon.scion.yml
+sed -i "s/%PG_ADMIN_PASSWORD%/abcdef/g" pyon.scion.yml
 
-sed -i "s/%ADMIN_UI_SERVER_PORT%/9000/g" pyon.app.yml
+sed -i "s/%DEPLOY_REGION%/default/g" pyon.scion.yml
+sed -i "s/%DEPLOY_AZ%/one/g" pyon.scion.yml
 
-sed -i "s/%SMTP_HOST%/localhost/g" pyon.app.yml
-sed -i "s/%SMTP_SENDER%/alerts@def.app.com/g" pyon.app.yml
-sed -i "s/%SMTP_USER%//g" pyon.app.yml
-sed -i "s/%SMTP_PSWD%//g" pyon.app.yml
-
-sed -i "s/interceptor: False/interceptor: True/g" pyon.app.yml
-sed -i "s/setattr: False/setattr: True/g" pyon.app.yml
+#sed -i "s/load_policy: False/load_policy: True/g" pyon.scion.yml
+#sed -i "s/interceptor: False/interceptor: True/g" pyon.scion.yml
+#sed -i "s/setattr: False/setattr: True/g" pyon.scion.yml
 
 virtualenv venv
 set +x
@@ -50,8 +53,15 @@ pip install --upgrade setuptools
 
 python bootstrap.py -v 2.3.1
 
-bin/buildout -N
+mkdir -p $SCION_APP_ROOT/eggs
+ls -alt $SCION_APP_ROOT/eggs
+pwd
+find dist/ -type d -maxdepth 1 -mindepth 1 | xargs -i cp -fr {} eggs
+ls -alt $SCION_APP_ROOT/eggs
 
-ln -s eggs/app-${APP_VERSION}-py2.7.egg/defs/objects obj
-ln -s eggs/app-${APP_VERSION}-py2.7.egg/defs/res res
-ln -s ../app_ui/src ui
+bin/buildout -NU -c buildout_deploy.cfg
+
+#rm -rf $SCION_APP_ROOT/logs
+#ln -s $SCION_APP_LOGS logs
+ln -s eggs/scion-${SCION_VERSION}-py2.7.egg/defs/objects obj
+ln -s eggs/scion-${SCION_VERSION}-py2.7.egg/defs/res res
