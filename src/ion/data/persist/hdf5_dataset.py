@@ -4,6 +4,7 @@ __author__ = 'Michael Meisinger'
 
 import os
 import math
+import shutil
 import time
 import uuid
 
@@ -349,8 +350,8 @@ class DatasetHDF5Persistence(object):
             os.remove(ds_filename_bak)
 
         data_file.close()  # Note: Inter-process race condition possible because close removes the lock
-        os.rename(ds_filename, ds_filename_bak)
-        os.rename(copy_filename, ds_filename)
+        shutil.move(ds_filename, ds_filename_bak)
+        shutil.move(copy_filename, ds_filename)     # Note: There may be a cross-device-link error here
         # os.remove(ds_filename_bak)
         log.info("Pruning successful. Replaced dataset with pruned file.")
         return True
