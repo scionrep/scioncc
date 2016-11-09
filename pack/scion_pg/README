@@ -1,0 +1,45 @@
+===========================================================
+Dockerfile for a SciON PostgreSQL/PostGIS database image
+===========================================================
+
+DESCRIPTION
+===========
+
+Based on library/postgres
+    See https://registry.hub.docker.com/_/postgres/
+
+Inspired by mdillon/postgis
+    See https://registry.hub.docker.com/u/mdillon/postgis/
+
+
+DOCKER IMAGE
+============
+
+docker build -t scioncc/scion_pg:9.6-1 .
+docker tag scioncc/scion_pg:9.6-1 scioncc/scion_pg:latest
+
+
+USAGE
+=====
+
+Set ENV variables:
+    POSTGRES_PASSWORD: password for superuser (named postgres by default)
+    POSTGRES_ION_PASSWORD: password for ion user (defaulting to superuser password)
+
+Exposes ports:
+    5432: Postgres standard port
+
+# Start as daemon
+docker run --name pg -e POSTGRES_PASSWORD=foo -e POSTGRES_ION_PASSWORD=bar -d scioncc/scion_pg
+
+# Use psql to connect
+docker run -it --link pg:postgres --rm postgres sh -c 'exec psql -h "$POSTGRES_PORT_5432_TCP_ADDR" -p "$POSTGRES_PORT_5432_TCP_PORT" -U postgres'
+
+# To connect using bash
+docker run --rm -it scioncc/scion_pg bash -l
+
+# Stop daemon
+docker stop pg
+
+# Remove container
+docker rm pg

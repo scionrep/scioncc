@@ -1,0 +1,58 @@
+#
+#
+version: '2'
+
+networks:
+    app_net:
+
+services:
+    ## RabbitMQ messaging server
+    ###################################################
+    rabbit:
+        image: scioncc/scion_rabbitmq:1.1
+        hostname: rabbitmq
+        networks:
+            app_net:
+                aliases:
+                    - rabbitmq
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+
+    ## PostgreSQL database
+    ###################################################
+    pg:
+        image: scioncc/scion_pg:9.6-1
+        hostname: postgres
+        networks:
+            app_net:
+                aliases:
+                    - postgres
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_PASSWORD: 'foo'
+            POSTGRES_ION_PASSWORD: 'bar'
+
+    ## ScionCC and application
+    ###################################################
+    cc:
+        image: scioncc/scion_cc:3.0.0
+        hostname: cc
+        networks:
+            app_net:
+                aliases:
+                    - scioncc
+        depends_on:
+            - rabbit
+            - pg
+        links:
+            - rabbit:rabbitmq
+            - pg:postgres
+        ports:
+            - "4000:4000"
+            - "8080:8080"
+        environment:
+            POSTGRES_PASSWORD: 'foo'
+            POSTGRES_ION_PASSWORD: 'bar'
+            NO_PYCC: 'true'

@@ -1,0 +1,36 @@
+===========================================================
+Dockerfile repository for the Scion Capability Container
+===========================================================
+
+
+Docker images and docker-compose system start.
+
+
+IMAGES
+======
+
+scion_cc:       Ubuntu 14.04 with Python 2.7, dependencies and Scion CC
+scion_pg:       PostgreSQL and PostGIS
+scion_rabbitmq: RabbitMQ and management console
+
+See image directories/README for details
+
+
+USAGE
+=====
+
+See image README files for image build instructions.
+
+To run a system using docker-compose:
+
+cd pack
+docker-compose -f dc/dc-scion.yml -d up
+docker-compose -f dc/dc-scion.yml down
+docker-compose -f dc/dc-scion.yml restart cc
+docker-compose -f dc/dc-scion.yml logs cc
+
+docker exec -it dc_cc_1 /bin/bash -l
+
+# Manhole into running ScionCC (exit with Ctrl-D)
+docker exec -it cc bash -l bin/manhole
+

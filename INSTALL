@@ -161,20 +161,4 @@ RABBITMQ (MESSAGE BROKER):
 DOCKER INSTALL
 ==============
 
-Currently experimental - docker images not regularly maintained.
-
-Dockerfiles for cc, postgres, rabbit containers are available here:
-    https://github.com/scionrep/docker-scion
-
-Install a recent docker on Ubuntu 14.04:
-    See https://docs.docker.com/installation/ubuntulinux/
-    > curl -sSL https://get.docker.com/ubuntu/ | sudo sh
-
-Get docker images for Scion CC, database and message broker:
-    See https://registry.hub.docker.com/repos/scioncc/
-    > sudo docker pull scioncc/scion_cc:3.0.0
-    > sudo docker pull scioncc/scion_pg:9.4-1
-    > sudo docker pull scioncc/scion_rabbitmq:1.0
-
-See also:
-    - https://github.com/phusion/baseimage-docker
+See pack/README

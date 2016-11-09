@@ -1,0 +1,63 @@
+===========================================================
+Dockerfile for a SciON Capability Container image
+===========================================================
+
+
+DESCRIPTION
+===========
+
+Based on phusion/baseimage
+    See https://registry.hub.docker.com/u/phusion/baseimage/
+
+    See https://github.com/phusion/baseimage-docker/blob/master/Changelog.md for
+    a list of version numbers.
+
+Separates files needed for build in ./build and ./run for files for code build
+and files for startup.
+
+
+DOCKER IMAGE
+============
+
+docker build -t scioncc/scion_cc:3.0.0 .
+docker tag scioncc/scion_cc:3.0.0 scioncc/scion_cc:latest
+
+
+USAGE
+=====
+
+Set ENV variables:
+    NO_PYCC: if non-empty, don't start pycc
+    PYCC_ARGS: arguments for bin/pycc on startup (default -n)
+    POSTGRES_PASSWORD: password for postgres superuser (named postgres by default)
+    POSTGRES_ION_PASSWORD: password for postgres ion user (defaulting to superuser password)
+
+# Run detached ScionCC with linked RabbitMQ and Postgres (no processes)
+docker run --name cc --link pg:postgres --link rabbit:rabbitmq -e POSTGRES_PASSWORD=foo -e POSTGRES_ION_PASSWORD=bar -it scioncc/scion_cc:3.0.0 /sbin/my_init
+
+# NOTE: To expose UI server ports, run with -p 4000:4000 -p 8080:8080 option as needed
+
+# NOTE: To start processes or admin UI set PYCC_ARGS variable:
+#    ... -e PYCC_ARGS="-fc --mx -r res/deploy/basic.yml"
+
+# Boot without pycc and drop into shell
+docker run --name cc --rm -e NO_PYCC=1 -it scioncc/scion_cc:3.0.0 /sbin/my_init -- bash -l
+
+
+
+# From the docker host, open shell in docker container:
+docker exec -it cc bash -l
+
+# From the docker host, access a running ScionCC using manhole:
+# Note: exit via Ctrl-D or quit(), never exit() which would kill the ScionCC
+docker exec -it cc bash -l bin/manhole
+
+# From the docker host, start an ipython:
+docker exec -it cc bash -l bin/ipython
+
+
+# Stop container
+docker stop cc
+
+# Remove container
+docker rm cc

@@ -1,0 +1,29 @@
+# Application system configuration
+
+system:
+  load_policy: False
+  name: %SYSNAME%
+
+server:
+  amqp:
+    host: %AMQP_HOST%
+    port: %AMQP_PORT%
+    username: %AMQP_USER%
+    password: %AMQP_PASSWORD%
+  rabbit_manage:
+    host: %AMQP_HOST%
+    port: %AMQP_MPORT%
+    username: %AMQP_MUSER%
+    password: %AMQP_MPASSWORD%
+  postgresql:
+    type: postgresql
+    host: %PG_HOST%
+    port: %PG_PORT%
+    username: %PG_USER%
+    password: %PG_PASSWORD%
+    admin_username: %PG_ADMIN_USER%
+    admin_password: %PG_ADMIN_PASSWORD%
+    default_database: postgres  # Postgres' internal database
+    database: ion               # Database name for OOI Network (will be sysname prefixed)
+    connection_pool_max: 5      # Number of connections for entire container
+
